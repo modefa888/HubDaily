@@ -19,15 +19,16 @@
       </div>
 
       <section id="loginPanel" class="space-y-3">
-        <input id="loginUsername" class="w-full border rounded px-3 py-2" placeholder="用户名" />
+        <input id="loginUsername" class="w-full border rounded px-3 py-2" placeholder="邮箱(仅字母数字)" />
         <input id="loginPassword" type="password" class="w-full border rounded px-3 py-2" placeholder="密码" />
         <button id="loginBtn" class="w-full bg-blue-600 text-white rounded py-2">登录</button>
       </section>
 
       <section id="registerPanel" class="space-y-3 hidden">
-        <input id="regUsername" class="w-full border rounded px-3 py-2" placeholder="用户名" />
+        <input id="regUsername" class="w-full border rounded px-3 py-2" placeholder="邮箱(仅字母数字)" />
         <input id="regNickname" class="w-full border rounded px-3 py-2" placeholder="昵称(可选)" />
         <input id="regPassword" type="password" class="w-full border rounded px-3 py-2" placeholder="密码" />
+        <input id="regPasswordConfirm" type="password" class="w-full border rounded px-3 py-2" placeholder="确认密码" />
         <button id="regBtn" class="w-full bg-emerald-600 text-white rounded py-2">注册</button>
       </section>
 
@@ -40,6 +41,23 @@
 
     <script>
       const TOKEN_KEY = "userToken";
+      const MSG = {
+        accountEmpty: "请输入邮箱",
+        accountInvalid: "账号需为仅字母数字的邮箱",
+        passwordEmpty: "请输入密码",
+        passwordConfirmEmpty: "请确认密码",
+        passwordMismatch: "两次密码不一致",
+        loginFailed: "登录失败",
+        registerFailed: "注册失败",
+      };
+      const normalizeServerMessage = (message, fallback) => {
+        if (!message) return fallback;
+        if (message.includes("账号需为仅字母数字的邮箱")) return MSG.accountInvalid;
+        if (message.includes("用户名或密码不能为空")) return MSG.passwordEmpty;
+        if (message.includes("用户名不能为空")) return MSG.accountEmpty;
+        if (message.includes("密码不能为空")) return MSG.passwordEmpty;
+        return message;
+      };
       const toast = (msg) => {
         const el = document.getElementById("toast");
         el.textContent = msg;
@@ -47,6 +65,18 @@
         setTimeout(() => el.classList.add("hidden"), 1800);
       };
       const setToken = (t) => localStorage.setItem(TOKEN_KEY, t);
+      const isValidAccount = (value) => /^[A-Za-z0-9]+@[A-Za-z0-9]+(\.[A-Za-z0-9]+)+$/.test(value);
+      const ensureAccount = (value) => {
+        if (!value) {
+          toast(MSG.accountEmpty);
+          return false;
+        }
+        if (!isValidAccount(value)) {
+          toast(MSG.accountInvalid);
+          return false;
+        }
+        return true;
+      };
       const params = new URLSearchParams(window.location.search);
       const redirectTarget = params.get("redirect") || "/index.html";
 
@@ -75,8 +105,8 @@
       document.getElementById("loginBtn").addEventListener("click", async () => {
         const username = document.getElementById("loginUsername").value.trim();
         const password = document.getElementById("loginPassword").value.trim();
-        if (!username || !password) {
-          toast("请输入用户名和密码");
+        if (!ensureAccount(username) || !password) {
+          if (!password) toast(MSG.passwordEmpty);
           return;
         }
         const btn = document.getElementById("loginBtn");
@@ -95,7 +125,7 @@
             toast("登录成功");
             setTimeout(() => (window.location.href = redirectTarget), 600);
           } else {
-            toast(data.message || "登录失败");
+            toast(normalizeServerMessage(data.message, MSG.loginFailed));
           }
         } finally {
           btn.disabled = false;
@@ -107,8 +137,17 @@
         const username = document.getElementById("regUsername").value.trim();
         const nickname = document.getElementById("regNickname").value.trim();
         const password = document.getElementById("regPassword").value.trim();
-        if (!username || !password) {
-          toast("请输入用户名和密码");
+        const passwordConfirm = document.getElementById("regPasswordConfirm").value.trim();
+        if (!ensureAccount(username) || !password) {
+          if (!password) toast(MSG.passwordEmpty);
+          return;
+        }
+        if (!passwordConfirm) {
+          toast(MSG.passwordConfirmEmpty);
+          return;
+        }
+        if (password !== passwordConfirm) {
+          toast(MSG.passwordMismatch);
           return;
         }
         const btn = document.getElementById("regBtn");
@@ -138,7 +177,7 @@
               switchTab("login");
             }
           } else {
-            toast(data.message || "注册失败");
+            toast(normalizeServerMessage(data.message, MSG.registerFailed));
           }
         } finally {
           btn.disabled = false;

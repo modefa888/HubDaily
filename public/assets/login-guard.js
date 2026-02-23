@@ -36,30 +36,7 @@
         );
         window.location.href = `${LOGIN_PATH}?redirect=${redirect}`;
       }
-      const HEARTBEAT_INTERVAL = 60 * 1000;
-      let heartbeatTimer = null;
-      const sendHeartbeat = () => {
-        const activeToken = localStorage.getItem(TOKEN_KEY) || "";
-        if (!activeToken) return;
-        const page = window.location.pathname + window.location.search + window.location.hash;
-        fetch("/user/heartbeat", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: "Bearer " + activeToken,
-          },
-          body: JSON.stringify({ page }),
-        }).catch(() => {});
-      };
-      const startHeartbeat = () => {
-        if (heartbeatTimer) return;
-        sendHeartbeat();
-        heartbeatTimer = setInterval(sendHeartbeat, HEARTBEAT_INTERVAL);
-        document.addEventListener("visibilitychange", () => {
-          if (!document.hidden) sendHeartbeat();
-        });
-      };
-      startHeartbeat();
+      // 心跳已禁用：在线列表仅基于真实 API 活动
     })
     .catch(() => {
       const params = new URLSearchParams(window.location.search);

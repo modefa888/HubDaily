@@ -11,6 +11,9 @@ const getDb = async () => {
 };
 
 shareRouter.get("/share/:shareId", async (ctx) => {
+    ctx.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    ctx.set("Pragma", "no-cache");
+    ctx.set("Expires", "0");
     const shareId = String(ctx.params.shareId || "").trim();
     if (!shareId) {
         ctx.status = 400;
@@ -22,6 +25,11 @@ shareRouter.get("/share/:shareId", async (ctx) => {
     if (!share) {
         ctx.status = 404;
         ctx.body = { code: 404, message: "分享不存在" };
+        return;
+    }
+    if (share.paused) {
+        ctx.status = 410;
+        ctx.body = { code: 410, message: "分享已暂停" };
         return;
     }
     const expiresAtMs = share.expiresAt ? share.expiresAt.getTime() : 0;

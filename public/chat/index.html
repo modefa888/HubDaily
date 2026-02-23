@@ -778,6 +778,15 @@
       return true;
     };
 
+    const ensureLoginOrRedirect = async () => {
+      const ok = await refreshLoginStatus();
+      if (!ok) {
+        showHint("请先登录");
+        setTimeout(() => redirectToLogin(), 300);
+      }
+      return ok;
+    };
+
     const connectWs = () => {
       if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
         showHint("连接中，请稍后");
@@ -1651,7 +1660,7 @@
       tabAdminBtn.addEventListener("click", () => setSideTab("admin"));
     }
 
-    refreshLoginStatus().then((ok) => {
+    ensureLoginOrRedirect().then((ok) => {
       if (ok) connectWs();
     });
   </script>

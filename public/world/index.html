@@ -197,11 +197,11 @@
                     <button id="addSiteBtn" class="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-dark-secondary" title="添加网站">
                         <i class="fa fa-plus text-gray-600 dark:text-gray-300"></i>
                     </button>
-                    
-                    <!-- 主题切换按钮 -->
-                    <button id="themeToggle" class="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-dark-secondary">
-                        <i class="fa fa-adjust text-gray-600"></i>
-                    </button>
+
+                    <!-- 个人中心 -->
+                    <a href="/profile/index.html" class="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-dark-secondary" title="个人中心">
+                        <i class="fa fa-user text-gray-600 dark:text-gray-300"></i>
+                    </a>
                 </div>
             </div>
             
@@ -326,8 +326,8 @@
             constructor() {
                 this.data = JSON.parse(localStorage.getItem('smartnav-data')) || this.getDefaultData();
                 this.bookmarks = JSON.parse(localStorage.getItem('smartnav-bookmarks')) || [];
-                this.theme = localStorage.getItem('smartnav-theme') || 'system';
-                this.systemTheme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
+                this.theme = 'light';
+                this.systemTheme = null;
             }
             
             getDefaultData() {
@@ -357,7 +357,6 @@
             save() {
                 localStorage.setItem('smartnav-data', JSON.stringify(this.data));
                 localStorage.setItem('smartnav-bookmarks', JSON.stringify(this.bookmarks));
-                localStorage.setItem('smartnav-theme', this.theme);
             }
             
             addSite(name, url, category, icon = 'fa-link') {
@@ -428,9 +427,6 @@
             
             setTheme(theme) {
                 this.theme = theme;
-                const isDark = theme === 'dark' || (theme === 'system' && this.systemTheme && this.systemTheme.matches);
-                document.documentElement.classList.toggle('dark', isDark);
-                this.save();
             }
         }
         
@@ -450,8 +446,7 @@
                 this.renderCategories();
                 this.renderPagination();
                 this.bindEvents();
-                this.state.setTheme(this.state.theme);
-                this.updateThemeToggle();
+                this.state.setTheme('light');
                 this.refreshCategoryOptions();
                 this.showToast('欢迎使用 SmartNav！', 'success');
             }
@@ -633,22 +628,6 @@
                 pagination.appendChild(createButton('下一页', this.currentPage + 1, this.currentPage === totalPages));
             }
 
-            updateThemeToggle() {
-                const btn = document.getElementById('themeToggle');
-                if (!btn) return;
-                let iconClass = 'fa-adjust';
-                let title = '跟随系统';
-                if (this.state.theme === 'light') {
-                    iconClass = 'fa-sun-o';
-                    title = '浅色模式';
-                } else if (this.state.theme === 'dark') {
-                    iconClass = 'fa-moon-o';
-                    title = '深色模式';
-                }
-                btn.innerHTML = `<i class="fa ${iconClass} ${this.state.theme === 'light' ? 'text-yellow-500' : 'text-gray-600'}"></i>`;
-                btn.setAttribute('title', title);
-            }
-            
             createSiteCard(site, isQuickAccess = false, isInBookmarks = false, categoryName = '', showDelete = false) {
                 const card = document.createElement('div');
                 card.className = 'card-hover bg-white dark:bg-dark-secondary rounded-xl p-4 border border-gray-200 dark:border-gray-700 relative overflow-hidden';
@@ -693,15 +672,6 @@
 
             
             bindEvents() {
-                // 主题切换
-                document.getElementById('themeToggle').addEventListener('click', () => {
-                    const order = ['system', 'light', 'dark'];
-                    const currentIndex = order.indexOf(this.state.theme);
-                    const nextTheme = order[(currentIndex + 1) % order.length];
-                    this.state.setTheme(nextTheme);
-                    this.updateThemeToggle();
-                });
-                
                 // 移动端搜索
                 document.getElementById('mobileSearchBtn').addEventListener('click', () => {
                     document.getElementById('mobileSearch').classList.toggle('hidden');

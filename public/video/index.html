@@ -437,6 +437,12 @@
                         maxlength="200"
                     ></textarea>
                 </div>
+                <div>
+                    <a href="/profile/index.html" class="btn-primary w-full text-center text-sm">
+                        <i class="fa fa-user mr-1"></i> 进入个人中心
+                    </a>
+                    <p class="text-xs text-gray-500 mt-2">查看账号信息、喜欢与分享列表</p>
+                </div>
                 <button onclick="logoutUser()" class="w-full btn-secondary text-xs" data-action="logout" disabled>
                     <i class="fa fa-sign-out mr-1"></i> <span>退出登录</span>
                 </button>
@@ -3853,7 +3859,10 @@
 
         function isPrivacyModeEnabled() {
             const value = localStorage.getItem('privacyMode');
-            if (value === null) return true;
+            if (value === null) {
+                const category = normalizeCategory(getCurrentHostCategory());
+                return category !== 'normal';
+            }
             return value === '1';
         }
 
