@@ -327,7 +327,7 @@
 
     async function loadParseApis() {
         try {
-            var res = await fetch('/parse-apis');
+            var res = await fetch('/api/parse-apis');
             var data = await res.json();
             if (data && data.code === 200 && Array.isArray(data.data)) {
                 BUILTIN_APIS = data.data

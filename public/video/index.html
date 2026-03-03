@@ -17,6 +17,8 @@
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <!-- qrcode.js -->
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <!-- marked.js for Markdown rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     
     <script>
         tailwind.config = {
@@ -249,6 +251,13 @@
                             <i class="fa fa-info-circle text-gray-600"></i>
                             <span class="text-right flex-1">关于</span>
                         </button>
+                        <button 
+                            onclick="window.location.href = '/user/member/feedback/'"
+                            class="w-full px-3 py-2 text-sm hover:bg-blue-50 flex items-center justify-between rounded-lg"
+                        >
+                            <i class="fa fa-comment text-blue-500"></i>
+                            <span class="text-right flex-1">用户反馈</span>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -443,7 +452,7 @@
                     </a>
                     <p class="text-xs text-gray-500 mt-2">查看账号信息、喜欢与分享列表</p>
                 </div>
-                <button onclick="logoutUser()" class="w-full btn-secondary text-xs" data-action="logout" disabled>
+                <button id="logoutButton" onclick="logoutUser()" class="w-full btn-secondary text-xs hidden" data-action="logout">
                     <i class="fa fa-sign-out mr-1"></i> <span>退出登录</span>
                 </button>
             </div>
@@ -670,6 +679,27 @@
             >
                 <i class="fa fa-arrow-up"></i>
             </button>
+        </div>
+    </div>
+
+    <!-- 悬浮播放框 -->
+    <div 
+        id="floatingPlayer" 
+        class="fixed bottom-20 right-6 w-64 h-36 glass-effect rounded-lg shadow-lg overflow-hidden hidden z-50"
+    >
+        <div class="relative w-full h-full">
+            <div id="floatingPlayerContainer" class="w-full h-full"></div>
+            <div 
+                id="floatingPlayerClose" 
+                class="absolute top-2 right-2 bg-black/60 text-white rounded-full w-6 h-6 flex items-center justify-center cursor-pointer hover:bg-black/80"
+                onclick="closeFloatingPlayer()"
+            >
+                <i class="fa fa-times text-xs"></i>
+            </div>
+            <div 
+                id="floatingPlayerTitle" 
+                class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent text-white text-xs p-2 truncate"
+            ></div>
         </div>
     </div>
 
@@ -904,6 +934,7 @@
         let host = '';
         let hostName = '';
         let dplayer = null;
+        let floatingDplayer = null;
         let isLoading = false;
         let hasMore = true;
         let currentVideoUrl = '';
@@ -932,6 +963,7 @@
         let lastWatchTime = 0;
         let lastWatchUrl = '';
         const loadedTotalCount = document.getElementById('loadedTotalCount');
+        let originalPageTitle = document.title;
         
         // DOM元素
         const videoList = document.getElementById('videoList');
@@ -1219,7 +1251,7 @@
             const searchHistory = getSearchHistory();
             const watchSeconds = getTodayWatchTime();
             try {
-                const res = await fetch('/user/stats', {
+                const res = await fetch('/api/user/stats', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                     body: JSON.stringify({
@@ -1293,7 +1325,7 @@
             if (!token) return null;
             visitHistoryFetchPromise = (async () => {
                 try {
-                    const res = await fetch('/user/visit-history', {
+                    const res = await fetch('/api/user/visit-history', {
                         headers: { Authorization: `Bearer ${token}` }
                     });
                     const data = await res.json();
@@ -1381,6 +1413,21 @@
         }
         
         // 初始化
+        // 检查登录状态并显示/隐藏退出登录按钮
+        function checkLoginStatus() {
+            const token = getUserToken ? getUserToken() : '';
+            const logoutButton = document.getElementById('logoutButton');
+            if (logoutButton) {
+                if (token) {
+                    logoutButton.classList.remove('hidden');
+                    logoutButton.disabled = false;
+                } else {
+                    logoutButton.classList.add('hidden');
+                    logoutButton.disabled = true;
+                }
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             // 加载保存的Host
             host = localStorage.getItem('apiHost') || '';
@@ -1388,6 +1435,8 @@
             updateHostNameDisplay(host);
             updateCustomTypeSelect();
             applyAvatarFromStorage();
+            // 检查登录状态
+            checkLoginStatus();
             if (customTypeSelect) {
                 customTypeSelect.addEventListener('change', () => {
                     const value = customTypeSelect.value;
@@ -1674,7 +1723,7 @@
                     applyAvatar(url);
                     const token = getUserToken ? getUserToken() : '';
                     if (token) {
-                        fetch('/user/avatar', {
+                        fetch('/api/user/avatar', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                             body: JSON.stringify({ avatar: url })
@@ -1714,7 +1763,7 @@
         }
 
         function getOfficialApiUrl() {
-            return '/apis/official';
+            return '/api/apis/official';
         }
         
         // 加载初始数据
@@ -1735,7 +1784,7 @@
         
         // 获取代理URL
         function getProxyUrl(endpoint, params = {}) {
-            const baseUrl = window.location.origin + '/proxy';
+            const baseUrl = window.location.origin + '/api/proxy';
             const url = new URL(endpoint, baseUrl);
             
             // 添加查询参数
@@ -2950,6 +2999,9 @@
                 updatePlayerLikeButtons(isFavorited(initialUrl));
                 updatePlayerTitle(currentVideoTitle);
                 
+                // 更新页面标题
+                document.title = `正在播放: ${currentVideoTitle}`;
+                
                 // 保存播放历史
                 saveToHistory(currentVideoTitle, initialUrl, imageUrl, currentVideoSource, episodeTitle || '', hasEpisodeList ? initialIndex : null);
                 
@@ -3074,6 +3126,8 @@
                         currentVideoTitle = title;
                         currentEpisodeIndex = idx;
                         updatePlayerTitle(title);
+                        // 更新页面标题
+                        document.title = `正在播放: ${title}`;
                         updatePlayerLikeButtons(isFavorited(ep.url));
                         saveToHistory(title, ep.url, imageUrl, currentVideoSource, ep.name || '', idx);
                         if (dplayer && typeof dplayer.switchVideo === 'function') {
@@ -3122,12 +3176,74 @@
                 playerTitle.textContent = '';
             }
             
+            // 恢复原始页面标题
+            document.title = originalPageTitle;
+            
             // 隐藏移动设备关闭按钮
             const mobileCloseButton = document.getElementById('closeVideoButtonMobile');
             if (mobileCloseButton) {
                 // 使用className重置所有样式，确保下次能正确显示
                 mobileCloseButton.className = 'md:hidden fixed top-4 right-4 bg-red-600 text-white rounded-full w-12 h-12 flex items-center justify-center z-50 shadow-lg';
                 mobileCloseButton.style.cssText = '';
+            }
+        }
+
+        // 打开悬浮播放框
+        function openFloatingPlayer(videoUrl, videoTitle, imageUrl = '', sourceLabel = '') {
+            const floatingPlayer = document.getElementById('floatingPlayer');
+            const floatingPlayerTitle = document.getElementById('floatingPlayerTitle');
+            
+            if (!floatingPlayer || !floatingPlayerTitle) return;
+            
+            // 更新页面标题
+            document.title = `正在播放: ${videoTitle || '视频'}`;
+            
+            // 更新悬浮播放框标题
+            floatingPlayerTitle.textContent = videoTitle || '视频播放';
+            
+            // 显示悬浮播放框
+            floatingPlayer.classList.remove('hidden');
+            
+            // 初始化悬浮播放器
+            if (floatingDplayer) {
+                floatingDplayer.destroy();
+            }
+            
+            floatingDplayer = new DPlayer({
+                container: document.getElementById('floatingPlayerContainer'),
+                video: {
+                    url: videoUrl,
+                    type: 'hls',
+                    title: videoTitle || '视频播放'
+                },
+                autoplay: true,
+                theme: '#3b82f6',
+                loop: false,
+                screenshot: false,
+                hotkey: true,
+                mutex: true
+            });
+            
+            // 保存播放历史
+            saveToHistory(videoTitle, videoUrl, imageUrl, sourceLabel);
+        }
+
+        // 关闭悬浮播放框
+        function closeFloatingPlayer() {
+            const floatingPlayer = document.getElementById('floatingPlayer');
+            
+            if (!floatingPlayer) return;
+            
+            // 恢复原始页面标题
+            document.title = originalPageTitle;
+            
+            // 隐藏悬浮播放框
+            floatingPlayer.classList.add('hidden');
+            
+            // 销毁悬浮播放器
+            if (floatingDplayer) {
+                floatingDplayer.destroy();
+                floatingDplayer = null;
             }
         }
 
@@ -3318,7 +3434,7 @@
             }
             favoritesLoadingPromise = (async () => {
                 try {
-                    const res = await fetch('/user/favorites', {
+                    const res = await fetch('/api/user/favorites', {
                         headers: { Authorization: `Bearer ${token}` }
                     });
                     const data = await res.json();
@@ -3343,7 +3459,7 @@
             if (!Array.isArray(local) || local.length === 0) return;
             try {
                 await Promise.all(local.map(item => {
-                    return fetch('/user/favorites', {
+                    return fetch('/api/user/favorites', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                         body: JSON.stringify({
@@ -3384,7 +3500,7 @@
                 updateFavoriteButton(buttonEl, false);
                 scheduleUserStatsUpdate();
                 if (token) {
-                    fetch('/user/favorites', {
+                    fetch('/api/user/favorites', {
                         method: 'DELETE',
                         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                         body: JSON.stringify({ url: realVideoUrl })
@@ -3408,7 +3524,7 @@
                 updateFavoriteButton(buttonEl, true);
                 scheduleUserStatsUpdate();
                 if (token) {
-                    fetch('/user/favorites', {
+                    fetch('/api/user/favorites', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                         body: JSON.stringify(item)
@@ -3531,7 +3647,7 @@
             try {
                 const token = getUserToken ? getUserToken() : '';
                 if (token) {
-                    await fetch('/user/favorites', {
+                    await fetch('/api/user/favorites', {
                         method: 'DELETE',
                         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                         body: JSON.stringify({ url })
@@ -3590,7 +3706,7 @@
                 return;
             }
             try {
-                const verifyRes = await fetch('/user/verify-password', {
+                const verifyRes = await fetch('/api/user/verify-password', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                     body: JSON.stringify({ password })
@@ -3603,7 +3719,7 @@
                     }
                     return;
                 }
-                await fetch('/user/favorites/all', {
+                await fetch('/api/user/favorites/all', {
                     method: 'DELETE',
                     headers: { Authorization: `Bearer ${token}` }
                 });
@@ -3790,7 +3906,10 @@
             }
         }
 
+        let currentAggregateTab = 'adult';
+
         function switchAggregateTab(type) {
+            currentAggregateTab = type;
             const adultTab = document.getElementById('aggregateTabAdult');
             const normalTab = document.getElementById('aggregateTabNormal');
             if (aggregateApiListAdult) aggregateApiListAdult.classList.toggle('hidden', type !== 'adult');
@@ -4075,7 +4194,7 @@
             const token = getUserToken ? getUserToken() : '';
             if (!token) return null;
             try {
-                const res = await fetch('/user/profile', {
+                const res = await fetch('/api/user/profile', {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 const data = await res.json();
@@ -4096,7 +4215,7 @@
             const token = getUserToken ? getUserToken() : '';
             if (!token) return null;
             try {
-                const res = await fetch('/user/stats', {
+                const res = await fetch('/api/user/stats', {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 const data = await res.json();
@@ -4159,6 +4278,8 @@
             if (nicknameDisplay) {
                 nicknameDisplay.textContent = nicknameText;
             }
+            // 检查登录状态，更新退出登录按钮的显示状态
+            checkLoginStatus();
             if (nicknameButton) {
                 nicknameButton.textContent = nicknameText;
             }
@@ -4275,7 +4396,7 @@
             }
             let success = false;
             try {
-                const res = await fetch(`/user/${currentUserProfile._id}`, {
+                const res = await fetch(`/api/user/${currentUserProfile._id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                     body: JSON.stringify({ nickname: value })
@@ -4327,7 +4448,7 @@
             if (value === currentNote) {
                 return;
             }
-            const res = await fetch(`/user/${currentUserProfile._id}`, {
+            const res = await fetch(`/api/user/${currentUserProfile._id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                 body: JSON.stringify({ profileNote: value })
@@ -4437,7 +4558,7 @@
             const token = getUserToken ? getUserToken() : '';
             if (token) {
                 try {
-                    await fetch('/user/logout', {
+                    await fetch('/api/user/logout', {
                         method: 'POST',
                         headers: { Authorization: `Bearer ${token}` }
                     });
@@ -4454,6 +4575,8 @@
             applyAvatarFromStorage();
             currentUserProfile = null;
             renderUserInfo({ skipStatsFetch: true });
+            // 检查登录状态，隐藏退出登录按钮
+            checkLoginStatus();
             if (logoutBtn) {
                 logoutBtn.disabled = false;
                 logoutBtn.innerHTML = originalHtml;
@@ -4840,29 +4963,109 @@
 
         function selectAllAggregateApis() {
             const list = (officialApiCache && officialApiCache.data) ? officialApiCache.data : [];
-            const urls = list.map(item => item.url).filter(Boolean);
-            const names = list.map(item => item.name).filter(Boolean);
+            // 只选择当前选中 tab 对应的接口
+            const filteredList = list.filter(item => {
+                const category = normalizeCategory(item.category);
+                return category === currentAggregateTab;
+            });
+            const currentUrls = filteredList.map(item => item.url).filter(Boolean);
+            const currentNames = filteredList.map(item => item.name).filter(Boolean);
+            
+            // 获取当前已选择的接口
+            const selected = getAggregateApiSelection();
+            const selectedNames = getAggregateApiSelectionNames();
+            
+            // 移除当前 tab 已选择的接口
+            const otherUrls = selected.filter(url => {
+                const item = list.find(i => i.url === url);
+                if (!item) return true;
+                const category = normalizeCategory(item.category);
+                return category !== currentAggregateTab;
+            });
+            
+            const otherNames = selectedNames.filter((name, index) => {
+                const url = selected[index];
+                const item = list.find(i => i.url === url);
+                if (!item) return true;
+                const category = normalizeCategory(item.category);
+                return category !== currentAggregateTab;
+            });
+            
+            // 合并其他 tab 已选择的接口和当前 tab 全选的接口
+            const newUrls = [...otherUrls, ...currentUrls];
+            const newNames = [...otherNames, ...currentNames];
+            
             setAggregateSelectionCleared(false);
-            setAggregateApiSelection(urls);
-            setAggregateApiSelectionNames(names);
+            setAggregateApiSelection(newUrls);
+            setAggregateApiSelectionNames(newNames);
             renderAggregateApiSelection(list);
         }
 
         function clearAggregateApis() {
-            setAggregateSelectionCleared(true);
-            setAggregateApiSelection([]);
-            setAggregateApiSelectionNames([]);
             const list = (officialApiCache && officialApiCache.data) ? officialApiCache.data : [];
+            // 只清除当前选中 tab 对应的接口
+            const selected = getAggregateApiSelection();
+            const selectedNames = getAggregateApiSelectionNames();
+            
+            // 保留其他 tab 已选择的接口
+            const newUrls = selected.filter(url => {
+                const item = list.find(i => i.url === url);
+                if (!item) return true;
+                const category = normalizeCategory(item.category);
+                return category !== currentAggregateTab;
+            });
+            
+            const newNames = selectedNames.filter((name, index) => {
+                const url = selected[index];
+                const item = list.find(i => i.url === url);
+                if (!item) return true;
+                const category = normalizeCategory(item.category);
+                return category !== currentAggregateTab;
+            });
+            
+            setAggregateSelectionCleared(newUrls.length === 0);
+            setAggregateApiSelection(newUrls);
+            setAggregateApiSelectionNames(newNames);
             renderAggregateApiSelection(list);
         }
 
         function resetAggregateApis() {
             const list = (officialApiCache && officialApiCache.data) ? officialApiCache.data : [];
-            const defaults = list.slice(0, 3).map(item => item.url).filter(Boolean);
-            const defaultNames = list.slice(0, 3).map(item => item.name).filter(Boolean);
-            setAggregateSelectionCleared(false);
-            setAggregateApiSelection(defaults);
-            setAggregateApiSelectionNames(defaultNames);
+            // 只重置当前选中 tab 对应的接口
+            const filteredList = list.filter(item => {
+                const category = normalizeCategory(item.category);
+                return category === currentAggregateTab;
+            });
+            const defaults = filteredList.slice(0, 3).map(item => item.url).filter(Boolean);
+            const defaultNames = filteredList.slice(0, 3).map(item => item.name).filter(Boolean);
+            
+            // 获取当前已选择的接口
+            const selected = getAggregateApiSelection();
+            const selectedNames = getAggregateApiSelectionNames();
+            
+            // 保留其他 tab 已选择的接口
+            const otherUrls = selected.filter(url => {
+                const item = list.find(i => i.url === url);
+                if (!item) return true;
+                const category = normalizeCategory(item.category);
+                return category !== currentAggregateTab;
+            });
+            
+            const otherNames = selectedNames.filter((name, index) => {
+                const url = selected[index];
+                const item = list.find(i => i.url === url);
+                if (!item) return true;
+                const category = normalizeCategory(item.category);
+                return category !== currentAggregateTab;
+            });
+            
+            // 合并其他 tab 已选择的接口和当前 tab 重置的接口
+            const newUrls = [...otherUrls, ...defaults];
+            const newNames = [...otherNames, ...defaultNames];
+            
+            setAggregateSelectionCleared(newUrls.length === 0);
+            setAggregateApiSelection(newUrls);
+            setAggregateApiSelectionNames(newNames);
             renderAggregateApiSelection(list);
         }
 
@@ -4963,6 +5166,21 @@
                     localStorage.setItem(CUSTOM_API_TYPE_KEY, manualType);
                 }
             }
+            
+            // 检查当前接口是否为普通接口
+            const currentCategory = getCurrentHostCategory();
+            if (currentCategory === 'normal') {
+                // 如果是普通接口，检查隐私遮挡是否开启
+                const privacyEnabled = isPrivacyModeEnabled();
+                if (privacyEnabled) {
+                    // 如果开启，关闭隐私遮挡
+                    if (privacySwitch) {
+                        privacySwitch.checked = false;
+                        togglePrivacyMode();
+                    }
+                }
+            }
+            
             updateHostNameDisplay(host);
             updateCustomTypeSelect();
             saveHostHistory(host);
@@ -5119,9 +5337,9 @@
             const token = getUserToken ? getUserToken() : '';
             if (!token) return null;
             try {
-                const res = await fetch('/user/shares', {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
+                const res = await fetch('/api/user/shares', {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
                 const data = await res.json();
                 if (data && data.code === 200 && Array.isArray(data.data)) {
                     const mapped = data.data.map(item => ({
@@ -5217,7 +5435,7 @@
             }
             const token = getUserToken ? getUserToken() : '';
             if (token && !options.skipRemote) {
-                fetch('/user/shares', {
+                fetch('/api/user/shares', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                     body: JSON.stringify({
@@ -5255,7 +5473,7 @@
                 ? pathname
                 : (isFilePath ? pathname.replace(/[^/]*$/, '') : `${pathname}/`);
             const url = new URL(window.location.origin);
-            url.pathname = `${basePath}play.html`;
+            url.pathname = `${basePath}share`;
             if (shareId) {
                 url.searchParams.set('sid', shareId);
             }
@@ -5403,7 +5621,7 @@
             const token = getUserToken ? getUserToken() : '';
             if (!token) return '';
             try {
-                const res = await fetch('/user/shares', {
+                const res = await fetch('/api/user/shares', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                     body: JSON.stringify(payload)
@@ -5573,7 +5791,7 @@
                 updatePlayerLikeButtons(false);
                 updateCardFavoriteByUrl(currentVideoUrl, false);
                 if (token) {
-                    fetch('/user/favorites', {
+                    fetch('/api/user/favorites', {
                         method: 'DELETE',
                         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                         body: JSON.stringify({ url: currentVideoUrl })
@@ -5597,7 +5815,7 @@
                 updatePlayerLikeButtons(true);
                 updateCardFavoriteByUrl(currentVideoUrl, true);
                 if (token) {
-                    fetch('/user/favorites', {
+                    fetch('/api/user/favorites', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                         body: JSON.stringify(item)
@@ -5962,10 +6180,10 @@
             showToast('已更新分享有效期');
             const token = getUserToken ? getUserToken() : '';
             if (token) {
-                fetch(`/user/shares/${encodeURIComponent(id)}`, {
+                fetch(`/api/user/shares/${encodeURIComponent(id)}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                    body: JSON.stringify({ expireSeconds: target.expireSeconds })
+                    body: JSON.stringify({ expireSeconds: expireSeconds })
                 }).catch(() => {});
             }
         }
@@ -5993,7 +6211,7 @@
             showToast('已取消分享');
             const token = getUserToken ? getUserToken() : '';
             if (token) {
-                fetch(`/user/shares/${encodeURIComponent(id)}`, {
+                fetch(`/api/user/shares/${encodeURIComponent(id)}`, {
                     method: 'DELETE',
                     headers: { Authorization: `Bearer ${token}` }
                 }).catch(() => {});
@@ -6061,5 +6279,6 @@
     </script>
     <script src="/assets/login-guard.js"></script>
   <script src="/assets/page-permission.js"></script>
+  <script src="/assets/announcement.js"></script>
   </body>
 </html>

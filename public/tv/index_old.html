@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="/tv/favicon.ico">
+    <link rel="shortcut icon" href="/tv/favicon.ico">
+    <title>电视机</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <!-- DPlayer -->
+    <script src="https://cdn.jsdelivr.net/npm/dplayer/dist/DPlayer.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/dplayer/dist/DPlayer.min.css">
+    <!-- hls.js -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3b82f6',
+                        secondary: '#6366f1',
+                        accent: '#f59e0b'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif']
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .glass-effect {
+                @apply backdrop-blur-md bg-white/80 border border-white/20;
+            }
+            
+            .btn-primary {
+                @apply bg-primary hover:bg-primary/90 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200;
+            }
+            
+            .btn-secondary {
+                @apply bg-secondary hover:bg-secondary/90 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200;
+            }
+            
+            .btn-accent {
+                @apply bg-accent hover:bg-accent/90 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200;
+            }
+            
+            .input-primary {
+                @apply bg-white/80 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary;
+            }
+            
+            .channel-btn {
+                @apply bg-gray-200 hover:bg-primary hover:text-white px-3 py-1 rounded-lg transition-all duration-200 text-sm;
+            }
+            
+            .channel-btn.active {
+                @apply bg-primary text-white;
+            }
+        }
+    </style>
+    
+    <style>
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+        
+        body {
+            background-color: #000;
+            color: #fff;
+        }
+        
+        .tv-container {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+        }
+        
+        .tv-screen {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+            overflow: hidden;
+        }
+        
+        .channel-list {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 8px;
+            z-index: 10;
+            max-width: 80%;
+            overflow-x: auto;
+        }
+        
+        .channel-list::-webkit-scrollbar {
+            height: 4px;
+        }
+        
+        .channel-list::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+        }
+        
+        .channel-list::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 2px;
+        }
+        
+        .channel-buttons {
+            display: flex;
+            gap: 8px;
+            white-space: nowrap;
+        }
+        
+        .tv-controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 8px;
+            z-index: 10;
+        }
+        
+        .tv-info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 8px;
+            z-index: 10;
+        }
+        
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 20;
+        }
+        
+        .channel-transition {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #000;
+            z-index: 15;
+            animation: fadeOut 1s ease-out forwards;
+        }
+        
+        @keyframes fadeOut {
+            0% {
+                opacity: 1;
+            }
+            100% {
+                opacity: 0;
+                visibility: hidden;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="tv-container">
+        <div class="tv-screen">
+            <!-- 播放器容器 -->
+            <div id="dplayer" class="w-full h-full"></div>
+            
+            <!-- 加载覆盖层 -->
+            <div id="loadingOverlay" class="loading-overlay">
+                <div class="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
+                <p id="loadingText" class="text-white">加载中...</p>
+            </div>
+            
+            <!-- 频道切换过渡效果 -->
+            <div id="channelTransition" class="channel-transition hidden"></div>
+            
+            <!-- 电视信息 -->
+            <div class="tv-info">
+                <div id="currentChannelName" class="text-lg font-semibold">加载中...</div>
+                <div id="currentVideoTitle" class="text-sm opacity-80">准备就绪</div>
+            </div>
+            
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let dplayer = null;
+        let channels = [];
+        let currentChannelIndex = 0;
+        let currentVideoIndex = 0;
+        let currentVideoTime = 0;
+        let isPlaying = false;
+        let isLoading = true;
+        let totalDuration = 0;
+        let videoDurations = [];
+        
+        // DOM元素
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const loadingText = document.getElementById('loadingText');
+        const channelTransition = document.getElementById('channelTransition');
+        const currentChannelName = document.getElementById('currentChannelName');
+        const currentVideoTitle = document.getElementById('currentVideoTitle');
+        
+        // 初始化
+        async function init() {
+            try {
+                loadingText.textContent = '加载频道列表...';
+                await loadChannels();
+                if (channels.length > 0) {
+                    await switchChannel(0);
+                } else {
+                    loadingText.textContent = '暂无频道，请在后台添加';
+                    setTimeout(() => {
+                        loadingOverlay.style.display = 'none';
+                    }, 2000);
+                }
+            } catch (error) {
+                console.error('初始化失败:', error);
+                loadingText.textContent = '加载失败，请刷新页面';
+                setTimeout(() => {
+                    loadingOverlay.style.display = 'none';
+                }, 2000);
+            }
+        }
+        
+        // 加载频道列表
+        async function loadChannels() {
+            try {
+                const response = await fetch('/api/tv/channels');
+                const data = await response.json();
+                if (data.code === 200 && data.data && data.data.length > 0) {
+                    channels = data.data;
+                    // 重新计算时长
+                    calculateDurations();
+                }
+            } catch (error) {
+                console.error('加载频道失败:', error);
+                throw error;
+            }
+        }
+        
+        // 切换频道
+        async function switchChannel(index) {
+            if (index === currentChannelIndex && dplayer) {
+                return;
+            }
+            
+            currentChannelIndex = index;
+            currentVideoIndex = 0;
+            currentVideoTime = 0;
+            isLoading = true;
+            loadingOverlay.style.display = 'flex';
+            loadingText.textContent = `切换到 ${channels[index].name}...`;
+            
+            // 显示频道切换过渡效果
+            channelTransition.classList.remove('hidden');
+            setTimeout(() => {
+                channelTransition.classList.add('hidden');
+            }, 1000);
+            
+            try {
+                // 销毁旧播放器
+                if (dplayer) {
+                    dplayer.destroy();
+                }
+                
+                // 更新频道信息
+                currentChannelName.textContent = channels[index].name;
+                
+                // 重新计算时长
+                calculateDurations();
+                
+                // 播放当前频道的视频
+                await playCurrentVideo();
+            } catch (error) {
+                console.error('切换频道失败:', error);
+                loadingText.textContent = '切换失败，请重试';
+                setTimeout(() => {
+                    loadingOverlay.style.display = 'none';
+                }, 2000);
+            }
+        }
+        
+        // 计算总播放时长和每个视频的时长
+        function calculateDurations() {
+            const channel = channels[currentChannelIndex];
+            if (!channel.videos || channel.videos.length === 0) {
+                totalDuration = 0;
+                videoDurations = [];
+                return;
+            }
+            
+            // 假设每个视频的默认时长为10分钟（600秒）
+            // 在实际应用中，应该从视频元数据中获取真实时长
+            videoDurations = channel.videos.map(() => 600);
+            totalDuration = videoDurations.reduce((sum, duration) => sum + duration, 0);
+        }
+        
+        // 根据当前时间计算应该播放的视频和位置
+        function calculatePlaybackPosition() {
+            if (totalDuration === 0) {
+                calculateDurations();
+            }
+            
+            // 获取当前时间戳（秒）
+            const now = Math.floor(Date.now() / 1000);
+            // 计算在总播放周期中的位置
+            const positionInCycle = now % totalDuration;
+            
+            let accumulatedDuration = 0;
+            let videoIndex = 0;
+            let videoTime = 0;
+            
+            // 找到应该播放的视频和在视频中的位置
+            for (let i = 0; i < videoDurations.length; i++) {
+                if (positionInCycle < accumulatedDuration + videoDurations[i]) {
+                    videoIndex = i;
+                    videoTime = positionInCycle - accumulatedDuration;
+                    break;
+                }
+                accumulatedDuration += videoDurations[i];
+            }
+            
+            return { videoIndex, videoTime };
+        }
+        
+        // 播放当前视频
+        async function playCurrentVideo() {
+            const channel = channels[currentChannelIndex];
+            if (!channel.videos || channel.videos.length === 0) {
+                loadingText.textContent = '该频道暂无视频';
+                setTimeout(() => {
+                    loadingOverlay.style.display = 'none';
+                }, 2000);
+                return;
+            }
+            
+            // 计算应该播放的视频和位置
+            const { videoIndex, videoTime } = calculatePlaybackPosition();
+            currentVideoIndex = videoIndex;
+            currentVideoTime = videoTime;
+            
+            const video = channel.videos[currentVideoIndex];
+            currentVideoTitle.textContent = video.title;
+            loadingText.textContent = `加载视频: ${video.title}...`;
+            
+            // 创建新播放器
+            const videoUrl = (video.m3u8 || video.url).replace(/[`]/g, '').trim();
+            const playerOptions = {
+                container: document.getElementById('dplayer'),
+                video: {
+                    url: videoUrl,
+                    pic: (video.image || '').replace(/[`]/g, '').trim(),
+                    title: video.title
+                },
+                autoplay: true,
+                theme: '#3b82f6',
+                // 禁用快进快退
+                contextmenu: false,
+                mutex: true
+            };
+            
+            // 如果是 M3U8 地址，使用 hls.js
+            if (video.m3u8 && window.Hls) {
+                playerOptions.hls = true;
+            }
+            
+            dplayer = new DPlayer(playerOptions);
+            
+            // 监听视频加载完成事件，设置播放位置
+            dplayer.on('canplay', () => {
+                // 设置播放位置
+                dplayer.seek(currentVideoTime);
+            });
+            
+            // 监听播放结束事件，自动播放下一个视频
+            dplayer.on('ended', () => {
+                playNextVideo();
+            });
+            
+            // 监听播放事件
+            dplayer.on('play', () => {
+                isPlaying = true;
+            });
+            
+            // 监听暂停事件
+            dplayer.on('pause', () => {
+                isPlaying = false;
+            });
+            
+            // 监听错误事件
+            dplayer.on('error', (error) => {
+                console.error('播放器错误:', error);
+                playNextVideo();
+            });
+            
+            // 隐藏加载覆盖层
+            setTimeout(() => {
+                loadingOverlay.style.display = 'none';
+                isLoading = false;
+            }, 1000);
+        }
+        
+        // 播放下一个视频
+        function playNextVideo() {
+            const channel = channels[currentChannelIndex];
+            if (!channel.videos || channel.videos.length === 0) {
+                return;
+            }
+            
+            // 显示加载覆盖层
+            isLoading = true;
+            loadingOverlay.style.display = 'flex';
+            
+            // 计算下一个视频
+            const { videoIndex, videoTime } = calculatePlaybackPosition();
+            const nextVideo = channel.videos[videoIndex];
+            loadingText.textContent = `切换到下一视频: ${nextVideo.title}...`;
+            
+            // 销毁旧播放器并播放新视频
+            if (dplayer) {
+                dplayer.destroy();
+            }
+            playCurrentVideo();
+        }
+        
+        // 初始化
+        init();
+    </script>
+</body>
+</html>

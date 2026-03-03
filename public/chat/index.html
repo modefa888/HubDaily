@@ -744,7 +744,7 @@
         return false;
       }
       try {
-        const res = await fetch("/user/profile", { headers: authHeaders() });
+        const res = await fetch("/api/user/profile", { headers: authHeaders() });
         const data = await res.json();
         if (data.code === 200) {
           loginStatus.textContent = "已登录";

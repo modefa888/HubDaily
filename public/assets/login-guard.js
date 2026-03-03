@@ -25,7 +25,7 @@
     return;
   }
 
-  fetch("/user/profile", { headers: { Authorization: "Bearer " + token } })
+  fetch("/api/user/profile", { headers: { Authorization: "Bearer " + token } })
     .then((res) => res.json())
     .then((data) => {
       if (data.code !== 200) {

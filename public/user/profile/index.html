@@ -1,0 +1,1347 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>个人中心</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/dplayer/dist/DPlayer.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/dplayer/dist/DPlayer.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
+    <style>
+      html {
+        scrollbar-gutter: stable;
+      }
+      body {
+        overflow-y: scroll;
+      }
+      body.drawer-open {
+        overflow: hidden;
+      }
+    </style>
+  </head>
+  <body class="bg-slate-100 text-slate-800 min-h-screen">
+    <div class="min-h-screen flex flex-col">
+      <nav class="bg-white border-b shadow-sm fixed top-0 left-0 right-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <button id="mobileMenuBtn" class="md:hidden px-2 py-1 rounded border text-slate-600">菜单</button>
+            <div class="text-lg font-semibold">个人中心</div>
+          </div>
+          <div class="flex items-center space-x-2">
+            <a href="/index.html" class="text-sm text-blue-600 hover:underline">返回首页</a>
+            <button id="logoutBtn" class="px-3 py-1.5 rounded bg-slate-800 text-white text-sm">退出</button>
+          </div>
+        </div>
+      </nav>
+
+      <div id="sideNavOverlay" class="fixed inset-0 bg-black/40 hidden md:hidden z-30"></div>
+      <div class="flex flex-1 pt-14">
+        <aside id="sideNav" class="w-52 bg-white border-r p-3 space-y-2 fixed top-14 bottom-0 left-0 overflow-y-auto transform -translate-x-full md:translate-x-0 transition-transform duration-200 z-40">
+          <button class="module-tab w-full text-left px-3 py-2 rounded text-sm bg-slate-800 text-white" data-module-target="profile">账号信息</button>
+          <button class="module-tab w-full text-left px-3 py-2 rounded text-sm bg-slate-200 text-slate-700" data-module-target="favorites">喜欢列表</button>
+          <button class="module-tab w-full text-left px-3 py-2 rounded text-sm bg-slate-200 text-slate-700" data-module-target="articleFavorites">文章收藏</button>
+          <button class="module-tab w-full text-left px-3 py-2 rounded text-sm bg-slate-200 text-slate-700" data-module-target="shares">分享列表</button>
+        </aside>
+
+        <main class="flex-1 p-4 ml-0 md:ml-52">
+          <div id="appContent" class="max-w-6xl mx-auto space-y-6">
+
+            <section class="module-section bg-white rounded-xl shadow p-4 space-y-4" data-module="profile">
+              <div class="flex items-center justify-between">
+                <h2 class="font-semibold">账号信息</h2>
+                <span id="profileStatus" class="text-xs text-slate-500">加载中...</span>
+              </div>
+              
+              <!-- 账号信息骨架屏 -->
+              <div id="profileSkeleton" class="space-y-4">
+                <div class="h-8 bg-slate-200 rounded animate-pulse"></div>
+                <div class="border-t border-slate-100 pt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <div class="h-4 bg-slate-200 rounded w-20 mb-2 animate-pulse"></div>
+                    <div class="h-8 bg-slate-200 rounded animate-pulse"></div>
+                  </div>
+                  <div>
+                    <div class="h-4 bg-slate-200 rounded w-24 mb-2 animate-pulse"></div>
+                    <div class="flex items-center gap-3">
+                      <div class="w-12 h-12 bg-slate-200 rounded-full animate-pulse"></div>
+                      <div class="flex-1 h-8 bg-slate-200 rounded animate-pulse"></div>
+                    </div>
+                  </div>
+                  <div class="md:col-span-2">
+                    <div class="h-4 bg-slate-200 rounded w-24 mb-2 animate-pulse"></div>
+                    <div class="h-24 bg-slate-200 rounded animate-pulse"></div>
+                  </div>
+                  <div class="md:col-span-2 h-4 bg-slate-200 rounded w-64 animate-pulse"></div>
+                </div>
+                <div class="border-t border-slate-100 pt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <div class="h-4 bg-slate-200 rounded w-20 mb-2 animate-pulse"></div>
+                    <div class="h-8 bg-slate-200 rounded animate-pulse"></div>
+                  </div>
+                  <div class="flex items-end">
+                    <div class="h-8 bg-slate-200 rounded w-32 animate-pulse"></div>
+                  </div>
+                </div>
+              </div>
+              
+              <div id="profileContent" class="hidden space-y-4">
+                <div id="profileSummary" class="text-sm text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2"></div>
+
+                <div class="border-t border-slate-100 pt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <label class="text-xs text-slate-500">昵称</label>
+                    <input id="editNickname" class="mt-1 w-full border rounded px-3 py-2" placeholder="请输入昵称">
+                  </div>
+                  <div>
+                    <label class="text-xs text-slate-500">头像链接</label>
+                    <div class="mt-1 flex items-center gap-3">
+                      <img id="avatarPreview" src="/loading.gif" alt="avatar" class="w-12 h-12 rounded-full object-cover border border-slate-200 bg-slate-100" onerror="this.src='/loading.gif'">
+                      <input id="editAvatar" class="w-full border rounded px-3 py-2" placeholder="https://...">
+                    </div>
+                  </div>
+                  <div class="md:col-span-2">
+                    <label class="text-xs text-slate-500">个人备注</label>
+                    <textarea id="editProfileNote" rows="3" class="mt-1 w-full border rounded px-3 py-2" placeholder="填写个人备注"></textarea>
+                  </div>
+                  <div class="md:col-span-2 text-xs text-slate-500">账号/角色/创建时间等关键字段不可修改</div>
+                </div>
+
+                <div class="border-t border-slate-100 pt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <label class="text-xs text-slate-500">旧密码</label>
+                    <input id="oldPassword" type="password" class="mt-1 w-full border rounded px-3 py-2" placeholder="输入旧密码">
+                  </div>
+                  <div class="flex items-end">
+                    <button id="verifyPasswordBtn" class="px-4 py-2 rounded bg-slate-800 text-white text-sm">验证旧密码</button>
+                  </div>
+                  <div id="newPasswordFields" class="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 hidden">
+                    <div>
+                      <label class="text-xs text-slate-500">新密码</label>
+                      <input id="newPassword" type="password" class="mt-1 w-full border rounded px-3 py-2" placeholder="输入新密码">
+                    </div>
+                    <div>
+                      <label class="text-xs text-slate-500">确认新密码</label>
+                      <input id="newPasswordConfirm" type="password" class="mt-1 w-full border rounded px-3 py-2" placeholder="再次输入新密码">
+                    </div>
+                    <div class="md:col-span-2">
+                      <button id="savePasswordBtn" class="px-4 py-2 rounded bg-slate-800 text-white text-sm">修改密码</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="border-t border-slate-100 pt-4 grid grid-cols-1 gap-4 text-sm">
+                  <h3 class="font-medium">安全问题设置</h3>
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label class="text-xs text-slate-500">安全问题</label>
+                      <select id="editSecurityQuestion" class="mt-1 w-full border rounded px-3 py-2">
+                        <option value="">请选择安全问题</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label class="text-xs text-slate-500">安全答案</label>
+                      <input id="editSecurityAnswer" type="text" class="mt-1 w-full border rounded px-3 py-2" placeholder="请输入安全答案">
+                    </div>
+                    <div>
+                      <label class="text-xs text-slate-500">验证密码</label>
+                      <input id="editSecurityQuestionPassword" type="password" class="mt-1 w-full border rounded px-3 py-2" placeholder="输入密码以验证">
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-3">
+                    <button id="saveSecurityQuestionBtn" class="px-4 py-2 rounded bg-slate-800 text-white text-sm">保存安全问题</button>
+                    <span id="securityQuestionStatus" class="text-xs text-slate-500"></span>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section class="module-section bg-white rounded-xl shadow p-4 space-y-4 hidden" data-module="favorites">
+              <div class="flex items-center justify-between">
+                <h2 class="font-semibold">喜欢列表</h2>
+                <div class="flex items-center gap-3">
+                  <span id="favoriteCount" class="text-xs text-slate-500">0</span>
+                  <button class="refresh-btn p-1.5 rounded text-sm text-slate-500 hover:bg-slate-100" data-refresh-target="favorites" title="刷新">↻</button>
+                </div>
+              </div>
+              
+              <!-- 喜欢列表骨架屏 -->
+              <div id="favoritesSkeleton" class="max-h-[70vh] overflow-y-auto pr-1">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div class="favorite-card rounded-lg border border-slate-200 p-3 animate-pulse">
+                    <div class="flex items-start gap-3">
+                      <div class="w-16 h-20 bg-slate-200 rounded animate-pulse"></div>
+                      <div class="flex-1 space-y-2">
+                        <div class="h-4 bg-slate-200 rounded animate-pulse"></div>
+                        <div class="h-3 bg-slate-200 rounded w-3/4 animate-pulse"></div>
+                        <div class="h-3 bg-slate-200 rounded w-1/2 animate-pulse"></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="favorite-card rounded-lg border border-slate-200 p-3 animate-pulse">
+                    <div class="flex items-start gap-3">
+                      <div class="w-16 h-20 bg-slate-200 rounded animate-pulse"></div>
+                      <div class="flex-1 space-y-2">
+                        <div class="h-4 bg-slate-200 rounded animate-pulse"></div>
+                        <div class="h-3 bg-slate-200 rounded w-3/4 animate-pulse"></div>
+                        <div class="h-3 bg-slate-200 rounded w-1/2 animate-pulse"></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="favorite-card rounded-lg border border-slate-200 p-3 animate-pulse">
+                    <div class="flex items-start gap-3">
+                      <div class="w-16 h-20 bg-slate-200 rounded animate-pulse"></div>
+                      <div class="flex-1 space-y-2">
+                        <div class="h-4 bg-slate-200 rounded animate-pulse"></div>
+                        <div class="h-3 bg-slate-200 rounded w-3/4 animate-pulse"></div>
+                        <div class="h-3 bg-slate-200 rounded w-1/2 animate-pulse"></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="favorite-card rounded-lg border border-slate-200 p-3 animate-pulse">
+                    <div class="flex items-start gap-3">
+                      <div class="w-16 h-20 bg-slate-200 rounded animate-pulse"></div>
+                      <div class="flex-1 space-y-2">
+                        <div class="h-4 bg-slate-200 rounded animate-pulse"></div>
+                        <div class="h-3 bg-slate-200 rounded w-3/4 animate-pulse"></div>
+                        <div class="h-3 bg-slate-200 rounded w-1/2 animate-pulse"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div id="favoritesContent" class="max-h-[70vh] overflow-y-auto pr-1 hidden">
+                <div id="favoriteList" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+              </div>
+            </section>
+
+            <section class="module-section bg-white rounded-xl shadow p-4 space-y-4 hidden" data-module="articleFavorites">
+              <div class="flex items-center justify-between">
+                <h2 class="font-semibold">文章收藏</h2>
+                <div class="flex items-center gap-3">
+                  <span id="articleFavoriteStatus" class="text-xs text-slate-500">加载中...</span>
+                  <button class="refresh-btn p-1.5 rounded text-sm text-slate-500 hover:bg-slate-100" data-refresh-target="articleFavorites" title="刷新">↻</button>
+                </div>
+              </div>
+              
+              <!-- 文章收藏骨架屏 -->
+              <div id="articleFavoritesSkeleton" class="space-y-3">
+                <div class="article-favorite-card rounded-lg border border-slate-200 p-4 animate-pulse">
+                  <div class="flex justify-between items-start mb-2">
+                    <div class="h-4 bg-slate-200 rounded w-1/2 animate-pulse"></div>
+                    <div class="flex gap-2">
+                      <div class="h-4 bg-slate-200 rounded w-16 animate-pulse"></div>
+                      <div class="h-4 bg-slate-200 rounded w-20 animate-pulse"></div>
+                    </div>
+                  </div>
+                  <div class="h-3 bg-slate-200 rounded w-1/3 mb-2 animate-pulse"></div>
+                  <div class="h-3 bg-slate-200 rounded w-1/4 mb-2 animate-pulse"></div>
+                  <div class="h-3 bg-slate-200 rounded w-1/2 animate-pulse"></div>
+                </div>
+                <div class="article-favorite-card rounded-lg border border-slate-200 p-4 animate-pulse">
+                  <div class="flex justify-between items-start mb-2">
+                    <div class="h-4 bg-slate-200 rounded w-1/2 animate-pulse"></div>
+                    <div class="flex gap-2">
+                      <div class="h-4 bg-slate-200 rounded w-16 animate-pulse"></div>
+                      <div class="h-4 bg-slate-200 rounded w-20 animate-pulse"></div>
+                    </div>
+                  </div>
+                  <div class="h-3 bg-slate-200 rounded w-1/3 mb-2 animate-pulse"></div>
+                  <div class="h-3 bg-slate-200 rounded w-1/4 mb-2 animate-pulse"></div>
+                  <div class="h-3 bg-slate-200 rounded w-1/2 animate-pulse"></div>
+                </div>
+                <div class="article-favorite-card rounded-lg border border-slate-200 p-4 animate-pulse">
+                  <div class="flex justify-between items-start mb-2">
+                    <div class="h-4 bg-slate-200 rounded w-1/2 animate-pulse"></div>
+                    <div class="flex gap-2">
+                      <div class="h-4 bg-slate-200 rounded w-16 animate-pulse"></div>
+                      <div class="h-4 bg-slate-200 rounded w-20 animate-pulse"></div>
+                    </div>
+                  </div>
+                  <div class="h-3 bg-slate-200 rounded w-1/3 mb-2 animate-pulse"></div>
+                  <div class="h-3 bg-slate-200 rounded w-1/4 mb-2 animate-pulse"></div>
+                  <div class="h-3 bg-slate-200 rounded w-1/2 animate-pulse"></div>
+                </div>
+              </div>
+              
+              <div id="articleFavoritesContent" class="space-y-3 hidden">
+                <div id="articleFavoriteList" class="space-y-3"></div>
+              </div>
+            </section>
+
+            <section class="module-section bg-white rounded-xl shadow p-4 space-y-4 hidden" data-module="shares">
+              <div class="flex items-center justify-between">
+                <h2 class="font-semibold">分享列表</h2>
+                <div class="flex items-center gap-3">
+                  <span id="shareCount" class="text-xs text-slate-500">0</span>
+                  <button class="refresh-btn p-1.5 rounded text-sm text-slate-500 hover:bg-slate-100" data-refresh-target="shares" title="刷新">↻</button>
+                </div>
+              </div>
+              
+              <!-- 分享列表骨架屏 -->
+              <div id="sharesSkeleton" class="max-h-[70vh] overflow-y-auto pr-1">
+                <div class="space-y-3">
+                  <div class="share-card rounded-lg border border-slate-200 p-3 animate-pulse">
+                    <div class="flex items-start gap-3">
+                      <div class="w-20 h-28 bg-slate-200 rounded animate-pulse"></div>
+                      <div class="flex-1 space-y-2">
+                        <div class="h-4 bg-slate-200 rounded animate-pulse"></div>
+                        <div class="h-3 bg-slate-200 rounded w-3/4 animate-pulse"></div>
+                        <div class="h-3 bg-slate-200 rounded w-1/2 animate-pulse"></div>
+                        <div class="h-3 bg-slate-200 rounded w-2/3 animate-pulse"></div>
+                        <div class="h-3 bg-slate-200 rounded w-1/2 animate-pulse"></div>
+                      </div>
+                    </div>
+                    <div class="flex items-center gap-3 mt-3">
+                      <div class="h-3 bg-slate-200 rounded w-16 animate-pulse"></div>
+                      <div class="h-3 bg-slate-200 rounded w-16 animate-pulse"></div>
+                      <div class="h-3 bg-slate-200 rounded w-16 animate-pulse"></div>
+                      <div class="h-3 bg-slate-200 rounded w-16 animate-pulse"></div>
+                      <div class="h-3 bg-slate-200 rounded w-16 animate-pulse"></div>
+                    </div>
+                  </div>
+                  <div class="share-card rounded-lg border border-slate-200 p-3 animate-pulse">
+                    <div class="flex items-start gap-3">
+                      <div class="w-20 h-28 bg-slate-200 rounded animate-pulse"></div>
+                      <div class="flex-1 space-y-2">
+                        <div class="h-4 bg-slate-200 rounded animate-pulse"></div>
+                        <div class="h-3 bg-slate-200 rounded w-3/4 animate-pulse"></div>
+                        <div class="h-3 bg-slate-200 rounded w-1/2 animate-pulse"></div>
+                        <div class="h-3 bg-slate-200 rounded w-2/3 animate-pulse"></div>
+                        <div class="h-3 bg-slate-200 rounded w-1/2 animate-pulse"></div>
+                      </div>
+                    </div>
+                    <div class="flex items-center gap-3 mt-3">
+                      <div class="h-3 bg-slate-200 rounded w-16 animate-pulse"></div>
+                      <div class="h-3 bg-slate-200 rounded w-16 animate-pulse"></div>
+                      <div class="h-3 bg-slate-200 rounded w-16 animate-pulse"></div>
+                      <div class="h-3 bg-slate-200 rounded w-16 animate-pulse"></div>
+                      <div class="h-3 bg-slate-200 rounded w-16 animate-pulse"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div id="sharesContent" class="max-h-[70vh] overflow-y-auto pr-1 hidden">
+                <div id="shareList" class="space-y-3"></div>
+              </div>
+            </section>
+
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div id="toast" class="fixed top-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-sm px-4 py-2 rounded hidden z-[70]"></div>
+
+    <div id="profilePlayerModal" class="fixed inset-0 z-[70] hidden items-center justify-center bg-black/70 p-4">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-4xl p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <div id="profilePlayerTitle" class="font-semibold text-slate-800">播放</div>
+          <button id="closeProfilePlayer" class="text-slate-500">✕</button>
+        </div>
+        <div id="profilePlayerContainer" class="w-full aspect-video bg-black rounded overflow-hidden"></div>
+        <div class="text-xs text-slate-500">如无法播放，可复制链接到新窗口播放。</div>
+      </div>
+    </div>
+
+    <div id="renewModal" class="fixed inset-0 z-[70] hidden items-center justify-center bg-black/50 p-4">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-4 space-y-4">
+        <div class="flex items-center justify-between">
+          <div class="font-semibold text-slate-800">续签分享</div>
+          <button id="closeRenewModal" class="text-slate-500">✕</button>
+        </div>
+        <div class="space-y-3 text-sm">
+          <div class="flex flex-wrap gap-2">
+            <button class="renew-quick px-2 py-1 rounded border text-slate-600" data-seconds="1800">30分钟</button>
+            <button class="renew-quick px-2 py-1 rounded border text-slate-600" data-seconds="7200">2小时</button>
+            <button class="renew-quick px-2 py-1 rounded border text-slate-600" data-seconds="86400">1天</button>
+            <button class="renew-quick px-2 py-1 rounded border text-slate-600" data-seconds="604800">7天</button>
+            <button class="renew-quick px-2 py-1 rounded border text-slate-600" data-seconds="2592000">30天</button>
+            <button class="renew-quick px-2 py-1 rounded border text-slate-600" data-seconds="0">永久</button>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <label class="text-xs text-slate-500">自定义（分钟）</label>
+            <input id="renewCustomMinutes" type="number" min="1" class="border rounded px-2 py-1 text-sm" placeholder="例如 90">
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <label class="text-xs text-slate-500">选择</label>
+            <select id="renewSelect" class="border rounded px-2 py-1 text-sm">
+              <option value="1800">30分钟</option>
+              <option value="7200">2小时</option>
+              <option value="86400">1天</option>
+              <option value="604800">7天</option>
+              <option value="2592000">30天</option>
+              <option value="0">永久</option>
+            </select>
+          </div>
+        </div>
+        <div class="flex items-center justify-between">
+          <button id="pauseShareBtn" class="text-rose-600 text-sm">暂停分享</button>
+          <div class="flex items-center gap-2">
+            <button id="confirmRenewBtn" class="px-3 py-1.5 rounded bg-indigo-600 text-white text-sm">确认续签</button>
+            <button id="cancelRenewBtn" class="px-3 py-1.5 rounded border text-slate-600 text-sm">取消</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const TOKEN_KEY = "userToken";
+      const toast = (msg) => {
+        const el = document.getElementById("toast");
+        el.textContent = msg;
+        el.classList.remove("hidden");
+        setTimeout(() => el.classList.add("hidden"), 1800);
+      };
+      const getToken = () => localStorage.getItem(TOKEN_KEY) || "";
+      const authHeaders = () => {
+        const token = getToken();
+        return token ? { Authorization: "Bearer " + token } : {};
+      };
+      const formatTime = (ts) => {
+        if (!ts) return "-";
+        const date = new Date(ts);
+        if (Number.isNaN(date.getTime())) return "-";
+        return date.toLocaleString();
+      };
+      const buildSharePlayUrl = (item) => {
+        const shareId = String(item.shareId || "");
+        if (!shareId) return "#";
+        return `${window.location.origin}/video/share?sid=${encodeURIComponent(shareId)}`;
+      };
+
+      const profileStatus = document.getElementById("profileStatus");
+      const profileSummary = document.getElementById("profileSummary");
+      const editNickname = document.getElementById("editNickname");
+      const editAvatar = document.getElementById("editAvatar");
+      const editProfileNote = document.getElementById("editProfileNote");
+      const avatarPreview = document.getElementById("avatarPreview");
+      const oldPassword = document.getElementById("oldPassword");
+      const verifyPasswordBtn = document.getElementById("verifyPasswordBtn");
+      const newPasswordFields = document.getElementById("newPasswordFields");
+      const newPassword = document.getElementById("newPassword");
+      const newPasswordConfirm = document.getElementById("newPasswordConfirm");
+      const savePasswordBtn = document.getElementById("savePasswordBtn");
+      const editSecurityQuestion = document.getElementById("editSecurityQuestion");
+      const editSecurityAnswer = document.getElementById("editSecurityAnswer");
+      const editSecurityQuestionPassword = document.getElementById("editSecurityQuestionPassword");
+      const saveSecurityQuestionBtn = document.getElementById("saveSecurityQuestionBtn");
+      const securityQuestionStatus = document.getElementById("securityQuestionStatus");
+      const favoriteList = document.getElementById("favoriteList");
+      const favoriteCount = document.getElementById("favoriteCount");
+      const shareList = document.getElementById("shareList");
+      const shareCount = document.getElementById("shareCount");
+      const articleFavoriteList = document.getElementById("articleFavoriteList");
+      const articleFavoriteStatus = document.getElementById("articleFavoriteStatus");
+      const renewModal = document.getElementById("renewModal");
+      const renewSelect = document.getElementById("renewSelect");
+      const renewCustomMinutes = document.getElementById("renewCustomMinutes");
+      const confirmRenewBtn = document.getElementById("confirmRenewBtn");
+      const cancelRenewBtn = document.getElementById("cancelRenewBtn");
+      const closeRenewModal = document.getElementById("closeRenewModal");
+      const pauseShareBtn = document.getElementById("pauseShareBtn");
+
+      let currentUser = null;
+      let lastSavedProfile = { nickname: "", profileNote: "", avatar: "" };
+      let renewTarget = null;
+      let renewPaused = false;
+
+      const setActiveModule = (name) => {
+        document.querySelectorAll(".module-section").forEach((section) => {
+          section.classList.toggle("hidden", section.getAttribute("data-module") !== name);
+        });
+        document.querySelectorAll(".module-tab").forEach((btn) => {
+          const active = btn.getAttribute("data-module-target") === name;
+          btn.className = active
+            ? "module-tab w-full text-left px-3 py-2 rounded text-sm bg-slate-800 text-white"
+            : "module-tab w-full text-left px-3 py-2 rounded text-sm bg-slate-200 text-slate-700";
+        });
+      };
+
+      document.querySelectorAll(".module-tab").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          setActiveModule(btn.getAttribute("data-module-target"));
+          if (window.innerWidth < 768) {
+            toggleMobileMenu(false);
+          }
+        });
+      });
+
+      const toggleMobileMenu = (open) => {
+        const sideNav = document.getElementById("sideNav");
+        const overlay = document.getElementById("sideNavOverlay");
+        if (!sideNav || !overlay) return;
+        const shouldOpen = open !== undefined ? open : sideNav.classList.contains("-translate-x-full");
+        sideNav.classList.toggle("-translate-x-full", !shouldOpen);
+        overlay.classList.toggle("hidden", !shouldOpen);
+        document.body.classList.toggle("drawer-open", shouldOpen);
+      };
+
+      const renderProfile = (user) => {
+        currentUser = user || null;
+        const summary = [
+          `账号：${user.username || "-"}`,
+          `角色：${user.role || "user"}`,
+          `创建时间：${formatTime(user.createdAt)}`,
+          `最近活跃：${formatTime(user.lastSeenAt)}`,
+          `状态：${user.isDisabled ? "已禁用" : "正常"}`,
+        ].join(" · ");
+        if (profileSummary) profileSummary.textContent = summary;
+        if (editNickname) editNickname.value = user.nickname || "";
+        if (editAvatar) editAvatar.value = user.avatar || "";
+        if (editProfileNote) editProfileNote.value = user.profileNote || "";
+        if (avatarPreview) avatarPreview.src = user.avatar || "/loading.gif";
+        if (editSecurityQuestion) {
+          // 设置安全问题的选中值
+          editSecurityQuestion.value = user.securityQuestion || "";
+        }
+        if (editSecurityAnswer) editSecurityAnswer.value = "";
+        lastSavedProfile = {
+          nickname: user.nickname || "",
+          profileNote: user.profileNote || "",
+          avatar: user.avatar || "",
+        };
+        // 隐藏骨架屏，显示实际内容
+        document.getElementById("profileSkeleton").classList.add("hidden");
+        document.getElementById("profileContent").classList.remove("hidden");
+      };
+
+      const renderFavorites = (list) => {
+        if (!favoriteList) return;
+        // 隐藏骨架屏，显示实际内容
+        document.getElementById("favoritesSkeleton").classList.add("hidden");
+        document.getElementById("favoritesContent").classList.remove("hidden");
+        if (!Array.isArray(list) || list.length === 0) {
+          favoriteList.innerHTML = '<div class="text-sm text-slate-500">暂无喜欢</div>';
+          if (favoriteCount) favoriteCount.textContent = "0";
+          return;
+        }
+        if (favoriteCount) favoriteCount.textContent = String(list.length);
+        favoriteList.innerHTML = list
+          .map(
+            (item) => `
+              <div class="favorite-card flex gap-3 rounded-lg border border-slate-200 p-3">
+                <img src="${item.pic || "/loading.gif"}" alt="" class="w-16 h-20 object-cover rounded bg-slate-100" onerror="this.src='/loading.gif'">
+                <div class="min-w-0 flex-1">
+                  <div class="text-sm font-medium truncate">${item.title || "未命名"}</div>
+                  <div class="text-xs text-slate-500 mt-1">来源：${item.source || "-"}</div>
+                  <div class="text-xs text-slate-500 mt-1">收藏时间：${formatTime(item.timestamp)}</div>
+                  <div class="mt-2 flex items-center gap-3 text-xs">
+                    <button class="text-emerald-600 hover:underline" data-action="play" data-url="${item.url || ""}" data-title="${item.title || ""}">播放</button>
+                    <button class="text-rose-600 hover:underline" data-action="delete-favorite" data-url="${item.url || ""}">删除</button>
+                  </div>
+                </div>
+              </div>
+            `
+          )
+          .join("");
+      };
+
+      const renderShares = (list) => {
+        if (!shareList) return;
+        // 隐藏骨架屏，显示实际内容
+        document.getElementById("sharesSkeleton").classList.add("hidden");
+        document.getElementById("sharesContent").classList.remove("hidden");
+        if (!Array.isArray(list) || list.length === 0) {
+          shareList.innerHTML = '<div class="text-sm text-slate-500">暂无分享</div>';
+          if (shareCount) shareCount.textContent = "0";
+          return;
+        }
+        if (shareCount) shareCount.textContent = String(list.length);
+        shareList.innerHTML = list
+          .map((item) => {
+            const expiresAt = Number(item.expiresAt || 0);
+            const paused = !!item.paused;
+            const expired = paused || !!(expiresAt && Date.now() > expiresAt);
+            const shareUrl = expired ? "#" : buildSharePlayUrl(item);
+            return `
+              <div class="share-card rounded-lg border border-slate-200 p-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3" data-share-id="${item.shareId || ""}" data-expires-at="${expiresAt}" data-paused="${paused ? "1" : "0"}">
+                <div class="flex items-start gap-3 min-w-0 flex-1">
+                  <img src="${item.pic || "/loading.gif"}" alt="" class="w-20 h-28 object-cover rounded bg-slate-100" onerror="this.src='/loading.gif'">
+                  <div class="min-w-0">
+                  <div class="text-sm font-medium truncate">${item.title || "未命名"}</div>
+                  <div class="text-xs text-slate-500 mt-1 break-all">分享ID：${item.shareId || "-"}</div>
+                  <div class="text-xs text-slate-500 mt-1">来源：${item.source || "-"}</div>
+                  <div class="text-xs text-slate-500 mt-1">创建时间：${formatTime(item.createdAt)}</div>
+                  <div class="text-xs text-slate-500 mt-1 share-expire">到期时间：${item.expiresAt ? formatTime(item.expiresAt) : "永久"}</div>
+                  <div class="text-xs mt-1 share-status ${expired ? "text-rose-600" : "text-emerald-600"}">${paused ? "已暂停" : (expired ? "已过期" : "可用")}</div>
+                  </div>
+                </div>
+                <div class="flex items-center gap-3">
+                  <div class="text-xs text-slate-500">浏览：${item.viewCount || 0}</div>
+                  <button class="text-xs ${paused ? "text-slate-400 cursor-not-allowed" : "text-emerald-600 hover:underline"}" data-action="play" data-url="${item.url || ""}" data-title="${item.title || ""}" ${paused ? "disabled" : ""}>播放</button>
+                  <a href="${shareUrl}" target="_blank" class="text-xs ${expired ? "text-slate-400 pointer-events-none" : "text-blue-600 hover:underline"}">打开链接</a>
+                  <button class="text-xs text-indigo-600 hover:underline" data-action="renew-share" data-share-id="${item.shareId || ""}">续签</button>
+                  <button class="text-xs text-rose-600 hover:underline" data-action="delete-share" data-share-id="${item.shareId || ""}">删除</button>
+                </div>
+              </div>
+            `;
+          })
+          .join("");
+      };
+
+      const renderArticleFavorites = (list) => {
+        if (!articleFavoriteList) return;
+        // 隐藏骨架屏，显示实际内容
+        document.getElementById("articleFavoritesSkeleton").classList.add("hidden");
+        document.getElementById("articleFavoritesContent").classList.remove("hidden");
+        if (!Array.isArray(list) || list.length === 0) {
+          articleFavoriteList.innerHTML = '<div class="text-sm text-slate-500">暂无文章收藏</div>';
+          if (articleFavoriteStatus) articleFavoriteStatus.textContent = "已加载";
+          return;
+        }
+        if (articleFavoriteStatus) articleFavoriteStatus.textContent = `已加载 (${list.length})`;
+        articleFavoriteList.innerHTML = list
+          .map((article) => `
+            <div class="article-favorite-card rounded-lg border border-slate-200 p-4">
+              <div class="flex justify-between items-start">
+                <a href="/articles/detail.html?id=${article._id}" class="text-sm font-medium hover:underline">${article.title || "无标题"}</a>
+                <div class="flex gap-2">
+                  <a href="/articles/detail.html?id=${article._id}" class="text-xs text-blue-600 hover:underline">查看</a>
+                  <button class="text-xs text-rose-600 hover:underline" data-action="unfavorite-article" data-article-id="${article._id}">取消收藏</button>
+                </div>
+              </div>
+              <div class="text-xs text-slate-500 mt-2">分类：${article.category || "未分类"}</div>
+              <div class="text-xs text-slate-500 mt-1">浏览：${article.viewCount || 0} | 点赞：${article.likeCount || 0}</div>
+              <div class="text-xs text-slate-500 mt-1">发布时间：${article.publishTime ? formatTime(article.publishTime) : "未知"}</div>
+            </div>
+          `)
+          .join("");
+        
+        // 绑定取消收藏按钮事件
+        bindArticleFavoriteButtons();
+      };
+
+      const bindArticleFavoriteButtons = () => {
+        document.querySelectorAll('[data-action="unfavorite-article"]').forEach((btn) => {
+          btn.addEventListener("click", async (e) => {
+            const target = e.currentTarget;
+            const articleId = target.getAttribute("data-article-id") || "";
+            if (!articleId) return;
+            
+            try {
+              const res = await fetch(`/api/article/${articleId}/unfavorite`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", ...authHeaders() },
+              });
+              const data = await res.json();
+              if (data.code !== 200) {
+                throw new Error(data.message || "取消收藏失败");
+              }
+              
+              // 移除卡片
+              const card = target.closest(".article-favorite-card");
+              if (card) card.remove();
+              
+              // 更新状态
+              const remainingCards = document.querySelectorAll(".article-favorite-card");
+              if (articleFavoriteStatus) {
+                articleFavoriteStatus.textContent = `已加载 (${remainingCards.length})`;
+              }
+              
+              if (remainingCards.length === 0) {
+                articleFavoriteList.innerHTML = '<div class="text-sm text-slate-500">暂无文章收藏</div>';
+                if (articleFavoriteStatus) articleFavoriteStatus.textContent = "已加载";
+              }
+              
+              toast("取消收藏成功");
+            } catch (err) {
+              toast(err.message || "取消收藏失败");
+            }
+          });
+        });
+      };
+
+      const fetchJson = async (url) => {
+        const res = await fetch(url, { headers: authHeaders() });
+        const data = await res.json();
+        if (data.code !== 200) throw new Error(data.message || "请求失败");
+        return data;
+      };
+
+      // 加载安全问题列表
+      const loadSecurityQuestions = async () => {
+        try {
+          const res = await fetch("/api/user/password-reset-settings", { headers: authHeaders() });
+          const data = await res.json();
+          if (data.code === 200 && data.data && data.data.securityQuestions) {
+            const select = document.getElementById("editSecurityQuestion");
+            if (select) {
+              // 清空现有选项
+              select.innerHTML = '<option value="">请选择安全问题</option>';
+              // 添加从后台获取的安全问题
+              data.data.securityQuestions.forEach((question) => {
+                const option = document.createElement("option");
+                option.value = question;
+                option.textContent = question;
+                select.appendChild(option);
+              });
+            }
+          }
+        } catch (err) {
+          console.error("加载安全问题失败:", err);
+        }
+      };
+
+      const loadAll = async () => {
+        profileStatus.textContent = "加载中...";
+        if (articleFavoriteStatus) articleFavoriteStatus.textContent = "加载中...";
+        try {
+          const [profileRes, favoritesRes, articleFavoritesRes, sharesRes] = await Promise.all([
+            fetchJson("/api/user/profile"),
+            fetchJson("/api/user/favorites"),
+            fetchJson("/api/article/favorites"),
+            fetchJson("/api/user/shares"),
+          ]);
+          renderProfile(profileRes.data || {});
+          renderFavorites(favoritesRes.data || []);
+          renderArticleFavorites(articleFavoritesRes.data || []);
+          renderShares(sharesRes.data || []);
+          bindPlayButtons();
+          bindDeleteButtons();
+          bindRenewButtons();
+          profileStatus.textContent = "已加载";
+          if (articleFavoriteStatus) articleFavoriteStatus.textContent = "已加载";
+          // 加载安全问题列表
+          await loadSecurityQuestions();
+        } catch (err) {
+          profileStatus.textContent = "加载失败";
+          if (articleFavoriteStatus) articleFavoriteStatus.textContent = "加载失败";
+          toast(err.message || "加载失败");
+        }
+      };
+
+      const updateProfile = async (payload, successMsg) => {
+        if (!currentUser || !currentUser._id) {
+          toast("用户未加载");
+          return;
+        }
+        const res = await fetch("/api/user/profile", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", ...authHeaders() },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (data.code !== 200) {
+          throw new Error(data.message || "更新失败");
+        }
+        renderProfile(data.data || {});
+        if (successMsg) toast(successMsg);
+      };
+
+      const debounce = (fn, wait) => {
+        let t = null;
+        return (...args) => {
+          if (t) clearTimeout(t);
+          t = setTimeout(() => fn(...args), wait);
+        };
+      };
+
+      const autoSaveProfile = debounce(async () => {
+        const nickname = (editNickname?.value || "").trim();
+        const profileNote = (editProfileNote?.value || "").trim();
+        const avatar = (editAvatar?.value || "").trim();
+        if (
+          nickname === (lastSavedProfile.nickname || "") &&
+          profileNote === (lastSavedProfile.profileNote || "") &&
+          avatar === (lastSavedProfile.avatar || "")
+        ) {
+          return;
+        }
+        try {
+          await updateProfile({ nickname, profileNote, avatar }, "已自动保存");
+        } catch (err) {
+          toast(err.message || "自动保存失败");
+        }
+      }, 800);
+
+      if (editNickname) {
+        editNickname.addEventListener("input", autoSaveProfile);
+        editNickname.addEventListener("blur", autoSaveProfile);
+      }
+      if (editProfileNote) {
+        editProfileNote.addEventListener("input", autoSaveProfile);
+        editProfileNote.addEventListener("blur", autoSaveProfile);
+      }
+      if (editAvatar) {
+        const updateAvatarPreview = () => {
+          const url = (editAvatar.value || "").trim();
+          if (avatarPreview) avatarPreview.src = url || "/loading.gif";
+        };
+        editAvatar.addEventListener("input", updateAvatarPreview);
+        editAvatar.addEventListener("blur", updateAvatarPreview);
+        editAvatar.addEventListener("blur", autoSaveProfile);
+      }
+
+      const setPasswordStage = (verified) => {
+        if (newPasswordFields) newPasswordFields.classList.toggle("hidden", !verified);
+      };
+
+      const setButtonLoading = (btn, loading, text) => {
+        if (!btn) return;
+        if (loading) {
+          btn.dataset.originalText = btn.innerHTML;
+          btn.innerHTML = `<span class="inline-flex items-center gap-2"><span class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span><span>${text || "处理中..."}</span></span>`;
+          btn.disabled = true;
+        } else {
+          btn.innerHTML = btn.dataset.originalText || btn.innerHTML;
+          btn.disabled = false;
+        }
+      };
+
+      if (verifyPasswordBtn) {
+        verifyPasswordBtn.addEventListener("click", async () => {
+          const oldPwd = (oldPassword?.value || "").trim();
+          if (!oldPwd) {
+            toast("请输入旧密码");
+            return;
+          }
+          try {
+            setButtonLoading(verifyPasswordBtn, true, "验证中...");
+            const res = await fetch("/api/user/verify-password", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", ...authHeaders() },
+              body: JSON.stringify({ password: oldPwd }),
+            });
+            const data = await res.json();
+            if (data.code !== 200 || !data.data) {
+              throw new Error(data.message || "旧密码验证失败");
+            }
+            toast("旧密码验证通过");
+            setPasswordStage(true);
+          } catch (err) {
+            setPasswordStage(false);
+            toast(err.message || "旧密码验证失败");
+          } finally {
+            setButtonLoading(verifyPasswordBtn, false);
+          }
+        });
+      }
+
+      if (savePasswordBtn) {
+        savePasswordBtn.addEventListener("click", async () => {
+          const oldPwd = (oldPassword?.value || "").trim();
+          const pwd = (newPassword?.value || "").trim();
+          const confirm = (newPasswordConfirm?.value || "").trim();
+          if (!oldPwd) {
+            toast("请输入旧密码");
+            return;
+          }
+          if (!pwd) {
+            toast("请输入新密码");
+            return;
+          }
+          if (pwd !== confirm) {
+            toast("两次密码不一致");
+            return;
+          }
+          try {
+            setButtonLoading(savePasswordBtn, true, "修改中...");
+            await updateProfile({ oldPassword: oldPwd, password: pwd }, "密码已修改");
+            oldPassword.value = "";
+            newPassword.value = "";
+            newPasswordConfirm.value = "";
+            setPasswordStage(false);
+          } catch (err) {
+            toast(err.message || "更新失败");
+          } finally {
+            setButtonLoading(savePasswordBtn, false);
+          }
+        });
+      }
+
+      if (saveSecurityQuestionBtn) {
+        saveSecurityQuestionBtn.addEventListener("click", async () => {
+          const question = (editSecurityQuestion?.value || "").trim();
+          const answer = (editSecurityAnswer?.value || "").trim();
+          const password = (editSecurityQuestionPassword?.value || "").trim();
+          if (!question) {
+            toast("请选择安全问题");
+            return;
+          }
+          if (!answer) {
+            toast("请输入安全答案");
+            return;
+          }
+          if (!password) {
+            toast("请输入密码以验证");
+            return;
+          }
+          try {
+            // 先验证密码
+            setButtonLoading(saveSecurityQuestionBtn, true, "验证密码中...");
+            if (securityQuestionStatus) securityQuestionStatus.textContent = "验证密码中...";
+            const verifyRes = await fetch("/api/user/verify-password", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", ...authHeaders() },
+              body: JSON.stringify({ password }),
+            });
+            const verifyData = await verifyRes.json();
+            if (verifyData.code !== 200 || !verifyData.data) {
+              throw new Error(verifyData.message || "密码验证失败");
+            }
+            
+            // 密码验证通过，保存安全问题
+            if (securityQuestionStatus) securityQuestionStatus.textContent = "保存中...";
+            const res = await fetch("/api/user/security-question", {
+              method: "PUT",
+              headers: { "Content-Type": "application/json", ...authHeaders() },
+              body: JSON.stringify({ securityQuestion: question, securityAnswer: answer }),
+            });
+            const data = await res.json();
+            if (data.code !== 200) {
+              throw new Error(data.message || "保存失败");
+            }
+            renderProfile(data.data || {});
+            editSecurityAnswer.value = "";
+            editSecurityQuestionPassword.value = "";
+            if (securityQuestionStatus) securityQuestionStatus.textContent = "已保存";
+            toast("安全问题已保存");
+            setTimeout(() => {
+              if (securityQuestionStatus) securityQuestionStatus.textContent = "";
+            }, 2000);
+          } catch (err) {
+            toast(err.message || "保存失败");
+            if (securityQuestionStatus) securityQuestionStatus.textContent = "保存失败";
+          } finally {
+            setButtonLoading(saveSecurityQuestionBtn, false);
+          }
+        });
+      }
+
+      let profilePlayerInstance = null;
+      const openProfilePlayer = (url, title = "") => {
+        // 延迟执行，确保DOM元素已经加载完成
+        setTimeout(() => {
+          const modal = document.getElementById("profilePlayerModal");
+          const container = document.getElementById("profilePlayerContainer");
+          const titleEl = document.getElementById("profilePlayerTitle");
+          
+          console.log("检查播放器元素：");
+          console.log("modal:", modal);
+          console.log("container:", container);
+          console.log("titleEl:", titleEl);
+          console.log("DPlayer:", window.DPlayer);
+          
+          if (!modal || !container || !window.DPlayer) {
+            console.error("播放器初始化失败：缺少必要元素或DPlayer库");
+            toast("播放器初始化失败，请刷新页面重试");
+            return;
+          }
+          
+          if (titleEl) titleEl.textContent = title || "播放";
+          if (profilePlayerInstance) {
+            profilePlayerInstance.destroy();
+            profilePlayerInstance = null;
+          }
+          const safeUrl = String(url || "").trim();
+          if (!safeUrl) {
+            console.error("播放失败：视频URL为空");
+            return;
+          }
+          console.log("正在播放视频：", safeUrl);
+          const isHls = safeUrl.toLowerCase().includes(".m3u8");
+          if (isHls && !window.Hls) {
+            console.error("播放失败：HLS.js库未加载");
+          }
+          profilePlayerInstance = new DPlayer({
+            container,
+            video: isHls ? { url: safeUrl, type: "hls" } : { url: safeUrl },
+            autoplay: true,
+            pluginOptions: {
+              hls: {
+                maxBufferLength: 30,
+                maxMaxBufferLength: 60
+              }
+            }
+          });
+          // 监听播放器事件
+          profilePlayerInstance.on('error', (error) => {
+            console.error("播放器错误：", error);
+            toast("播放失败：" + error.message || "未知错误");
+          });
+          profilePlayerInstance.on('play', () => {
+            console.log("视频开始播放");
+          });
+          modal.classList.remove("hidden");
+          modal.classList.add("flex");
+          document.body.style.overflow = "hidden";
+        }, 100);
+      };
+
+      const closeProfilePlayer = () => {
+        const modal = document.getElementById("profilePlayerModal");
+        if (profilePlayerInstance) {
+          profilePlayerInstance.destroy();
+          profilePlayerInstance = null;
+        }
+        if (modal) {
+          modal.classList.add("hidden");
+          modal.classList.remove("flex");
+        }
+        document.body.style.overflow = "";
+      };
+
+      const bindPlayButtons = () => {
+        document.querySelectorAll('[data-action="play"]').forEach((btn) => {
+          btn.addEventListener("click", (e) => {
+            const target = e.currentTarget;
+            const url = target.getAttribute("data-url") || "";
+            const title = target.getAttribute("data-title") || "";
+            if (!url) return;
+            openProfilePlayer(url, title);
+          });
+        });
+      };
+
+      const bindDeleteButtons = () => {
+        let deleteFavoriteUrl = "";
+        let deleteFavoriteButton = null;
+        let deleteShareId = "";
+        let deleteShareButton = null;
+        
+        // 确认删除弹窗事件
+        document.getElementById("cancelDeleteBtn").addEventListener("click", () => {
+          document.getElementById("confirmModal").classList.add("hidden");
+          deleteFavoriteUrl = "";
+          deleteFavoriteButton = null;
+          deleteShareId = "";
+          deleteShareButton = null;
+        });
+        
+        document.getElementById("confirmDeleteBtn").addEventListener("click", async () => {
+          try {
+            if (deleteFavoriteUrl) {
+              // 删除喜欢
+              const res = await fetch("/api/user/favorites", {
+                method: "DELETE",
+                headers: { "Content-Type": "application/json", ...authHeaders() },
+                body: JSON.stringify({ url: deleteFavoriteUrl }),
+              });
+              const data = await res.json();
+              if (data.code !== 200) {
+                throw new Error(data.message || "删除失败");
+              }
+              const card = deleteFavoriteButton.closest(".favorite-card");
+              if (card) card.remove();
+              if (favoriteCount) {
+                const next = Math.max(0, Number(favoriteCount.textContent || "0") - 1);
+                favoriteCount.textContent = String(next);
+              }
+              if (favoriteList && !favoriteList.querySelector(".favorite-card")) {
+                favoriteList.innerHTML = '<div class="text-sm text-slate-500">暂无喜欢</div>';
+                if (favoriteCount) favoriteCount.textContent = "0";
+              }
+              toast("已删除喜欢");
+            } else if (deleteShareId) {
+              // 删除分享
+              const res = await fetch(`/api/user/shares/${encodeURIComponent(deleteShareId)}`, {
+                method: "DELETE",
+                headers: { "Content-Type": "application/json", ...authHeaders() },
+              });
+              const data = await res.json();
+              if (data.code !== 200) {
+                throw new Error(data.message || "删除失败");
+              }
+              const card = deleteShareButton.closest(".share-card");
+              if (card) card.remove();
+              if (shareCount) {
+                const next = Math.max(0, Number(shareCount.textContent || "0") - 1);
+                shareCount.textContent = String(next);
+              }
+              if (shareList && !shareList.querySelector(".share-card")) {
+                shareList.innerHTML = '<div class="text-sm text-slate-500">暂无分享</div>';
+                if (shareCount) shareCount.textContent = "0";
+              }
+              toast("已删除分享");
+            }
+          } catch (err) {
+            toast(err.message || "删除失败");
+          } finally {
+            document.getElementById("confirmModal").classList.add("hidden");
+            deleteFavoriteUrl = "";
+            deleteFavoriteButton = null;
+            deleteShareId = "";
+            deleteShareButton = null;
+          }
+        });
+        
+        document.querySelectorAll('[data-action="delete-favorite"]').forEach((btn) => {
+          btn.addEventListener("click", (e) => {
+            const target = e.currentTarget;
+            const url = target.getAttribute("data-url") || "";
+            if (!url) return;
+            
+            deleteFavoriteUrl = url;
+            deleteFavoriteButton = target;
+            document.getElementById("confirmMessage").textContent = "您确定要删除这个喜欢吗？";
+            document.getElementById("confirmModal").classList.remove("hidden");
+          });
+        });
+        
+        document.querySelectorAll('[data-action="delete-share"]').forEach((btn) => {
+          btn.addEventListener("click", (e) => {
+            const target = e.currentTarget;
+            const shareId = target.getAttribute("data-share-id") || "";
+            if (!shareId) return;
+            
+            deleteShareId = shareId;
+            deleteShareButton = target;
+            document.getElementById("confirmMessage").textContent = "您确定要删除这个分享吗？";
+            document.getElementById("confirmModal").classList.remove("hidden");
+          });
+        });
+      };
+
+      const setPauseButtonState = (paused) => {
+        renewPaused = !!paused;
+        if (!pauseShareBtn) return;
+        pauseShareBtn.textContent = renewPaused ? "已暂停" : "暂停分享";
+      };
+
+      const bindRenewButtons = () => {
+        document.querySelectorAll('[data-action="renew-share"]').forEach((btn) => {
+          btn.addEventListener("click", async (e) => {
+            const target = e.currentTarget;
+            const shareId = target.getAttribute("data-share-id") || "";
+            if (!shareId) return;
+            renewTarget = shareId;
+            const card = document.querySelector(`.share-card[data-share-id="${renewTarget}"]`);
+            const paused = card ? card.getAttribute("data-paused") === "1" : false;
+            setPauseButtonState(paused);
+            if (renewModal) {
+              renewModal.classList.remove("hidden");
+              renewModal.classList.add("flex");
+            }
+          });
+        });
+      };
+
+      document.getElementById("logoutBtn").addEventListener("click", () => {
+        localStorage.removeItem(TOKEN_KEY);
+        toast("已退出登录");
+        setTimeout(() => (window.location.href = "/login/index.html"), 400);
+      });
+      document.getElementById("closeProfilePlayer").addEventListener("click", closeProfilePlayer);
+
+      if (closeRenewModal) closeRenewModal.addEventListener("click", () => {
+        if (renewModal) {
+          renewModal.classList.add("hidden");
+          renewModal.classList.remove("flex");
+        }
+      });
+      if (cancelRenewBtn) cancelRenewBtn.addEventListener("click", () => {
+        if (renewModal) {
+          renewModal.classList.add("hidden");
+          renewModal.classList.remove("flex");
+        }
+      });
+      document.querySelectorAll(".renew-quick").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const seconds = Number(btn.getAttribute("data-seconds") || 0);
+          if (renewSelect) renewSelect.value = String(seconds);
+          if (renewCustomMinutes) renewCustomMinutes.value = "";
+        });
+      });
+      if (confirmRenewBtn) {
+        confirmRenewBtn.addEventListener("click", async () => {
+          if (!renewTarget) return;
+          const customMinutes = Number(renewCustomMinutes?.value || 0);
+          let expireSeconds = Number(renewSelect?.value || 0);
+          if (customMinutes > 0) {
+            expireSeconds = Math.floor(customMinutes * 60);
+          }
+          try {
+            setButtonLoading(confirmRenewBtn, true, "续签中...");
+            const res = await fetch(`/api/user/shares/${encodeURIComponent(renewTarget)}`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json", ...authHeaders() },
+              body: JSON.stringify({ expireSeconds }),
+            });
+            const data = await res.json();
+            if (data.code !== 200) {
+              throw new Error(data.message || "续签失败");
+            }
+            const card = document.querySelector(`.share-card[data-share-id="${renewTarget}"]`);
+            const nextExpiresAt = expireSeconds > 0 ? Date.now() + expireSeconds * 1000 : 0;
+            if (card) {
+              const expireEl = card.querySelector(".share-expire");
+              const statusEl = card.querySelector(".share-status");
+              if (expireEl) {
+                expireEl.textContent = `到期时间：${nextExpiresAt ? formatTime(nextExpiresAt) : "永久"}`;
+              }
+              if (statusEl) {
+                statusEl.textContent = "可用";
+                statusEl.classList.remove("text-rose-600");
+                statusEl.classList.add("text-emerald-600");
+              }
+              const playBtn = card.querySelector('[data-action="play"]');
+              const openLink = card.querySelector("a[href]");
+              if (playBtn) {
+                playBtn.disabled = false;
+                playBtn.classList.remove("text-slate-400", "cursor-not-allowed");
+                playBtn.classList.add("text-emerald-600", "hover:underline");
+              }
+              if (openLink) {
+                const shareUrl = buildSharePlayUrl({ shareId: renewTarget });
+                openLink.setAttribute("href", shareUrl);
+                openLink.classList.remove("text-slate-400", "pointer-events-none");
+                openLink.classList.add("text-blue-600", "hover:underline");
+              }
+              card.setAttribute("data-paused", "0");
+            }
+            if (renewModal) {
+              renewModal.classList.add("hidden");
+              renewModal.classList.remove("flex");
+            }
+            toast("续签成功");
+          } catch (err) {
+            toast(err.message || "续签失败");
+          } finally {
+            setButtonLoading(confirmRenewBtn, false);
+          }
+        });
+      }
+      if (pauseShareBtn) {
+        pauseShareBtn.addEventListener("click", async () => {
+          if (!renewTarget) return;
+          const nextPaused = !renewPaused;
+          try {
+            setButtonLoading(pauseShareBtn, true, nextPaused ? "暂停中..." : "恢复中...");
+            const res = await fetch(`/api/user/shares/${encodeURIComponent(renewTarget)}`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json", ...authHeaders() },
+              body: JSON.stringify({ paused: nextPaused }),
+            });
+            const data = await res.json();
+            if (data.code !== 200) {
+              throw new Error(data.message || (nextPaused ? "暂停失败" : "恢复失败"));
+            }
+            const card = document.querySelector(`.share-card[data-share-id="${renewTarget}"]`);
+            if (card) {
+              const statusEl = card.querySelector(".share-status");
+              const playBtn = card.querySelector('[data-action="play"]');
+              const openLink = card.querySelector("a[href]");
+              if (nextPaused) {
+                if (statusEl) {
+                  statusEl.textContent = "已暂停";
+                  statusEl.classList.remove("text-emerald-600");
+                  statusEl.classList.add("text-rose-600");
+                }
+                if (playBtn) {
+                  playBtn.disabled = true;
+                  playBtn.classList.remove("text-emerald-600", "hover:underline");
+                  playBtn.classList.add("text-slate-400", "cursor-not-allowed");
+                }
+                if (openLink) {
+                  openLink.setAttribute("href", "#");
+                  openLink.classList.remove("text-blue-600", "hover:underline");
+                  openLink.classList.add("text-slate-400", "pointer-events-none");
+                }
+                card.setAttribute("data-paused", "1");
+              } else {
+                if (statusEl) {
+                  statusEl.textContent = "可用";
+                  statusEl.classList.remove("text-rose-600");
+                  statusEl.classList.add("text-emerald-600");
+                }
+                if (playBtn) {
+                  playBtn.disabled = false;
+                  playBtn.classList.remove("text-slate-400", "cursor-not-allowed");
+                  playBtn.classList.add("text-emerald-600", "hover:underline");
+                }
+                if (openLink) {
+                  const shareUrl = buildSharePlayUrl({ shareId: renewTarget });
+                  openLink.setAttribute("href", shareUrl);
+                  openLink.classList.remove("text-slate-400", "pointer-events-none");
+                  openLink.classList.add("text-blue-600", "hover:underline");
+                }
+                card.setAttribute("data-paused", "0");
+              }
+            }
+            setPauseButtonState(nextPaused);
+            toast(nextPaused ? "已暂停分享" : "已恢复分享");
+          } catch (err) {
+            toast(err.message || (nextPaused ? "暂停失败" : "恢复失败"));
+          } finally {
+            setButtonLoading(pauseShareBtn, false);
+          }
+        });
+      }
+
+      document.getElementById("mobileMenuBtn").addEventListener("click", () => toggleMobileMenu());
+      document.getElementById("sideNavOverlay").addEventListener("click", () => toggleMobileMenu(false));
+
+      // 刷新按钮事件处理
+      document.querySelectorAll(".refresh-btn").forEach((btn) => {
+        btn.addEventListener("click", async (e) => {
+          const target = e.currentTarget;
+          const module = target.getAttribute("data-refresh-target");
+          if (!module) return;
+          
+          // 显示骨架屏，隐藏实际内容
+          const skeletonId = module + "Skeleton";
+          const contentId = module + "Content";
+          const skeleton = document.getElementById(skeletonId);
+          const content = document.getElementById(contentId);
+          
+          if (skeleton && content) {
+            skeleton.classList.remove("hidden");
+            content.classList.add("hidden");
+          }
+          
+          // 重新加载对应模块的数据
+          try {
+            switch (module) {
+              case "favorites":
+                const favoritesRes = await fetchJson("/api/user/favorites");
+                renderFavorites(favoritesRes.data || []);
+                bindPlayButtons();
+                bindDeleteButtons();
+                break;
+              case "articleFavorites":
+                if (articleFavoriteStatus) articleFavoriteStatus.textContent = "加载中...";
+                const articleFavoritesRes = await fetchJson("/api/article/favorites");
+                renderArticleFavorites(articleFavoritesRes.data || []);
+                break;
+              case "shares":
+                const sharesRes = await fetchJson("/api/user/shares");
+                renderShares(sharesRes.data || []);
+                bindPlayButtons();
+                bindDeleteButtons();
+                bindRenewButtons();
+                break;
+            }
+          } catch (err) {
+            toast(err.message || "刷新失败");
+            // 加载失败时也显示内容，避免一直显示骨架屏
+            if (skeleton && content) {
+              skeleton.classList.add("hidden");
+              content.classList.remove("hidden");
+            }
+          }
+        });
+      });
+
+      setPasswordStage(false);
+      setActiveModule("profile");
+      loadAll();
+    </script>
+    <script src="/assets/login-guard.js"></script>
+    <script src="/assets/page-permission.js"></script>
+
+    <!-- 确认删除弹窗 -->
+    <div id="confirmModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+      <div class="bg-white rounded-xl shadow-lg p-6 max-w-md w-full mx-4">
+        <h3 class="text-lg font-semibold mb-4">确认删除</h3>
+        <p id="confirmMessage" class="text-slate-600 mb-6">您确定要删除这个项目吗？</p>
+        <div class="flex justify-end space-x-3">
+          <button id="cancelDeleteBtn" class="px-4 py-2 rounded border border-slate-300 text-slate-700 hover:bg-slate-50">取消</button>
+          <button id="confirmDeleteBtn" class="px-4 py-2 rounded bg-rose-600 text-white hover:bg-rose-700">确认删除</button>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

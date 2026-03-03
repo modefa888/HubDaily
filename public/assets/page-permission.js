@@ -17,7 +17,7 @@
   const token = localStorage.getItem(TOKEN_KEY) || "";
   if (!token) return;
 
-  fetch("/user/profile", {
+  fetch("/api/user/profile", {
     headers: { Authorization: "Bearer " + token },
   })
     .then((res) => res.json())

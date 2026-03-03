@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>重置密码</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="min-h-screen bg-slate-100 text-slate-800 flex items-center justify-center p-4">
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-lg p-6 space-y-5">
+      <header class="space-y-1">
+        <h1 class="text-2xl font-bold">重置密码</h1>
+        <p class="text-sm text-slate-500">请设置您的新密码</p>
+      </header>
+
+      <section class="space-y-3">
+        <input id="password" type="password" class="w-full border rounded px-3 py-2" placeholder="新密码" />
+        <input id="passwordConfirm" type="password" class="w-full border rounded px-3 py-2" placeholder="确认密码" />
+        <button id="resetBtn" class="w-full bg-blue-600 text-white rounded py-2">重置密码</button>
+      </section>
+
+      <div class="text-xs text-slate-500 text-center">
+        <a href="/login/index.html" class="text-blue-600 hover:underline">返回登录</a>
+      </div>
+    </div>
+
+    <div id="toast" class="fixed top-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-sm px-4 py-2 rounded hidden z-[70]"></div>
+
+    <script>
+      const toast = (msg) => {
+        const el = document.getElementById("toast");
+        el.textContent = msg;
+        el.classList.remove("hidden");
+        setTimeout(() => el.classList.add("hidden"), 1800);
+      };
+
+      // 获取URL中的token
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = urlParams.get('token');
+
+      if (!token) {
+        toast("无效的重置链接");
+        setTimeout(() => window.location.href = "/login/index.html", 2000);
+      }
+
+      document.getElementById("resetBtn").addEventListener("click", async () => {
+        const password = document.getElementById("password").value.trim();
+        const passwordConfirm = document.getElementById("passwordConfirm").value.trim();
+
+        if (!password) {
+          toast("请输入新密码");
+          return;
+        }
+
+        if (password !== passwordConfirm) {
+          toast("两次密码不一致");
+          return;
+        }
+
+        const btn = document.getElementById("resetBtn");
+        const originalText = btn.textContent;
+        btn.innerHTML = '<span class="inline-flex items-center gap-2"><span class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span><span>重置中...</span></span>';
+        btn.disabled = true;
+
+        try {
+          const res = await fetch("/api/user/reset-password", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token, password })
+          });
+          const data = await res.json();
+          if (data.code === 200) {
+            toast("密码重置成功");
+            setTimeout(() => window.location.href = "/login/index.html", 2000);
+          } else {
+            toast(data.message || "重置失败");
+          }
+        } catch (error) {
+          toast("重置失败，请稍后重试");
+        } finally {
+          btn.disabled = false;
+          btn.textContent = originalText;
+        }
+      });
+    </script>
+  </body>
+</html>
