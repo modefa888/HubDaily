@@ -27,11 +27,13 @@ let updateTime = new Date().toISOString();
 const url = "https://www.v2ex.com/?tab=hot";
 
 const headers = {
-  "Content-Type": "application/json",
-  "User-Agent":
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36",
-  authority: "www.v2ex.com",
-  referer: "https://www.v2ex.com/",
+  "Content-Type": "text/html",
+  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+  "accept-language": "zh-CN,zh;q=0.9,en;q=0.8",
+  "authority": "www.v2ex.com",
+  "referer": "https://www.v2ex.com/",
+  "upgrade-insecure-requests": "1"
 };
 
 // 数据处理

@@ -50,7 +50,7 @@ const buildExpiresAt = (seconds, fallbackMs) => {
 };
 
 // 获取分享列表（登录用户）
-shareRouter.get("/user/shares", authMiddleware, async (ctx) => {
+shareRouter.get("/shares", authMiddleware, async (ctx) => {
     const db = await getDb();
     const userId = ctx.state.user._id;
     const shares = await db
@@ -77,7 +77,7 @@ shareRouter.get("/user/shares", authMiddleware, async (ctx) => {
 });
 
 // 获取分享列表（管理员指定用户）
-shareRouter.get("/user/:id/shares", authMiddleware, requireAdmin, async (ctx) => {
+shareRouter.get("/:id/shares", authMiddleware, requireAdmin, async (ctx) => {
     const { id } = ctx.params;
     if (!ObjectId.isValid(id)) {
         ctx.body = { code: 400, message: "用户ID不合法" };
@@ -108,7 +108,7 @@ shareRouter.get("/user/:id/shares", authMiddleware, requireAdmin, async (ctx) =>
 });
 
 // 删除分享（登录用户）
-shareRouter.delete("/user/shares", authMiddleware, async (ctx) => {
+shareRouter.delete("/shares", authMiddleware, async (ctx) => {
     const { shareId } = ctx.request.body || {};
     const safeShareId = String(shareId || "").trim();
     if (!safeShareId) {
@@ -121,7 +121,7 @@ shareRouter.delete("/user/shares", authMiddleware, async (ctx) => {
 });
 
 // 删除分享（管理员指定用户）
-shareRouter.delete("/user/:id/shares", authMiddleware, requireAdmin, async (ctx) => {
+shareRouter.delete("/:id/shares", authMiddleware, requireAdmin, async (ctx) => {
     const { id } = ctx.params;
     if (!ObjectId.isValid(id)) {
         ctx.body = { code: 400, message: "用户ID不合法" };
@@ -138,7 +138,7 @@ shareRouter.delete("/user/:id/shares", authMiddleware, requireAdmin, async (ctx)
 });
 
 // 创建分享（登录用户）
-shareRouter.post("/user/share", authMiddleware, async (ctx) => {
+shareRouter.post("/share", authMiddleware, async (ctx) => {
     const { title, url, pic, source, expireSeconds } = ctx.request.body || {};
     const safeUrl = String(url || "").trim();
     if (!safeUrl) {

@@ -417,7 +417,7 @@ const initChatWSS = (server) => {
         lastMessageAt.set(String(ws.user._id), Date.now());
         broadcast({
           type: "message",
-          data: { ...payload, _id: String(insertedId), userId: String(payload.userId) },
+          data: { ...payload, _id: String(insertedId), userId: String(payload.userId), tempId: data.tempId },
         });
       }
 

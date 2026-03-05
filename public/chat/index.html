@@ -125,9 +125,16 @@
     .msg-bubble {
       max-width: 70%;
       background: var(--panel-strong);
-      border-radius: 14px;
-      padding: 10px 12px;
-      box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+      border-radius: 8px;
+      padding: 12px 16px;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+      word-wrap: break-word;
+    }
+    .msg-bubble > div {
+      max-width: 100%;
+    }
+    .msg-bubble .flex {
+      max-width: 100%;
     }
     .msg.self .msg-bubble {
       background: #e0f2fe;
@@ -154,14 +161,73 @@
       background: #020617;
       object-fit: contain;
     }
-    .msg-tools {
-      margin-top: 6px;
-      display: flex;
-      gap: 8px;
+    .msg-meta {
       font-size: 12px;
-    }
-    .msg-tools button {
       color: var(--muted);
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .msg-meta-content {
+      flex: 1;
+    }
+    .msg-actions {
+      position: relative;
+      display: inline-block;
+      vertical-align: middle;
+    }
+    .msg-menu-btn {
+      position: relative;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: transparent;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      vertical-align: middle;
+      color: var(--muted);
+    }
+    .msg-bubble:hover .msg-menu-btn {
+      opacity: 1;
+    }
+    .msg-menu {
+      position: absolute;
+      top: 100%;
+      right: 0;
+      min-width: 100px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      padding: 4px 0;
+      z-index: 100;
+      display: none;
+      margin-top: 4px;
+    }
+    .msg-menu.show {
+      display: block;
+    }
+    .msg-menu button {
+      width: 100%;
+      padding: 6px 12px;
+      text-align: left;
+      border: none;
+      background: transparent;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .msg-menu button:hover {
+      background: #f5f5f5;
+    }
+    .msg-menu button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
     }
     .chat-input {
       padding: 14px 16px;
@@ -472,6 +538,15 @@
     </div>
   </div>
 
+  <div id="deleteConfirmPanel" class="popover hidden">
+    <div class="popover-title text-xs">确认删除</div>
+    <div class="text-[11px] text-slate-600 mb-3">确定要删除这条消息吗？</div>
+    <div class="flex items-center justify-end gap-2">
+      <button id="deleteCancelBtn" class="btn btn-outline">取消</button>
+      <button id="deleteConfirmBtn" class="btn">删除</button>
+    </div>
+  </div>
+
   <script>
     const TOKEN_KEY = "userToken";
     const chatList = document.getElementById("chatList");
@@ -529,6 +604,11 @@
     const emojiTabs = document.getElementById("emojiTabs");
     const emojiGrid = document.getElementById("emojiGrid");
     const charRemain = document.getElementById("charRemain");
+    const deleteConfirmPanel = document.getElementById("deleteConfirmPanel");
+    const deleteCancelBtn = document.getElementById("deleteCancelBtn");
+    const deleteConfirmBtn = document.getElementById("deleteConfirmBtn");
+    let deleteTargetMessageId = "";
+    let deleteTargetButton = null;
 
     let ws = null;
     let historyLoaded = false;
@@ -625,21 +705,34 @@
             ? `<img class="avatar" src="${avatar}" alt="">`
             : `<div class="avatar">${escapeHtml(getInitial(title))}</div>`
           }
-          <div class="msg-bubble">
-            <div class="msg-meta">${escapeHtml(title)} · ${new Date(item.createdAt).toLocaleString()}</div>
-            ${showM3u8
-              ? `<div class="msg-text msg-media">
-                   <video id="${m3u8Id}" class="video-native" controls preload="metadata" src="${escapeHtml(message)}"></video>
-                 </div>`
-              : showImage
-                ? `<div class="msg-text"><img src="${escapeHtml(message)}" alt="" class="w-1/2 max-w-[240px] h-auto rounded-lg border border-slate-200"></div>`
-                : `<div class="msg-text">${escapeHtml(message)}</div>`
-            }
-            ${canManage ? `
-              <div class="msg-tools">
-                <button data-action="delete" ${item.deleted ? "disabled" : ""}>删除</button>
-                ${isSelf ? "" : `<button data-action="${muteAction}" data-user-id="${item.userId || ""}">${muteLabel}</button>`}
-              </div>` : ""}
+          <div style="display: flex; flex-direction: column; align-items: ${isSelf ? 'flex-end' : 'flex-start'}; gap: 4px;">
+            <div class="msg-bubble">
+              <div class="msg-meta">
+                <div class="msg-meta-content">${escapeHtml(title)} · ${new Date(item.createdAt).toLocaleString()}</div>
+                ${canManage ? `
+                  <div class="msg-actions">
+                    <button class="msg-menu-btn" onclick="toggleMsgMenu(this)">•••</button>
+                    <div class="msg-menu">
+                      <button data-action="delete" ${item.deleted ? "disabled" : ""}>删除</button>
+                      ${isSelf ? "" : `<button data-action="${muteAction}" data-user-id="${item.userId || ""}">${muteLabel}</button>`}
+                    </div>
+                  </div>` : ""}
+              </div>
+              ${showM3u8
+                ? `<div class="msg-text msg-media">
+                     <video id="${m3u8Id}" class="video-native" controls preload="metadata" src="${escapeHtml(message)}"></video>
+                   </div>`
+                : showImage
+                  ? `<div class="msg-text"><img src="${escapeHtml(message)}" alt="" class="w-1/2 max-w-[240px] h-auto rounded-lg border border-slate-200"></div>`
+                  : `<div class="msg-text">${escapeHtml(message)}</div>`
+              }
+            </div>
+            ${item.sending ? `
+              <div class="flex items-center gap-1 text-xs text-slate-500" style="margin-${isSelf ? 'right' : 'left'}: 4px;">
+                <div class="w-2 h-2 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                <span>发送中</span>
+              </div>
+            ` : ""}
           </div>
         </div>
       `;
@@ -700,7 +793,7 @@
 
     const refreshMessageMuteButtons = () => {
       if (!chatList) return;
-      chatList.querySelectorAll('.msg-tools button[data-action="admin-mute"], .msg-tools button[data-action="admin-mute-info"]').forEach((btn) => {
+      chatList.querySelectorAll('.msg-menu button[data-action="admin-mute"], .msg-menu button[data-action="admin-mute-info"]').forEach((btn) => {
         const userId = btn.getAttribute("data-user-id");
         if (!userId) return;
         const info = adminMuteMap.get(String(userId));
@@ -726,6 +819,53 @@
         hls.attachMedia(video);
         video.dataset.hlsInited = "1";
       });
+    };
+
+    const toggleMsgMenu = (button) => {
+      // 关闭所有其他菜单
+      document.querySelectorAll('.msg-menu.show').forEach(menu => {
+        if (menu !== button.nextElementSibling) {
+          menu.classList.remove('show');
+        }
+      });
+      // 切换当前菜单
+      const menu = button.nextElementSibling;
+      menu.classList.toggle('show');
+    };
+
+    // 点击其他地方关闭菜单和删除确认面板
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.msg-actions') && !e.target.closest('#deleteConfirmPanel')) {
+        document.querySelectorAll('.msg-menu.show').forEach(menu => {
+          menu.classList.remove('show');
+        });
+        closeDeleteConfirm();
+      }
+    });
+
+    const openDeleteConfirm = (anchor, messageId) => {
+      if (!deleteConfirmPanel || !anchor) return;
+      deleteTargetMessageId = String(messageId || "");
+      deleteTargetButton = anchor;
+      deleteConfirmPanel.classList.remove("hidden");
+      requestAnimationFrame(() => positionPopover(deleteConfirmPanel, anchor));
+    };
+
+    const closeDeleteConfirm = () => {
+      if (!deleteConfirmPanel) return;
+      deleteConfirmPanel.classList.add("hidden");
+      deleteTargetMessageId = "";
+      deleteTargetButton = null;
+    };
+
+    const confirmDelete = () => {
+      if (!deleteTargetMessageId) return;
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        showHint("未连接服务器");
+        return;
+      }
+      ws.send(JSON.stringify({ type: "soft_delete", id: deleteTargetMessageId }));
+      closeDeleteConfirm();
     };
 
 
@@ -806,6 +946,8 @@
         wsStatus.textContent = "已连接";
         reconnectBtn.disabled = true;
         reconnectBtn.classList.add("opacity-60", "cursor-not-allowed");
+        // 清理发送中消息
+        cleanupSendingMessages();
         if (token) {
           ws.send(JSON.stringify({ type: "auth", token }));
         }
@@ -860,6 +1002,19 @@
         }
         if (data.type === "message") {
           if (!historyLoaded) return;
+          
+          // 检查是否是发送中消息的确认
+          const tempId = data.data?.tempId;
+          if (tempId && sendingMessages.has(tempId)) {
+            // 移除发送中消息
+            const tempNode = chatList.querySelector(`[data-id="${tempId}"]`);
+            if (tempNode) {
+              tempNode.remove();
+            }
+            sendingMessages.delete(tempId);
+          }
+          
+          // 显示正式消息
           appendMessage(data.data || {});
         }
         if (data.type === "update") {
@@ -951,6 +1106,25 @@
         wsStatus.textContent = "未连接";
       });
     }
+
+    if (deleteCancelBtn) {
+      deleteCancelBtn.addEventListener("click", closeDeleteConfirm);
+    }
+
+    if (deleteConfirmBtn) {
+      deleteConfirmBtn.addEventListener("click", confirmDelete);
+    }
+
+    // 点击删除按钮时显示确认面板
+    chatList.addEventListener('click', (e) => {
+      if (e.target.dataset.action === 'delete') {
+        e.stopPropagation();
+        const messageId = e.target.closest('.msg').dataset.id;
+        if (messageId) {
+          openDeleteConfirm(e.target, messageId);
+        }
+      }
+    });
 
     const setSideTab = (tab) => {
       if (!onlinePanel || !adminPanel) return;
@@ -1288,6 +1462,14 @@
       emojiGrid.innerHTML = list.map((e) => `<button type="button" class="hover:scale-110 transition">${e}</button>`).join("");
     };
 
+    // 生成临时消息ID
+    const generateTempId = () => {
+      return "temp_" + Date.now() + "_" + Math.random().toString(36).slice(2, 10);
+    };
+
+    // 发送中的消息映射
+    const sendingMessages = new Map();
+
     sendBtn.addEventListener("click", () => {
       const message = (messageInput.value || "").trim();
       if (!message) return;
@@ -1299,15 +1481,54 @@
         showHint("未连接服务器");
         return;
       }
+
+      // 生成临时ID
+      const tempId = generateTempId();
+      
+      // 创建发送中消息对象
+      const sendingMessage = {
+        _id: tempId,
+        userId: currentUserId,
+        nickname: "",
+        message: message,
+        createdAt: new Date().toISOString(),
+        sending: true
+      };
+      
+      // 添加到发送中消息映射
+      sendingMessages.set(tempId, sendingMessage);
+      
+      // 渲染发送中消息
+      const node = document.createElement("div");
+      node.innerHTML = renderMessageHtml(sendingMessage);
+      const msgNode = node.firstElementChild;
+      if (msgNode) {
+        chatList.appendChild(msgNode);
+        chatList.scrollTop = chatList.scrollHeight;
+      }
+      
+      // 发送消息到服务器
       ws.send(JSON.stringify({
         type: "message",
         message,
-        nickname: ""
+        nickname: "",
+        tempId: tempId
       }));
+      
+      // 清空输入框
       messageInput.value = "";
       if (charRemain) charRemain.textContent = "还可输入 200 字";
-      showHint("已发送");
     });
+
+    // 清理发送中消息的函数
+    const cleanupSendingMessages = () => {
+      // 移除所有发送中消息
+      chatList.querySelectorAll('.msg [data-id^="temp_"]').forEach(node => {
+        node.remove();
+      });
+      // 清空发送中消息映射
+      sendingMessages.clear();
+    };
 
     messageInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter" && !e.shiftKey) {
@@ -1338,8 +1559,8 @@
       }
       if (action === "delete") {
         if (!id) return;
-        if (!confirm("确认删除这条消息？")) return;
-        ws.send(JSON.stringify({ type: "soft_delete", id }));
+        // 使用自定义删除确认悬浮框
+        openDeleteConfirm(target, id);
       }
       if (action === "mute") {
         if (!userId) return;

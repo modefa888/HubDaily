@@ -44,16 +44,19 @@ const getData = (html) => {
       const title = titleNode?.textContent.trim() || '';
 
       /* ===== 链接 ===== */
-      const urlNode = xpath.select1(
-        ".//a[contains(@class,'title')]",
+        const urlNode = xpath.select1(
+        ".//a[contains(@class,'title_dIF3B')]",
+        node
+      ) || xpath.select1(
+        ".//a[contains(@class,'img-wrapper')]",
         node
       );
       const url = urlNode?.getAttribute('href') || '';
 
       /* ===== 描述（优先短描述） ===== */
       const descNode =
-        xpath.select1(".//*[contains(@class,'hot-desc') and contains(@class,'small')]", node)
-        || xpath.select1(".//*[contains(@class,'hot-desc') and contains(@class,'large')]", node);
+        xpath.select1(".//*[contains(@class,'hot-desc_1m_jR') and contains(@class,'small_Uvkd3')]", node)
+        || xpath.select1(".//*[contains(@class,'hot-desc_1m_jR') and contains(@class,'large_nSuFU')]", node);
 
       const desc = descNode
         ? descNode.textContent.replace(/查看更多>.*/g, '').trim()
@@ -61,7 +64,7 @@ const getData = (html) => {
 
       /* ===== 热度 ===== */
       const hotNode = xpath.select1(
-        ".//*[contains(@class,'hot-index')]",
+        ".//*[contains(@class,'hot-index_1Bl1a')]",
         node
       );
       const hot = hotNode
@@ -73,10 +76,17 @@ const getData = (html) => {
         ".//img",
         node
       );
-      const pic =
-        imgNodes.length > 1
-          ? imgNodes[1].getAttribute('src')
-          : imgNodes[0]?.getAttribute('src') || '';
+      let pic = '';
+      if (imgNodes.length > 1) {
+        // 找到非图标图片
+        for (let i = 0; i < imgNodes.length; i++) {
+          const src = imgNodes[i].getAttribute('src');
+          if (src && !src.includes('fyb-pc-static.cdn.bcebos.com/static/asset/')) {
+            pic = src;
+            break;
+          }
+        }
+      }
 
       if (!title) return;
 

@@ -325,6 +325,31 @@
             </button>
         </div>
         
+        <!-- 分类Tab -->
+        <div class="border-b border-gray-200 flex">
+            <button 
+                class="flex-1 px-4 py-2 text-center text-sm font-medium" 
+                onclick="switchHistoryTab('all')"
+                id="historyTabAll"
+            >
+                全部
+            </button>
+            <button 
+                class="flex-1 px-4 py-2 text-center text-sm font-medium" 
+                onclick="switchHistoryTab('adult')"
+                id="historyTabAdult"
+            >
+                摩西
+            </button>
+            <button 
+                class="flex-1 px-4 py-2 text-center text-sm font-medium" 
+                onclick="switchHistoryTab('normal')"
+                id="historyTabNormal"
+            >
+                普通
+            </button>
+        </div>
+        
         <div id="historyContent" class="flex-1 overflow-y-auto scrollbar-hide p-4">
             <!-- 历史记录将在这里动态生成 -->
         </div>
@@ -345,6 +370,31 @@
             <h3 class="text-lg font-semibold">我的喜欢</h3>
             <button onclick="toggleFavorites()" class="p-2 hover:bg-gray-200 rounded-full">
                 <i class="fa fa-times"></i>
+            </button>
+        </div>
+        
+        <!-- 分类Tab -->
+        <div class="border-b border-gray-200 flex">
+            <button 
+                class="flex-1 px-4 py-2 text-center text-sm font-medium" 
+                onclick="switchFavoriteTab('all')"
+                id="favoriteTabAll"
+            >
+                全部
+            </button>
+            <button 
+                class="flex-1 px-4 py-2 text-center text-sm font-medium" 
+                onclick="switchFavoriteTab('adult')"
+                id="favoriteTabAdult"
+            >
+                摩西
+            </button>
+            <button 
+                class="flex-1 px-4 py-2 text-center text-sm font-medium" 
+                onclick="switchFavoriteTab('normal')"
+                id="favoriteTabNormal"
+            >
+                普通
             </button>
         </div>
         
@@ -370,6 +420,32 @@
                 <i class="fa fa-times"></i>
             </button>
         </div>
+        
+        <!-- 分类Tab -->
+        <div class="border-b border-gray-200 flex">
+            <button 
+                class="flex-1 px-4 py-2 text-center text-sm font-medium" 
+                onclick="async function(){ await switchShareTab('all'); }()"
+                id="shareTabAll"
+            >
+                全部
+            </button>
+            <button 
+                class="flex-1 px-4 py-2 text-center text-sm font-medium" 
+                onclick="async function(){ await switchShareTab('adult'); }()"
+                id="shareTabAdult"
+            >
+                摩西
+            </button>
+            <button 
+                class="flex-1 px-4 py-2 text-center text-sm font-medium" 
+                onclick="async function(){ await switchShareTab('normal'); }()"
+                id="shareTabNormal"
+            >
+                普通
+            </button>
+        </div>
+        
         <div id="shareContent" class="flex-1 overflow-y-auto scrollbar-hide p-4">
             <!-- 分享内容将在这里动态生成 -->
         </div>
@@ -960,10 +1036,66 @@
         const CUSTOM_API_TYPE_KEY = 'customApiType';
         const OFFICIAL_API_LIST_KEY = 'officialApiList';
         const OFFICIAL_API_LIST_SIGNATURE_KEY = 'officialApiListSignature';
+        const USER_TOKEN_KEY = 'userToken';
+        const USER_TOKEN_EXPIRES_KEY = 'userTokenExpires';
+        const USER_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+        const USER_AVATAR_KEY = 'userAvatarUrl';
+        const USER_AVATAR_API = 'https://v2.xxapi.cn/api/head';
         let lastWatchTime = 0;
         let lastWatchUrl = '';
         const loadedTotalCount = document.getElementById('loadedTotalCount');
         let originalPageTitle = document.title;
+
+        // 用户相关函数
+        function getUserToken() {
+            const token = String(localStorage.getItem(USER_TOKEN_KEY) || '').trim();
+            if (!token) return '';
+            const expiresAt = Number(localStorage.getItem(USER_TOKEN_EXPIRES_KEY) || '0');
+            if (!expiresAt) {
+                localStorage.setItem(USER_TOKEN_EXPIRES_KEY, String(Date.now() + USER_TOKEN_TTL_MS));
+                return token;
+            }
+            if (Date.now() > expiresAt) {
+                clearUserToken();
+                return '';
+            }
+            return token;
+        }
+
+        function setUserToken(token) {
+            localStorage.setItem(USER_TOKEN_KEY, String(token || ''));
+            localStorage.setItem(USER_TOKEN_EXPIRES_KEY, String(Date.now() + USER_TOKEN_TTL_MS));
+        }
+
+        function clearUserToken() {
+            localStorage.removeItem(USER_TOKEN_KEY);
+            localStorage.removeItem(USER_TOKEN_EXPIRES_KEY);
+        }
+
+        function revokeAccess() {
+            window.location.href = '/login/index.html';
+        }
+
+        function applyAvatar(url) {
+            const safe = String(url || '').trim();
+            if (safe) {
+                if (userAvatarImg) {
+                    userAvatarImg.src = safe;
+                    userAvatarImg.classList.remove('hidden');
+                }
+                if (userAvatarPreview) {
+                    userAvatarPreview.src = safe;
+                    userAvatarPreview.classList.remove('hidden');
+                }
+                if (userAvatarText) {
+                    userAvatarText.classList.add('hidden');
+                }
+            } else {
+                if (userAvatarImg) userAvatarImg.classList.add('hidden');
+                if (userAvatarPreview) userAvatarPreview.classList.add('hidden');
+                if (userAvatarText) userAvatarText.classList.remove('hidden');
+            }
+        }
         
         // DOM元素
         const videoList = document.getElementById('videoList');
@@ -1651,62 +1783,6 @@
                 saveResumeNow(currentVideoUrl);
             }, { passive: true });
         });
-
-        const USER_TOKEN_KEY = 'userToken';
-        const USER_TOKEN_EXPIRES_KEY = 'userTokenExpires';
-        const USER_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-        const USER_AVATAR_KEY = 'userAvatarUrl';
-        const USER_AVATAR_API = 'https://v2.xxapi.cn/api/head';
-
-        function getUserToken() {
-            const token = String(localStorage.getItem(USER_TOKEN_KEY) || '').trim();
-            if (!token) return '';
-            const expiresAt = Number(localStorage.getItem(USER_TOKEN_EXPIRES_KEY) || '0');
-            if (!expiresAt) {
-                localStorage.setItem(USER_TOKEN_EXPIRES_KEY, String(Date.now() + USER_TOKEN_TTL_MS));
-                return token;
-            }
-            if (Date.now() > expiresAt) {
-                clearUserToken();
-                return '';
-            }
-            return token;
-        }
-
-        function setUserToken(token) {
-            localStorage.setItem(USER_TOKEN_KEY, String(token || ''));
-            localStorage.setItem(USER_TOKEN_EXPIRES_KEY, String(Date.now() + USER_TOKEN_TTL_MS));
-        }
-
-        function clearUserToken() {
-            localStorage.removeItem(USER_TOKEN_KEY);
-            localStorage.removeItem(USER_TOKEN_EXPIRES_KEY);
-        }
-
-        function revokeAccess() {
-            window.location.href = '/login/index.html';
-        }
-
-        function applyAvatar(url) {
-            const safe = String(url || '').trim();
-            if (safe) {
-                if (userAvatarImg) {
-                    userAvatarImg.src = safe;
-                    userAvatarImg.classList.remove('hidden');
-                }
-                if (userAvatarPreview) {
-                    userAvatarPreview.src = safe;
-                    userAvatarPreview.classList.remove('hidden');
-                }
-                if (userAvatarText) {
-                    userAvatarText.classList.add('hidden');
-                }
-            } else {
-                if (userAvatarImg) userAvatarImg.classList.add('hidden');
-                if (userAvatarPreview) userAvatarPreview.classList.add('hidden');
-                if (userAvatarText) userAvatarText.classList.remove('hidden');
-            }
-        }
 
         function applyAvatarFromStorage() {
             const url = localStorage.getItem(USER_AVATAR_KEY) || '';
@@ -3332,11 +3408,33 @@
             scheduleUserStatsUpdate();
         }
         
+        // 当前选中的历史分类
+        let currentHistoryTab = 'all';
+        
         // 显示历史记录
         function toggleHistory() {
+            updateHistoryDisplay();
+            
+            const willOpen = historyPanel.classList.contains('translate-x-full');
+            if (willOpen) closePanelsExcept(historyPanel);
+            historyPanel.classList.toggle('translate-x-full');
+            updateOverlayForPanels();
+        }
+        
+        // 更新历史记录显示
+        function updateHistoryDisplay() {
             const history = JSON.parse(localStorage.getItem('videoPlayHistory') || '[]');
             
-            if (history.length === 0) {
+            // 根据当前tab过滤历史记录
+            let filteredHistory = history;
+            if (currentHistoryTab !== 'all') {
+                filteredHistory = history.filter(item => {
+                    const category = getOfficialCategoryByName(item.source) || '';
+                    return normalizeCategory(category) === currentHistoryTab;
+                });
+            }
+            
+            if (filteredHistory.length === 0) {
                 historyContent.innerHTML = `
                     <div class="text-center py-8 text-gray-500">
                         <i class="fa fa-history text-4xl mb-3"></i>
@@ -3344,16 +3442,17 @@
                     </div>
                 `;
             } else {
-                historyContent.innerHTML = history.map(item => {
+                historyContent.innerHTML = filteredHistory.map(item => {
                     const resumeFromStore = getResumeTimeForHistory(item);
                     const resumeFromHistory = Number(item.lastPosition || 0);
                     const resumeTime = resumeFromStore > 0 ? resumeFromStore : resumeFromHistory;
                     const resumeLabelText = resumeTime > 0 ? formatDuration(resumeTime) : '暂无';
                     const resumeLabel = resumeTime > 0 ? `上次播放: ${resumeLabelText}` : '';
+                    const category = normalizeCategory(getOfficialCategoryByName(item.source) || '');
                     return `
                     <div class="bg-white rounded-lg p-3 mb-3 shadow-sm">
                         <div class="flex space-x-3">
-                            <div class="w-20 h-12 rounded-md overflow-hidden bg-gray-200 flex-shrink-0 cursor-pointer" data-preview-group="history" data-preview-url="${item.pic || FALLBACK_IMAGE}" data-preview-title="${item.title || ''}" data-preview-video-url="${item.url || ''}" data-preview-source="${item.source || ''}" data-preview-category="${normalizeCategory(getOfficialCategoryByName(item.source) || '')}" onclick="openPreviewFromGroup(this)">
+                            <div class="w-20 h-12 rounded-md overflow-hidden bg-gray-200 flex-shrink-0 cursor-pointer" data-preview-group="history" data-preview-url="${item.pic || FALLBACK_IMAGE}" data-preview-title="${item.title || ''}" data-preview-video-url="${item.url || ''}" data-preview-source="${item.source || ''}" data-preview-category="${category}" onclick="openPreviewFromGroup(this)">
                                 ${
                                     item.pic
                                         ? `<img src="${item.pic}" alt="${item.title}" onerror="this.onerror=null;this.src='${FALLBACK_IMAGE}';" loading="lazy" class="w-full h-full object-cover">`
@@ -3361,10 +3460,15 @@
                                 }
                             </div>
                             <div class="flex-1 min-w-0">
-                                <h4 class="font-medium text-sm mb-2 line-clamp-1">
-                                    <span class="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded mr-1">${item.source || '未知来源'}</span>
-                                    ${item.title}
-                                </h4>
+                                <div class="flex items-center justify-between mb-2 flex-wrap">
+                                    <h4 class="font-medium text-sm line-clamp-1 flex-1 min-w-0">
+                                        <span class="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded mr-1">${item.source || '未知来源'}</span>
+                                        ${item.title}
+                                    </h4>
+                                    <span class="text-xs px-2 py-0.5 rounded ${category === 'adult' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'} flex-shrink-0 ml-2">
+                                        ${category === 'adult' ? '摩西' : '普通'}
+                                    </span>
+                                </div>
                                 ${item.episodeName ? `<div class="text-[11px] text-gray-500 mb-1">选集：${item.episodeName}</div>` : ''}
                                 <div class="flex flex-wrap items-center gap-2 text-xs text-gray-500">
                                     <span>播放次数: ${item.playCount}</span>
@@ -3391,17 +3495,98 @@
                 `;
                 }).join('');
             }
-            
-            const willOpen = historyPanel.classList.contains('translate-x-full');
-            if (willOpen) closePanelsExcept(historyPanel);
-            historyPanel.classList.toggle('translate-x-full');
-            updateOverlayForPanels();
         }
+        
+        // 切换历史分类Tab
+        function switchHistoryTab(tab) {
+            currentHistoryTab = tab;
+            
+            // 更新Tab样式
+            document.getElementById('historyTabAll').className = 'flex-1 px-4 py-2 text-center text-sm font-medium';
+            document.getElementById('historyTabAdult').className = 'flex-1 px-4 py-2 text-center text-sm font-medium';
+            document.getElementById('historyTabNormal').className = 'flex-1 px-4 py-2 text-center text-sm font-medium';
+            document.getElementById(`historyTab${tab.charAt(0).toUpperCase() + tab.slice(1)}`).className = 'flex-1 px-4 py-2 text-center text-sm font-medium bg-blue-100 text-blue-800';
+            
+            // 重新显示历史记录
+            updateHistoryDisplay();
+        }
+        
+        // 初始化历史面板Tab
+        function initHistoryTabs() {
+            // 设置默认选中为全部
+            document.getElementById('historyTabAll').className = 'flex-1 px-4 py-2 text-center text-sm font-medium bg-blue-100 text-blue-800';
+            document.getElementById('historyTabAdult').className = 'flex-1 px-4 py-2 text-center text-sm font-medium';
+            document.getElementById('historyTabNormal').className = 'flex-1 px-4 py-2 text-center text-sm font-medium';
+        }
+        
+        // 切换喜欢分类Tab
+        function switchFavoriteTab(tab) {
+            currentFavoriteTab = tab;
+            
+            // 更新Tab样式
+            document.getElementById('favoriteTabAll').className = 'flex-1 px-4 py-2 text-center text-sm font-medium';
+            document.getElementById('favoriteTabAdult').className = 'flex-1 px-4 py-2 text-center text-sm font-medium';
+            document.getElementById('favoriteTabNormal').className = 'flex-1 px-4 py-2 text-center text-sm font-medium';
+            document.getElementById(`favoriteTab${tab.charAt(0).toUpperCase() + tab.slice(1)}`).className = 'flex-1 px-4 py-2 text-center text-sm font-medium bg-blue-100 text-blue-800';
+            
+            // 重新显示喜欢内容
+            renderFavoriteContent(buildFavoriteStatusList());
+        }
+        
+        // 初始化喜欢面板Tab
+        function initFavoriteTabs() {
+            // 设置默认选中为全部
+            document.getElementById('favoriteTabAll').className = 'flex-1 px-4 py-2 text-center text-sm font-medium bg-blue-100 text-blue-800';
+            document.getElementById('favoriteTabAdult').className = 'flex-1 px-4 py-2 text-center text-sm font-medium';
+            document.getElementById('favoriteTabNormal').className = 'flex-1 px-4 py-2 text-center text-sm font-medium';
+        }
+        
+        // 分享功能
+        let currentShareTab = 'all';
+        
+        // 切换分享分类Tab
+        async function loadShareList() {
+            let remote = null;
+            if (!shareListLoaded) {
+                remote = await loadRemoteShares();
+            }
+            const shares = (remote || getShareList()).map(normalizeShareItem).filter(Boolean);
+            renderShareContent(shares);
+        }
+
+        async function switchShareTab(tab) {
+            currentShareTab = tab;
+            
+            // 更新Tab样式
+            document.getElementById('shareTabAll').className = 'flex-1 px-4 py-2 text-center text-sm font-medium';
+            document.getElementById('shareTabAdult').className = 'flex-1 px-4 py-2 text-center text-sm font-medium';
+            document.getElementById('shareTabNormal').className = 'flex-1 px-4 py-2 text-center text-sm font-medium';
+            document.getElementById(`shareTab${tab.charAt(0).toUpperCase() + tab.slice(1)}`).className = 'flex-1 px-4 py-2 text-center text-sm font-medium bg-blue-100 text-blue-800';
+            
+            // 重新显示分享内容
+            await loadShareList();
+        }
+        
+        // 初始化分享面板Tab
+        function initShareTabs() {
+            // 设置默认选中为全部
+            document.getElementById('shareTabAll').className = 'flex-1 px-4 py-2 text-center text-sm font-medium bg-blue-100 text-blue-800';
+            document.getElementById('shareTabAdult').className = 'flex-1 px-4 py-2 text-center text-sm font-medium';
+            document.getElementById('shareTabNormal').className = 'flex-1 px-4 py-2 text-center text-sm font-medium';
+        }
+        
+        // 页面加载完成后初始化
+        window.addEventListener('DOMContentLoaded', function() {
+            initHistoryTabs();
+            initFavoriteTabs();
+            initShareTabs();
+        });
 
         // 喜欢功能
         let favoritesCache = null;
         let favoritesLoadingPromise = null;
         const FAVORITES_REMOTE_LOADED_KEY = 'videoFavoritesRemoteLoaded';
+        let currentFavoriteTab = 'all';
 
         function getFavorites() {
             if (Array.isArray(favoritesCache)) return favoritesCache;
@@ -3567,7 +3752,17 @@
 
         function renderFavoriteContent(list) {
             const favorites = Array.isArray(list) ? list : [];
-            if (favorites.length === 0) {
+            
+            // 根据当前tab过滤喜欢内容
+            let filteredFavorites = favorites;
+            if (currentFavoriteTab !== 'all') {
+                filteredFavorites = favorites.filter(item => {
+                    const category = getOfficialCategoryByName(item.source) || '';
+                    return normalizeCategory(category) === currentFavoriteTab;
+                });
+            }
+            
+            if (filteredFavorites.length === 0) {
                 favoriteContent.innerHTML = `
                     <div class="text-center py-8 text-gray-500">
                         <i class="fa fa-heart text-4xl mb-3"></i>
@@ -3576,7 +3771,9 @@
                 `;
                 return;
             }
-            favoriteContent.innerHTML = favorites.map(item => `
+            favoriteContent.innerHTML = filteredFavorites.map(item => {
+                const category = normalizeCategory(getOfficialCategoryByName(item.source) || '');
+                return `
                 <div class="bg-white rounded-lg p-3 mb-3 shadow-sm">
                     <div class="flex space-x-3">
                         <div class="w-20 h-12 rounded-md overflow-hidden bg-gray-200 flex-shrink-0 cursor-pointer" data-preview-group="favorite" data-preview-url="${item.pic || FALLBACK_IMAGE}" data-preview-title="${item.title || ''}" data-preview-video-url="${item.url || ''}" data-preview-source="${item.source || ''}" onclick="openPreviewFromGroup(this)">
@@ -3587,11 +3784,16 @@
                             }
                         </div>
                         <div class="flex-1 min-w-0">
-                            <h4 class="font-medium text-sm mb-2 line-clamp-1">
-                                <span class="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded mr-1">${item.source || '未知来源'}</span>
-                                <span class="mr-1">${item._status === 'both' ? '🟢' : (item._status === 'local' ? '🔴' : '🟡')}</span>
-                                ${item.title}
-                            </h4>
+                            <div class="flex items-center justify-between mb-2 flex-wrap">
+                                <h4 class="font-medium text-sm line-clamp-1 flex-1 min-w-0">
+                                    <span class="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded mr-1">${item.source || '未知来源'}</span>
+                                    <span class="mr-1">${item._status === 'both' ? '🟢' : (item._status === 'local' ? '🔴' : '🟡')}</span>
+                                    ${item.title}
+                                </h4>
+                                <span class="text-xs px-2 py-0.5 rounded ${category === 'adult' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'} flex-shrink-0 ml-2">
+                                    ${category === 'adult' ? '摩西' : '普通'}
+                                </span>
+                            </div>
                             <div class="text-xs text-gray-500">
                                 <span>收藏时间: ${formatDate(item.timestamp)}</span>
                             </div>
@@ -3612,7 +3814,8 @@
                         </button>
                     </div>
                 </div>
-            `).join('');
+            `;
+            }).join('');
         }
 
         async function toggleFavorites() {
@@ -5337,7 +5540,7 @@
             const token = getUserToken ? getUserToken() : '';
             if (!token) return null;
             try {
-                const res = await fetch('/api/user/shares', {
+                const res = await fetch('/api/shares', {
                         headers: { Authorization: `Bearer ${token}` }
                     });
                 const data = await res.json();
@@ -5435,7 +5638,7 @@
             }
             const token = getUserToken ? getUserToken() : '';
             if (token && !options.skipRemote) {
-                fetch('/api/user/shares', {
+                fetch('/api/share', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                     body: JSON.stringify({
@@ -5621,7 +5824,7 @@
             const token = getUserToken ? getUserToken() : '';
             if (!token) return '';
             try {
-                const res = await fetch('/api/user/shares', {
+                const res = await fetch('/api/share', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                     body: JSON.stringify(payload)
@@ -6059,13 +6262,23 @@
         function renderShareContent(list) {
             if (!shareContent) return;
             const shares = Array.isArray(list) ? list.map(normalizeShareItem).filter(Boolean) : [];
-            shares.sort((a, b) => {
+            
+            // 根据当前tab过滤分享内容
+            let filteredShares = shares;
+            if (currentShareTab !== 'all') {
+                filteredShares = shares.filter(item => {
+                    const category = getOfficialCategoryByName(item.source) || '';
+                    return normalizeCategory(category) === currentShareTab;
+                });
+            }
+            
+            filteredShares.sort((a, b) => {
                 const aLast = Number(a.lastViewAt || 0);
                 const bLast = Number(b.lastViewAt || 0);
                 if (bLast !== aLast) return bLast - aLast;
                 return Number(b.createdAt || 0) - Number(a.createdAt || 0);
             });
-            if (shares.length === 0) {
+            if (filteredShares.length === 0) {
                 shareContent.innerHTML = `
                     <div class="text-center py-8 text-gray-500">
                         <i class="fa fa-share-alt text-4xl mb-3"></i>
@@ -6074,7 +6287,7 @@
                 `;
                 return;
             }
-            shareContent.innerHTML = shares.map(item => {
+            shareContent.innerHTML = filteredShares.map(item => {
                 const statusText = getShareExpireLabel(item.expiresAt);
                 const statusClass = statusText === '已过期' ? 'text-red-500' : 'text-gray-500';
                 return `
@@ -6180,7 +6393,7 @@
             showToast('已更新分享有效期');
             const token = getUserToken ? getUserToken() : '';
             if (token) {
-                fetch(`/api/user/shares/${encodeURIComponent(id)}`, {
+                fetch(`/api/shares/${encodeURIComponent(id)}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                     body: JSON.stringify({ expireSeconds: expireSeconds })
@@ -6211,7 +6424,7 @@
             showToast('已取消分享');
             const token = getUserToken ? getUserToken() : '';
             if (token) {
-                fetch(`/api/user/shares/${encodeURIComponent(id)}`, {
+                fetch(`/api/shares/${encodeURIComponent(id)}`, {
                     method: 'DELETE',
                     headers: { Authorization: `Bearer ${token}` }
                 }).catch(() => {});

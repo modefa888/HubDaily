@@ -94,7 +94,7 @@
                 <div id="shareSource">来源：-</div>
                 <div id="shareCountdown" class="text-xs text-slate-400">有效期：-</div>
             </div>
-            <div class="text-xl font-semibold mb-3" id="shareTitle">加载中...</div>
+            <div class="text-xl font-semibold mb-3" id="playerTitle">加载中...</div>
             <div class="w-full aspect-video rounded-lg overflow-hidden bg-black">
                 <div id="dplayer" class="w-full h-full"></div>
             </div>
@@ -108,8 +108,10 @@
             <div class="flex items-start space-x-4">
                 <img id="sharePoster" src="../loading.gif" alt="poster" class="w-28 h-16 rounded-md object-cover bg-slate-800">
                 <div class="flex-1 min-w-0">
-                    <div class="text-xs text-slate-400 mb-1">视频地址</div>
-                    <div id="shareUrl" class="text-xs text-slate-200 break-all">-</div>
+                    <div class="text-xs text-slate-400 mb-1">视频标题</div>
+                    <div id="shareTitle" class="text-sm font-medium text-white mb-2 break-all">-</div>
+                    <div class="text-xs text-slate-400 mb-1">视频介绍</div>
+                    <div id="shareDescription" class="text-xs text-slate-200 break-all">-</div>
                 </div>
             </div>
         </div>
@@ -335,9 +337,10 @@
         }
 
         function initPlayer(payload) {
-            const titleEl = document.getElementById('shareTitle');
+            const titleEl = document.getElementById('playerTitle');
             const sourceEl = document.getElementById('shareSource');
-            const urlEl = document.getElementById('shareUrl');
+            const shareTitleEl = document.getElementById('shareTitle');
+            const shareDescEl = document.getElementById('shareDescription');
             const posterEl = document.getElementById('sharePoster');
             const episodePanel = document.getElementById('episodePanel');
             const episodeList = document.getElementById('episodeList');
@@ -356,7 +359,8 @@
 
             if (titleEl) titleEl.textContent = initialTitle;
             if (sourceEl) sourceEl.textContent = `来源：${payload.source || '未知来源'}`;
-            if (urlEl) urlEl.textContent = payload.url;
+            if (shareTitleEl) shareTitleEl.textContent = payload.title || '未知标题';
+            if (shareDescEl) shareDescEl.textContent = payload.desc || payload.description || '暂无介绍';
             if (posterEl) {
                 posterEl.src = payload.pic || '../loading.gif';
                 posterEl.onerror = () => {

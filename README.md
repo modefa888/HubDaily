@@ -44,9 +44,9 @@ HubDaily 是一个基于 Node.js 的综合性 API 聚合服务中心，集成热
 | 英雄联盟     | 更新公告 | lol                   | 🟢 |
 | 原神         | 最新消息 | genshin               | 🟠 |
 | 微信读书     | 飙升榜   | weread                | 🟢 |
-| 快手         | 热榜     | kuaishou              | 🟠 |
-| 网易云音乐   | 排行榜   | netease_music_toplist | 🟠 |
-| QQ音乐       | 排行榜   | qq_music_toplist      | 🟠 |
+| 快手         | 热榜     | kuaishou              | 🟢 |
+| 网易云音乐   | 排行榜   | netease_music_toplist | 🟢 |
+| QQ音乐       | 排行榜   | qq_music_toplist      | 🟢 |
 | NGA          | 热帖     | ngabbs                | 🟢 |
 | Github       | Trending | github                | ❌ |
 | V2EX         | 热榜     | v2ex                  | ❌ |

@@ -20,6 +20,16 @@ let updateTime = new Date().toISOString();
 // 调用路径
 const url = "https://weibo.com/ajax/side/hotSearch";
 
+// 请求头
+const headers = {
+  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  "accept": "application/json, text/plain, */*",
+  "accept-language": "zh-CN,zh;q=0.9,en;q=0.8",
+  "authority": "weibo.com",
+  "referer": "https://weibo.com/",
+  "x-requested-with": "XMLHttpRequest"
+};
+
 // 数据处理
 const getData = (data) => {
   if (!data) return [];
@@ -49,7 +59,7 @@ weiboRouter.get("/weibo", async (ctx) => {
       // 如果缓存中不存在数据
       console.log("从服务端重新获取微博热搜");
       // 从服务器拉取数据
-      const response = await axios.get(url);
+      const response = await axios.get(url, { headers });
       data = getData(response.data.data.realtime);
       updateTime = new Date().toISOString();
       if (!data) {
@@ -87,7 +97,7 @@ weiboRouter.get("/weibo/new", async (ctx) => {
   console.log("获取微博热搜 - 最新数据");
   try {
     // 从服务器拉取最新数据
-    const response = await axios.get(url);
+    const response = await axios.get(url, { headers });
     const newData = getData(response.data.data.realtime);
     updateTime = new Date().toISOString();
     console.log("从服务端重新获取微博热搜");

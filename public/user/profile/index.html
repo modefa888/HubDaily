@@ -693,7 +693,7 @@
             fetchJson("/api/user/profile"),
             fetchJson("/api/user/favorites"),
             fetchJson("/api/article/favorites"),
-            fetchJson("/api/user/shares"),
+            fetchJson("/api/shares"),
           ]);
           renderProfile(profileRes.data || {});
           renderFavorites(favoritesRes.data || []);
@@ -1037,7 +1037,7 @@
               toast("已删除喜欢");
             } else if (deleteShareId) {
               // 删除分享
-              const res = await fetch(`/api/user/shares/${encodeURIComponent(deleteShareId)}`, {
+              const res = await fetch(`/api/shares/${encodeURIComponent(deleteShareId)}`, {
                 method: "DELETE",
                 headers: { "Content-Type": "application/json", ...authHeaders() },
               });
@@ -1155,7 +1155,7 @@
           }
           try {
             setButtonLoading(confirmRenewBtn, true, "续签中...");
-            const res = await fetch(`/api/user/shares/${encodeURIComponent(renewTarget)}`, {
+            const res = await fetch(`/api/shares/${encodeURIComponent(renewTarget)}`, {
               method: "PUT",
               headers: { "Content-Type": "application/json", ...authHeaders() },
               body: JSON.stringify({ expireSeconds }),
@@ -1307,7 +1307,7 @@
                 renderArticleFavorites(articleFavoritesRes.data || []);
                 break;
               case "shares":
-                const sharesRes = await fetchJson("/api/user/shares");
+                const sharesRes = await fetchJson("/api/shares");
                 renderShares(sharesRes.data || []);
                 bindPlayButtons();
                 bindDeleteButtons();

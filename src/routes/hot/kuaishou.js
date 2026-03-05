@@ -26,6 +26,15 @@ let updateTime = new Date().toISOString();
 // 调用路径
 const url = "https://www.kuaishou.com/?isHome=1";
 
+// 请求头
+const headers = {
+  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+  "accept-language": "zh-CN,zh;q=0.9,en;q=0.8",
+  "authority": "www.kuaishou.com",
+  "upgrade-insecure-requests": "1"
+};
+
 // Unicode 解码
 const decodedString = (encodedString) => {
   return encodedString.replace(/\\u([\d\w]{4})/gi, (match, grp) =>
@@ -77,7 +86,7 @@ kuaishouRouter.get("/kuaishou", async (ctx) => {
       // 如果缓存中不存在数据
       console.log("从服务端重新获取快手热榜");
       // 从服务器拉取数据
-      const response = await axios.get(url);
+      const response = await axios.get(url, { headers });
       data = getData(response.data);
       updateTime = new Date().toISOString();
       if (!data) {
@@ -115,7 +124,7 @@ kuaishouRouter.get("/kuaishou/new", async (ctx) => {
   console.log("获取快手热榜 - 最新数据");
   try {
     // 从服务器拉取最新数据
-    const response = await axios.get(url);
+    const response = await axios.get(url, { headers });
     const newData = getData(response.data);
     updateTime = new Date().toISOString();
     console.log("从服务端重新获取快手热榜");

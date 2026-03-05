@@ -36,29 +36,26 @@ const getData = (data) => {
   const dataList = [];
   const $ = cheerio.load(data);
   try {
-    $(".rank-name").each(() => {
+    $(".rank-name").each(function() {
       const type = $(this).data("rank-type");
+      const typeText = $(this).text();
       const newListHtml = $(this).next(".rank-box").html();
-      cheerio
-        .load(newListHtml)(".placeholder")
-        .get()
-        .map((v) => {
+      if (newListHtml) {
+        const $list = cheerio.load(newListHtml);
+        $list(".placeholder").each(function() {
+          const v = this;
           dataList.push({
-            title: $(v).find(".plc-title").text(),
-            img: $(v).find("img").attr("data-original"),
-            time: $(v).find(".post-time").text(),
-            type: $(this).text(),
+            title: $list(v).find(".plc-title").text(),
+            img: $list(v).find("img").attr("data-original"),
+            time: $list(v).find(".post-time").text(),
+            type: typeText,
             typeName: type,
-            hot: Number($(v).find(".review-num").text().replace(/\D/g, "")),
-            url: replaceLink($(v).find("a").attr("href")),
-            mobileUrl: $(v).find("a").attr("href"),
+            hot: Number($list(v).find(".review-num").text().replace(/\D/g, "")),
+            url: replaceLink($list(v).find("a").attr("href")),
+            mobileUrl: $list(v).find("a").attr("href"),
           });
         });
-      // dataList[type] = {
-      //   name: $(this).text(),
-      //   total: newsList.length,
-      //   list: newsList,
-      // };
+      }
     });
     return dataList;
   } catch (error) {
