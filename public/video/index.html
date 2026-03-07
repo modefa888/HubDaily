@@ -523,7 +523,7 @@
                     ></textarea>
                 </div>
                 <div>
-                    <a href="/profile/index.html" class="btn-primary w-full text-center text-sm">
+                    <a href="/user/profile/index.html" class="btn-primary w-full text-center text-sm">
                         <i class="fa fa-user mr-1"></i> 进入个人中心
                     </a>
                     <p class="text-xs text-gray-500 mt-2">查看账号信息、喜欢与分享列表</p>
@@ -1720,12 +1720,12 @@
                     if (target.value === 'custom') {
                         setShareEpisodeChecks(false);
                     }
-                    setShareConfirmState('ready');
+                    setShareConfirmState('ready', isShareEditing);
                     currentShareUrl = '';
                     return;
                 }
                 if (target.closest('#shareEpisodeList')) {
-                    setShareConfirmState('ready');
+                    setShareConfirmState('ready', isShareEditing);
                     currentShareUrl = '';
                 }
             });
@@ -2255,7 +2255,7 @@
                                     <i class="fa ${favorited ? 'fa-heart' : 'fa-heart-o'} ${isNormal ? '' : 'mr-1'}"></i><span class="${isNormal ? 'hidden sm:inline' : ''} ${isNormal ? 'sm:ml-1' : ''}">喜欢</span>
                                 </button>
                                 <button 
-                                    onclick="shareVideo('${video.vod_play_url}', '${video.vod_name}', '${video.vod_pic}', '${sourceLabel}', 0)"
+                                    onclick="shareVideo('${video.vod_play_url}', '${video.vod_name}', '${video.vod_pic}', '${sourceLabel}', 0, '${cleanText(video.vod_content)}', '${classText}', '${actorText}', '${video.vod_year || ''}', '${video.vod_remarks || ''}')"
                                     class="${actionClass} text-gray-500 hover:text-blue-500"
                                     title="分享视频"
                                 >
@@ -3666,17 +3666,19 @@
         }
 
         function isFavorited(videoUrl) {
-            const realVideoUrl = videoUrl.split('$')[1] || videoUrl;
+            // 检查完整的URL，不进行分割
+            const fullVideoUrl = videoUrl;
             const favorites = getFavorites();
-            return favorites.some(item => item.url === realVideoUrl);
+            return favorites.some(item => item.url === fullVideoUrl);
         }
 
         async function toggleFavorite(title, videoUrl, pic, buttonEl, sourceLabel = '') {
-            const realVideoUrl = videoUrl.split('$')[1] || videoUrl;
             const token = getUserToken ? getUserToken() : '';
             ensureFavoritesCacheImmediate();
             const favorites = getFavorites();
-            const existingIndex = favorites.findIndex(item => item.url === realVideoUrl);
+            // 保存完整的URL，不进行分割
+            const fullVideoUrl = videoUrl;
+            const existingIndex = favorites.findIndex(item => item.url === fullVideoUrl);
             
             if (existingIndex >= 0) {
                 favorites.splice(existingIndex, 1);
@@ -3688,14 +3690,14 @@
                     fetch('/api/user/favorites', {
                         method: 'DELETE',
                         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                        body: JSON.stringify({ url: realVideoUrl })
+                        body: JSON.stringify({ url: fullVideoUrl })
                     }).catch(() => {});
                 }
             } else {
                 const source = sourceLabel || getHostLabel();
                 const item = {
                     title,
-                    url: realVideoUrl,
+                    url: fullVideoUrl,
                     pic: pic || '',
                     source: source || '',
                     timestamp: Date.now()
@@ -3717,7 +3719,7 @@
                         try {
                             if (!Array.isArray(favoritesCache)) {
                                 await loadFavorites();
-                            } else if (!favoritesCache.some(f => f && f.url === realVideoUrl)) {
+                            } else if (!favoritesCache.some(f => f && f.url === fullVideoUrl)) {
                                 favoritesCache.unshift(item);
                                 if (favoritesCache.length > 100) favoritesCache.splice(100);
                             }
@@ -5540,14 +5542,16 @@
             const token = getUserToken ? getUserToken() : '';
             if (!token) return null;
             try {
-                const res = await fetch('/api/shares', {
+                const res = await fetch('/api/user/shares', {
                         headers: { Authorization: `Bearer ${token}` }
                     });
                 const data = await res.json();
                 if (data && data.code === 200 && Array.isArray(data.data)) {
                     const mapped = data.data.map(item => ({
                         id: item.shareId,
+                        shareId: item.shareId,
                         url: item.url,
+                        allEpisodesUrl: item.allEpisodesUrl || item.url,
                         title: item.title,
                         pic: item.pic || '',
                         source: item.source || '',
@@ -5581,7 +5585,22 @@
         }
 
         function getShareId(url, title, source = '') {
-            return `s_${base64Url(`${title || ''}|${source || ''}`)}`;
+            // 使用 URL 和标题生成一个唯一的哈希值，然后转换为简短的字符串
+            const combined = `${url || ''}|${title || ''}|${source || ''}`;
+            let hash = 0;
+            for (let i = 0; i < combined.length; i++) {
+                const char = combined.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash; // 转换为32位整数
+            }
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            let result = 's_';
+            let n = Math.abs(hash);
+            for (let i = 0; i < 18; i++) {
+                result += chars.charAt(n % chars.length);
+                n = Math.floor(n / chars.length);
+            }
+            return result;
         }
 
         function normalizeShareItem(item) {
@@ -5591,7 +5610,9 @@
             const title = String(item.title || '未命名').trim();
             const pic = String(item.pic || '').trim();
             const source = String(item.source || '').trim();
-            const id = item.id || getShareId(url, title, source);
+            const allEpisodesUrl = String(item.allEpisodesUrl || url || '').trim();
+            // 优先使用 shareId 作为唯一标识，因为后端使用 shareId 查询
+            const id = item.shareId || item.id || getShareId(url, title, source);
             const createdAt = Number(item.createdAt || item.timestamp || Date.now());
             const expireSeconds = Number.isFinite(item.expireSeconds) ? item.expireSeconds : 0;
             const expiresAt = Number.isFinite(item.expiresAt)
@@ -5604,7 +5625,9 @@
             const shareUrl = item.shareUrl || buildShareUrl(url, title, pic, source, expireSeconds, id);
             return {
                 id,
+                shareId: item.shareId || id,
                 url,
+                allEpisodesUrl,
                 title,
                 pic,
                 source,
@@ -5622,13 +5645,17 @@
             const item = normalizeShareItem(payload);
             if (!item) return;
             let list = getShareList().map(normalizeShareItem).filter(Boolean);
-            list = list.filter(entry => entry.id !== item.id && entry.url !== item.url);
-            const index = list.findIndex(entry => entry.id === item.id);
-            if (index >= 0) {
-                list[index] = { ...list[index], ...item, updatedAt: Date.now() };
+            
+            // 查找是否已存在相同ID的分享
+            const existingIndex = list.findIndex(entry => entry.id === item.id);
+            if (existingIndex >= 0) {
+                // 更新现有分享
+                list[existingIndex] = { ...list[existingIndex], ...item, updatedAt: Date.now() };
             } else {
+                // 添加新分享
                 list.unshift({ ...item, updatedAt: Date.now() });
             }
+            
             if (list.length > SHARE_LIST_MAX) {
                 list.splice(SHARE_LIST_MAX);
             }
@@ -5638,7 +5665,7 @@
             }
             const token = getUserToken ? getUserToken() : '';
             if (token && !options.skipRemote) {
-                fetch('/api/share', {
+                fetch('/api/user/share', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                     body: JSON.stringify({
@@ -5690,20 +5717,20 @@
             }
         }
 
-        function setShareConfirmState(state) {
+        function setShareConfirmState(state, isEditMode = false) {
             if (!shareConfirmButton) return;
             if (state === 'ready') {
                 shareConfirmButton.disabled = false;
                 shareConfirmButton.classList.remove('opacity-60');
-                shareConfirmButton.innerHTML = '<i class="fa fa-check mr-1"></i> 确认生成分享';
+                shareConfirmButton.innerHTML = `<i class="fa fa-check mr-1"></i> ${isEditMode ? '确认修改' : '确认生成分享'}`;
             } else if (state === 'done') {
-                shareConfirmButton.disabled = true;
-                shareConfirmButton.classList.add('opacity-60');
-                shareConfirmButton.innerHTML = '<i class="fa fa-check mr-1"></i> 已生成';
+                shareConfirmButton.disabled = false;
+                shareConfirmButton.classList.remove('opacity-60');
+                shareConfirmButton.innerHTML = `<i class="fa fa-check mr-1"></i> ${isEditMode ? '确认修改' : '确认生成分享'}`;
             } else if (state === 'loading') {
                 shareConfirmButton.disabled = true;
                 shareConfirmButton.classList.add('opacity-60');
-                shareConfirmButton.innerHTML = '<i class="fa fa-spinner fa-spin mr-1"></i> 生成中...';
+                shareConfirmButton.innerHTML = `<i class="fa fa-spinner fa-spin mr-1"></i> ${isEditMode ? '修改中...' : '生成中...'}`;
             }
         }
 
@@ -5790,12 +5817,20 @@
 
         function openShareModal(shareUrl) {
             if (!shareModal) return;
-            currentShareUrl = shareUrl;
+            currentShareUrl = shareUrl === 'edit' ? '' : shareUrl;
             shareModal.classList.remove('hidden');
             shareModal.classList.add('flex');
+            
+            // 根据是否为编辑模式更新标题和按钮文本
+            const isEditMode = shareUrl === 'edit';
+            const titleElement = shareModal.querySelector('h3');
+            if (titleElement) {
+                titleElement.textContent = isEditMode ? '修改分享视频' : '分享视频';
+            }
+            
             setShareCopyLabel(currentShareUrl ? '点击复制地址' : '生成分享链接');
-            setShareConfirmState(currentShareUrl ? 'done' : 'ready');
-            showToast('分享面板已打开');
+            setShareConfirmState(currentShareUrl ? 'done' : 'ready', isEditMode);
+            showToast(isEditMode ? '修改面板已打开' : '分享面板已打开');
         }
 
         function closeShareModal() {
@@ -5824,7 +5859,7 @@
             const token = getUserToken ? getUserToken() : '';
             if (!token) return '';
             try {
-                const res = await fetch('/api/share', {
+                const res = await fetch('/api/user/share', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                     body: JSON.stringify(payload)
@@ -5834,7 +5869,7 @@
                     return String(data.data.shareId);
                 }
             } catch (e) {
-                // ignore
+                console.error('创建短链接失败:', e);
             }
             return '';
         }
@@ -5854,37 +5889,51 @@
             const title = singleEp && singleEp.name && shouldAppendEpisode
                 ? (baseTitle ? `${baseTitle} ${singleEp.name}` : singleEp.name)
                 : baseTitle || '分享视频';
-            setShareConfirmState('loading');
+            setShareConfirmState('loading', isShareEditing);
             const shareId = currentShareId || getShareId(url, title, currentSharePayload.source || '');
             const shortId = await createShortShare({
                 shareId,
                 url,
+                allEpisodesUrl: currentSharePayload.allEpisodesUrl || currentSharePayload.url,
                 title,
                 pic: currentSharePayload.pic || '',
                 source: currentSharePayload.source || '',
+                desc: currentSharePayload.desc || '',
+                class: currentSharePayload.class || '',
+                actor: currentSharePayload.actor || '',
+                year: currentSharePayload.year || '',
+                remarks: currentSharePayload.remarks || '',
                 expireSeconds,
                 expiresAt: expireSeconds > 0 ? Date.now() + expireSeconds * 1000 : 0
             });
             if (!shortId) {
                 showToast('生成短链失败，请稍后重试');
-                setShareConfirmState('ready');
+                setShareConfirmState('ready', isShareEditing);
                 return false;
             }
-            currentShareId = shortId;
-            currentShareUrl = buildShareUrl(url, title, currentSharePayload.pic || '', currentSharePayload.source || '', expireSeconds, shortId);
+            // 在编辑模式下，保持原来的分享ID不变
+            const finalShareId = isShareEditing ? currentShareId : shortId;
+            currentShareId = finalShareId;
+            currentShareUrl = buildShareUrl(url, title, currentSharePayload.pic || '', currentSharePayload.source || '', expireSeconds, finalShareId);
             saveShareItem({
-                id: currentShareId,
+                id: finalShareId,
                 url,
+                allEpisodesUrl: currentSharePayload.allEpisodesUrl || currentSharePayload.url,
                 title,
                 pic: currentSharePayload.pic || '',
                 source: currentSharePayload.source || '',
+                desc: currentSharePayload.desc || '',
+                class: currentSharePayload.class || '',
+                actor: currentSharePayload.actor || '',
+                year: currentSharePayload.year || '',
+                remarks: currentSharePayload.remarks || '',
                 expireSeconds,
                 expiresAt: expireSeconds > 0 ? Date.now() + expireSeconds * 1000 : 0,
                 shareUrl: currentShareUrl,
                 createdAt: Date.now()
             }, { skipRemote: true });
             setShareCopyLabel('点击复制地址');
-            setShareConfirmState('done');
+            setShareConfirmState('done', isShareEditing);
             return true;
         }
 
@@ -5896,8 +5945,9 @@
             await createShareFromSelection();
         }
 
-        async function shareVideo(videoUrl, videoTitle, videoPic = '', sourceLabel = '', currentIndex = 0) {
-            const realVideoUrl = videoUrl.split('$')[1] || videoUrl;
+        async function shareVideo(videoUrl, videoTitle, videoPic = '', sourceLabel = '', currentIndex = 0, videoDesc = '', videoClass = '', videoActor = '', videoYear = '', videoRemarks = '') {
+            // 保存完整的URL，不进行分割
+            const fullVideoUrl = videoUrl;
             const expireSeconds = getShareExpireSeconds();
             const token = getUserToken ? getUserToken() : '';
             if (!token) {
@@ -5906,10 +5956,16 @@
                 return;
             }
             currentSharePayload = {
-                url: realVideoUrl,
+                url: fullVideoUrl,
+                allEpisodesUrl: fullVideoUrl, // 保存全部集数的原始URL
                 title: videoTitle,
                 pic: videoPic || '',
-                source: sourceLabel || ''
+                source: sourceLabel || '',
+                desc: videoDesc || '',
+                class: videoClass || '',
+                actor: videoActor || '',
+                year: videoYear || '',
+                remarks: videoRemarks || ''
             };
             const episodes = parsePlayUrls(videoUrl);
             prepareShareSelection(episodes, currentIndex);
@@ -5944,11 +6000,12 @@
             }
             currentSharePayload = {
                 url: item.url,
+                allEpisodesUrl: item.allEpisodesUrl || item.url,
                 title: item.title,
                 pic: item.pic || '',
                 source: item.source || ''
             };
-            currentShareId = item.id;
+            currentShareId = item.shareId || item.id;
             currentShareUrl = '';
             isShareEditing = true;
             if (shareExpireSelect) {
@@ -5957,13 +6014,29 @@
                     opt.selected = opt.value === value;
                 });
             }
-            const episodes = parsePlayUrls(item.url);
+            // 使用 allEpisodesUrl 解析集数，这样可以看到所有集数
+            const episodes = parsePlayUrls(item.allEpisodesUrl || item.url);
             prepareShareSelection(episodes, 0);
             if (episodes.length > 1) {
                 setShareMode('custom');
-                setShareEpisodeChecks(true);
+                // 解析 item.url 来获取之前选择的集数
+                const selectedEpisodes = parsePlayUrls(item.url);
+                // 重置所有复选框为未勾选
+                setShareEpisodeChecks(false);
+                // 只勾选之前选择的集数
+                if (shareEpisodeList) {
+                    const checks = Array.from(shareEpisodeList.querySelectorAll('input[type="checkbox"]'));
+                    checks.forEach((check, index) => {
+                        const episode = episodes[index];
+                        if (episode) {
+                            // 检查当前集数是否在之前选择的集数中
+                            const isSelected = selectedEpisodes.some(ep => ep.url === episode.url);
+                            check.checked = isSelected;
+                        }
+                    });
+                }
             }
-            openShareModal('');
+            openShareModal('edit');
         }
 
         // 播放器内分享当前视频
@@ -5978,33 +6051,34 @@
 
         // 播放器内喜欢/取消喜欢
         async function toggleCurrentVideoFavorite() {
-            if (!currentVideoUrl) {
+            const fullVideoUrl = currentVideoRawUrl || currentVideoUrl;
+            if (!fullVideoUrl) {
                 showToast('暂无可操作的视频');
                 return;
             }
             const token = getUserToken ? getUserToken() : '';
             ensureFavoritesCacheImmediate();
             const favorites = getFavorites();
-            const existingIndex = favorites.findIndex(item => item.url === currentVideoUrl);
+            const existingIndex = favorites.findIndex(item => item.url === fullVideoUrl);
 
             if (existingIndex >= 0) {
                 favorites.splice(existingIndex, 1);
                 setFavoritesCache(favorites);
                 showToast('已取消喜欢');
                 updatePlayerLikeButtons(false);
-                updateCardFavoriteByUrl(currentVideoUrl, false);
+                updateCardFavoriteByUrl(fullVideoUrl, false);
                 if (token) {
                     fetch('/api/user/favorites', {
                         method: 'DELETE',
                         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                        body: JSON.stringify({ url: currentVideoUrl })
+                        body: JSON.stringify({ url: fullVideoUrl })
                     }).catch(() => {});
                 }
             } else {
                 const source = currentVideoSource || getHostLabel();
                 const item = {
                     title: currentVideoTitle || '视频播放',
-                    url: currentVideoUrl,
+                    url: fullVideoUrl,
                     pic: currentVideoPic || '',
                     source: source || '',
                     timestamp: Date.now()
@@ -6016,7 +6090,7 @@
                 setFavoritesCache(favorites);
                 showToast('已加入喜欢');
                 updatePlayerLikeButtons(true);
-                updateCardFavoriteByUrl(currentVideoUrl, true);
+                updateCardFavoriteByUrl(fullVideoUrl, true);
                 if (token) {
                     fetch('/api/user/favorites', {
                         method: 'POST',
@@ -6029,14 +6103,13 @@
 
         function updateCardFavoriteByUrl(rawUrl, isLiked) {
             if (!rawUrl) return;
-            const realUrl = rawUrl.split('$')[1] || rawUrl;
+            // 比较完整的URL，不进行分割
             const cards = document.querySelectorAll('.video-card');
             cards.forEach(card => {
                 if (!card) return;
                 const cardUrl = card.getAttribute('data-video-url');
                 if (!cardUrl) return;
-                const normalized = cardUrl.split('$')[1] || cardUrl;
-                if (normalized !== realUrl) return;
+                if (cardUrl !== rawUrl) return;
                 const btn = card.querySelector('[data-action="favorite"]');
                 if (btn) updateFavoriteButton(btn, isLiked);
             });
@@ -6307,6 +6380,7 @@
                                 </h4>
                                 <div class="flex flex-wrap items-center gap-2 text-xs text-gray-500">
                                     <span>分享时间: ${formatDate(item.createdAt)}</span>
+                                    <span>更新时间: ${item.updatedAt ? formatDate(item.updatedAt) : '-'}</span>
                                     <span>查看次数: ${Number.isFinite(item.viewCount) ? item.viewCount : 0}</span>
                                     <span>最近查看: ${item.lastViewAt ? formatDate(item.lastViewAt) : '-'}</span>
                                     <span class="${statusClass}">${statusText}</span>
@@ -6378,7 +6452,7 @@
             renderShareContent(shares);
         }
 
-        function updateShareExpire(id, seconds) {
+        async function updateShareExpire(id, seconds) {
             const list = getShareList().map(normalizeShareItem).filter(Boolean);
             const target = list.find(item => item.id === id);
             if (!target) return;
@@ -6390,14 +6464,28 @@
             target.updatedAt = now;
             setShareList(list);
             renderShareContent(list);
-            showToast('已更新分享有效期');
+            
+            // 立即更新到后端
             const token = getUserToken ? getUserToken() : '';
             if (token) {
-                fetch(`/api/shares/${encodeURIComponent(id)}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                    body: JSON.stringify({ expireSeconds: expireSeconds })
-                }).catch(() => {});
+                try {
+                    const res = await fetch(`/api/user/shares/${target.id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                        body: JSON.stringify({ expireSeconds: target.expireSeconds })
+                    });
+                    
+                    const data = await res.json();
+                    if (data && data.code === 200) {
+                        showToast('分享有效期已成功更新');
+                    } else {
+                        showToast('更新失败，请重试');
+                    }
+                } catch (err) {
+                    showToast('网络错误，请稍后重试');
+                }
+            } else {
+                showToast('请先登录');
             }
         }
 
@@ -6424,7 +6512,7 @@
             showToast('已取消分享');
             const token = getUserToken ? getUserToken() : '';
             if (token) {
-                fetch(`/api/shares/${encodeURIComponent(id)}`, {
+                fetch(`/api/user/shares/${encodeURIComponent(id)}`, {
                     method: 'DELETE',
                     headers: { Authorization: `Bearer ${token}` }
                 }).catch(() => {});

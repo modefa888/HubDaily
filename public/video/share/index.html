@@ -40,7 +40,8 @@
                 radial-gradient(circle at 80% 20%, rgba(14, 116, 144, 0.08), transparent 40%),
                 radial-gradient(circle at 50% 100%, rgba(148, 163, 184, 0.35), transparent 55%);
         }
-        body.light-mode .bg-slate-900\/70 {
+        body.light-mode .bg-slate-900\/70,
+        body.light-mode .bg-slate-800\/60 {
             background-color: rgba(226, 232, 240, 0.7);
         }
         body.light-mode .text-white {
@@ -106,13 +107,35 @@
 
         <div class="bg-slate-900/70 rounded-xl p-4">
             <div class="flex items-start space-x-4">
-                <img id="sharePoster" src="../loading.gif" alt="poster" class="w-28 h-16 rounded-md object-cover bg-slate-800">
+                <img id="sharePoster" src="../loading.gif" alt="poster" class="w-36 h-48 rounded-md object-cover bg-slate-800">
                 <div class="flex-1 min-w-0">
                     <div class="text-xs text-slate-400 mb-1">视频标题</div>
                     <div id="shareTitle" class="text-sm font-medium text-white mb-2 break-all">-</div>
                     <div class="text-xs text-slate-400 mb-1">视频介绍</div>
-                    <div id="shareDescription" class="text-xs text-slate-200 break-all">-</div>
+                    <div id="shareDescription" class="text-xs text-slate-200 break-all mb-2">-</div>
+                    <div class="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                            <span class="text-slate-400">类型：</span>
+                            <span id="shareClass" class="text-slate-200">-</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-400">年份：</span>
+                            <span id="shareYear" class="text-slate-200">-</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-400">演员：</span>
+                            <span id="shareActor" class="text-slate-200">-</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-400">状态：</span>
+                            <span id="shareRemarks" class="text-slate-200">-</span>
+                        </div>
+                    </div>
                 </div>
+            </div>
+            <div id="bottomEpisodePanel" class="hidden mt-4">
+                <div class="text-xs text-slate-300 mb-2">选择集数播放</div>
+                <div id="bottomEpisodeList" class="flex flex-wrap gap-2 max-h-24 overflow-y-auto"></div>
             </div>
         </div>
 
@@ -336,14 +359,46 @@
             });
         }
 
-        function initPlayer(payload) {
+        async function loadImageWithCache(url, fallbackUrl) {
+            if (!url) return fallbackUrl;
+            const cacheKey = `img_cache_${btoa(url)}`;
+            try {
+                const cachedData = localStorage.getItem(cacheKey);
+                if (cachedData) {
+                    return cachedData;
+                }
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('Network response was not ok');
+                const blob = await response.blob();
+                const reader = new FileReader();
+                return new Promise((resolve) => {
+                    reader.onloadend = () => {
+                        const base64data = reader.result;
+                        localStorage.setItem(cacheKey, base64data);
+                        resolve(base64data);
+                    };
+                    reader.readAsDataURL(blob);
+                });
+            } catch (error) {
+                console.error('Error loading image:', error);
+                return fallbackUrl;
+            }
+        }
+
+        async function initPlayer(payload) {
             const titleEl = document.getElementById('playerTitle');
             const sourceEl = document.getElementById('shareSource');
             const shareTitleEl = document.getElementById('shareTitle');
             const shareDescEl = document.getElementById('shareDescription');
+            const shareClassEl = document.getElementById('shareClass');
+            const shareYearEl = document.getElementById('shareYear');
+            const shareActorEl = document.getElementById('shareActor');
+            const shareRemarksEl = document.getElementById('shareRemarks');
             const posterEl = document.getElementById('sharePoster');
             const episodePanel = document.getElementById('episodePanel');
             const episodeList = document.getElementById('episodeList');
+            const bottomEpisodePanel = document.getElementById('bottomEpisodePanel');
+            const bottomEpisodeList = document.getElementById('bottomEpisodeList');
 
             const episodes = parsePlayUrls(payload.url);
             const hasEpisodeList = episodes.length > 1;
@@ -361,8 +416,13 @@
             if (sourceEl) sourceEl.textContent = `来源：${payload.source || '未知来源'}`;
             if (shareTitleEl) shareTitleEl.textContent = payload.title || '未知标题';
             if (shareDescEl) shareDescEl.textContent = payload.desc || payload.description || '暂无介绍';
+            if (shareClassEl) shareClassEl.textContent = payload.class || '未知';
+            if (shareYearEl) shareYearEl.textContent = payload.year || '未知';
+            if (shareActorEl) shareActorEl.textContent = payload.actor || '未知';
+            if (shareRemarksEl) shareRemarksEl.textContent = payload.remarks || '未知';
             if (posterEl) {
-                posterEl.src = payload.pic || '../loading.gif';
+                const imageUrl = await loadImageWithCache(payload.pic || '', '../loading.gif');
+                posterEl.src = imageUrl;
                 posterEl.onerror = () => {
                     posterEl.src = '../loading.gif';
                 };
@@ -388,27 +448,31 @@
                 showError('视频加载失败，请检查链接是否有效');
             });
 
-            if (episodePanel && episodeList) {
-                if (!hasEpisodeList) {
-                    episodePanel.classList.add('hidden');
-                    return;
-                }
-                episodePanel.classList.remove('hidden');
+            if (hasEpisodeList) {
                 let activeIndex = 0;
+                
                 const renderEpisodes = () => {
-                    episodeList.innerHTML = episodes.map((ep, idx) => `
-                        <button
-                            type="button"
-                            class="px-3 py-1 rounded-full text-xs border ${idx === activeIndex ? 'bg-blue-500 text-white border-blue-500' : 'bg-white/10 text-white border-white/20 hover:bg-white/20'}"
-                            data-episode-index="${idx}"
-                        >${ep.name || `第${idx + 1}集`}</button>
-                    `).join('');
+                    if (episodeList) {
+                        episodeList.innerHTML = episodes.map((ep, idx) => `
+                            <button
+                                type="button"
+                                class="px-3 py-1 rounded-full text-xs border ${idx === activeIndex ? 'bg-blue-500 text-white border-blue-500' : 'bg-white/10 text-white border-white/20 hover:bg-white/20'}"
+                                data-episode-index="${idx}"
+                            >${ep.name || `第${idx + 1}集`}</button>
+                        `).join('');
+                    }
+                    if (bottomEpisodeList) {
+                        bottomEpisodeList.innerHTML = episodes.map((ep, idx) => `
+                            <button
+                                type="button"
+                                class="px-3 py-1 rounded-full text-xs border ${idx === activeIndex ? 'bg-blue-500 text-white border-blue-500' : 'bg-white/10 text-white border-white/20 hover:bg-white/20'}"
+                                data-episode-index="${idx}"
+                            >${ep.name || `第${idx + 1}集`}</button>
+                        `).join('');
+                    }
                 };
-                renderEpisodes();
-                episodeList.addEventListener('click', (e) => {
-                    const target = e.target;
-                    if (!(target instanceof HTMLElement)) return;
-                    const idx = Number(target.getAttribute('data-episode-index'));
+                
+                const handleEpisodeClick = (idx) => {
                     if (!Number.isFinite(idx) || !episodes[idx]) return;
                     const ep = episodes[idx];
                     if (!isM3u8Url(ep.url)) {
@@ -426,7 +490,33 @@
                         player.video.play();
                     }
                     renderEpisodes();
-                });
+                };
+                
+                if (episodePanel) episodePanel.classList.remove('hidden');
+                if (bottomEpisodePanel) bottomEpisodePanel.classList.remove('hidden');
+                
+                renderEpisodes();
+                
+                if (episodeList) {
+                    episodeList.addEventListener('click', (e) => {
+                        const target = e.target;
+                        if (!(target instanceof HTMLElement)) return;
+                        const idx = Number(target.getAttribute('data-episode-index'));
+                        handleEpisodeClick(idx);
+                    });
+                }
+                
+                if (bottomEpisodeList) {
+                    bottomEpisodeList.addEventListener('click', (e) => {
+                        const target = e.target;
+                        if (!(target instanceof HTMLElement)) return;
+                        const idx = Number(target.getAttribute('data-episode-index'));
+                        handleEpisodeClick(idx);
+                    });
+                }
+            } else {
+                if (episodePanel) episodePanel.classList.add('hidden');
+                if (bottomEpisodePanel) bottomEpisodePanel.classList.add('hidden');
             }
         }
 
@@ -454,7 +544,7 @@
                     hideLoading();
                     return;
                 }
-                initPlayer(remote);
+                await initPlayer(remote);
                 startCountdown(remote.expiresAt);
                 hideLoading();
                 return;
