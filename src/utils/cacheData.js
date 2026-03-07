@@ -1,8 +1,9 @@
 const NodeCache = require("node-cache");
+require("dotenv").config();
 
 const cache = new NodeCache({
-  stdTTL: 1800, // 缓存默认过期时间（单位秒）
-  checkperiod: 60, // 定期检查过期缓存的时间（单位秒）
+  stdTTL: parseInt(process.env.CACHE_TTL) || 1800, // 缓存默认过期时间（单位秒）
+  checkperiod: parseInt(process.env.CACHE_CHECKPERIOD) || 60, // 定期检查过期缓存的时间（单位秒）
 });
 
 /**

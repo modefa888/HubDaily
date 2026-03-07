@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="/tv/favicon.ico">
     <link rel="shortcut icon" href="/tv/favicon.ico">
-    <title>电视机 - v2.0</title>
+    <title>TV分享墙 - v2.0</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Font Awesome -->
@@ -35,139 +35,129 @@
     
     <style>
         html, body {
-            height: 100%;
-            overflow: hidden;
+            background-color: #f3f4f6;
+            color: #333;
         }
         
-        body {
-            background-color: #000;
-            color: #fff;
+        .video-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
         
-        .tv-container {
-            position: relative;
-            width: 100%;
-            height: 100vh;
+        .video-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
         }
         
-        .tv-screen {
-            position: relative;
-            width: 100%;
-            height: 100%;
-            background-color: #000;
-            overflow: hidden;
+        .video-thumb {
+            transition: opacity 0.3s ease;
         }
         
-        .tv-info {
+        .video-thumb:hover .privacy-mask {
+            opacity: 0.5;
+        }
+        
+        .privacy-mask {
             position: absolute;
-            top: 20px;
-            left: 20px;
-            background-color: rgba(0, 0, 0, 0.7);
-            padding: 10px;
-            border-radius: 8px;
-            z-index: 10;
+            inset: 0;
+            background-color: rgba(0, 0, 0, 0.3);
+            z-index: 1;
+        }
+        
+        .scroll-offset {
+            scroll-margin-top: 80px;
         }
         
         .loading-overlay {
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
-            background-color: rgba(0, 0, 0, 0.8);
+            background-color: rgba(255, 255, 255, 0.8);
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            z-index: 20;
-        }
-        
-        .channel-transition {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: #000;
-            z-index: 15;
-            animation: fadeOut 1s ease-out forwards;
-        }
-        
-        @keyframes fadeOut {
-            0% {
-                opacity: 1;
-            }
-            100% {
-                opacity: 0;
-                visibility: hidden;
-            }
+            z-index: 50;
         }
     </style>
 </head>
 <body>
-    <div class="tv-container">
-        <div class="tv-screen">
-            <!-- 播放器容器 -->
-            <div id="dplayer" class="w-full h-full"></div>
-            
-            <!-- 加载覆盖层 -->
-            <div id="loadingOverlay" class="loading-overlay">
-                <div class="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
-                <p id="loadingText" class="text-white">加载中...</p>
+    <!-- 导航栏 -->
+    <nav class="bg-white shadow-md fixed top-0 left-0 right-0 z-40">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <i class="fa fa-television text-primary text-2xl"></i>
+                <h1 class="text-xl font-bold text-gray-800">TV分享墙</h1>
             </div>
-            
-            <!-- 频道切换过渡效果 -->
-            <div id="channelTransition" class="channel-transition hidden"></div>
-            
-            <!-- 电视信息 -->
-            <div class="tv-info">
-                <div id="currentChannelName" class="text-lg font-semibold">加载中...</div>
-                <div id="currentVideoTitle" class="text-sm opacity-80">准备就绪</div>
-                <div id="channelList" class="mt-4">
-                    <div class="text-xs font-medium opacity-70 mb-2">频道列表</div>
-                    <div class="channel-list"></div>
-                </div>
-                <div id="videoList" class="mt-4 hidden">
-                    <div class="text-xs font-medium opacity-70 mb-2 flex items-center">
-                        <span>视频列表</span>
-                        <button id="backToChannels" class="ml-2 text-primary hover:underline">返回</button>
-                    </div>
-                    <div class="video-list"></div>
-                </div>
+            <div class="flex items-center space-x-4">
+                <button id="refreshButton" class="text-gray-600 hover:text-primary">
+                    <i class="fa fa-refresh mr-1"></i> 刷新
+                </button>
+                <button id="backToVideoButton" class="text-gray-600 hover:text-primary">
+                    <i class="fa fa-arrow-left mr-1"></i> 返回视频页
+                </button>
             </div>
-            
         </div>
+    </nav>
+
+    <!-- 主内容区 -->
+    <main class="container mx-auto px-4 pt-20 pb-12">
+        <!-- 页面标题 -->
+        <div class="mb-6 text-center">
+            <h2 class="text-2xl font-bold text-gray-800">分享视频墙</h2>
+            <p class="text-gray-600 mt-2">管理员分享的视频集合</p>
+        </div>
+
+        <!-- 视频列表 -->
+        <div id="videoList" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+            <!-- 视频卡片将通过 JavaScript 动态生成 -->
+        </div>
+
+        <!-- 加载更多按钮 -->
+        <div class="mt-8 text-center">
+            <button id="loadMoreButton" class="btn-primary px-6 py-2 rounded-lg">
+                <i class="fa fa-refresh mr-1"></i> 加载更多
+            </button>
+        </div>
+
+        <!-- 空状态 -->
+        <div id="emptyState" class="hidden text-center py-20">
+            <i class="fa fa-film text-4xl text-gray-400 mb-4"></i>
+            <h3 class="text-xl font-semibold text-gray-600">暂无分享视频</h3>
+            <p class="text-gray-500 mt-2">管理员可以在视频页面分享视频到 TV 墙</p>
+        </div>
+    </main>
+
+    <!-- 加载覆盖层 -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p id="loadingText" class="text-gray-700">加载中...</p>
     </div>
+
+
 
     <script>
         // 全局变量
-        let dplayer = null;
-        let channels = [];
-        let currentChannelIndex = 0;
-        let currentVideoIndex = 0;
-        let isPlaying = false;
-        let isLoading = true;
-        
+        let currentPage = 1;
+        let isLoading = false;
+        let hasMore = true;
+        const FALLBACK_IMAGE = '../loading.gif';
+
         // DOM元素
+        const videoList = document.getElementById('videoList');
+        const loadMoreButton = document.getElementById('loadMoreButton');
+        const emptyState = document.getElementById('emptyState');
         const loadingOverlay = document.getElementById('loadingOverlay');
         const loadingText = document.getElementById('loadingText');
-        const channelTransition = document.getElementById('channelTransition');
-        const currentChannelName = document.getElementById('currentChannelName');
-        const currentVideoTitle = document.getElementById('currentVideoTitle');
-        
+        const refreshButton = document.getElementById('refreshButton');
+        const backToVideoButton = document.getElementById('backToVideoButton');
+
         // 初始化
         async function init() {
             try {
-                loadingText.textContent = '加载频道列表...';
-                await loadChannels();
-                if (channels.length > 0) {
-                    await switchChannel(0);
-                } else {
-                    loadingText.textContent = '暂无频道，请在后台添加';
-                    setTimeout(() => {
-                        loadingOverlay.style.display = 'none';
-                    }, 2000);
-                }
+                loadingText.textContent = '加载分享视频...';
+                await loadShareVideos();
             } catch (error) {
                 console.error('初始化失败:', error);
                 loadingText.textContent = '加载失败，请刷新页面';
@@ -176,196 +166,200 @@
                 }, 2000);
             }
         }
-        
-        // 加载频道列表
-        async function loadChannels() {
-            try {
-                const response = await fetch('/api/tv/channels');
-                const data = await response.json();
-                if (data.code === 200 && data.data && data.data.length > 0) {
-                    channels = data.data;
-                    renderChannelList();
-                }
-            } catch (error) {
-                console.error('加载频道失败:', error);
-                throw error;
-            }
-        }
-        
-        // 渲染频道列表
-        function renderChannelList() {
-            const channelListContainer = document.querySelector('.channel-list');
-            if (!channelListContainer) return;
+
+        // 加载分享视频
+        async function loadShareVideos() {
+            if (isLoading || !hasMore) return;
             
-            channelListContainer.innerHTML = '';
-            
-            channels.forEach((channel, index) => {
-                const channelItem = document.createElement('div');
-                channelItem.className = `text-xs mb-1 cursor-pointer ${index === currentChannelIndex ? 'text-primary font-medium' : 'opacity-70 hover:opacity-100'}`;
-                channelItem.textContent = `${channel.order}. ${channel.name}`;
-                channelItem.onclick = () => showVideoList(index);
-                channelListContainer.appendChild(channelItem);
-            });
-        }
-        
-        // 显示视频列表
-        function showVideoList(channelIndex) {
-            const channelList = document.getElementById('channelList');
-            const videoList = document.getElementById('videoList');
-            
-            if (!channelList || !videoList) return;
-            
-            // 隐藏频道列表，显示视频列表
-            channelList.classList.add('hidden');
-            videoList.classList.remove('hidden');
-            
-            // 渲染视频列表
-            renderVideoList(channelIndex);
-        }
-        
-        // 渲染视频列表
-        function renderVideoList(channelIndex) {
-            const videoListContainer = document.querySelector('.video-list');
-            if (!videoListContainer) return;
-            
-            const channel = channels[channelIndex];
-            if (!channel || !channel.videos || channel.videos.length === 0) {
-                videoListContainer.innerHTML = '<div class="text-xs opacity-70">该频道暂无视频</div>';
-                return;
-            }
-            
-            videoListContainer.innerHTML = '';
-            
-            channel.videos.forEach((video, index) => {
-                const videoItem = document.createElement('div');
-                videoItem.className = `text-xs mb-1 cursor-pointer opacity-70 hover:opacity-100`;
-                videoItem.textContent = `${video.order}. ${video.title}`;
-                videoItem.onclick = () => {
-                    currentChannelIndex = channelIndex;
-                    currentVideoIndex = index;
-                    playCurrentVideo();
-                    // 返回到频道列表
-                    document.getElementById('channelList').classList.remove('hidden');
-                    document.getElementById('videoList').classList.add('hidden');
-                };
-                videoListContainer.appendChild(videoItem);
-            });
-        }
-        
-        // 返回频道列表
-        function backToChannels() {
-            document.getElementById('channelList').classList.remove('hidden');
-            document.getElementById('videoList').classList.add('hidden');
-        }
-        
-        // 初始化返回按钮事件
-        document.getElementById('backToChannels').addEventListener('click', backToChannels);
-        
-        // 切换频道
-        async function switchChannel(index) {
-            if (index === currentChannelIndex && dplayer) {
-                return;
-            }
-            
-            currentChannelIndex = index;
-            currentVideoIndex = 0;
-            currentVideoTime = 0;
             isLoading = true;
             loadingOverlay.style.display = 'flex';
-            loadingText.textContent = `切换到 ${channels[index].name}...`;
-            
-            // 显示频道切换过渡效果
-            channelTransition.classList.remove('hidden');
-            setTimeout(() => {
-                channelTransition.classList.add('hidden');
-            }, 1000);
+            loadingText.textContent = '加载分享视频...';
             
             try {
-                // 销毁旧播放器
-                if (dplayer) {
-                    dplayer.destroy();
+                const limit = 20;
+                const response = await fetch(`/api/tv/shares?page=${currentPage}&limit=${limit}`);
+                const data = await response.json();
+                
+                if (data.code === 200 && data.data && data.data.length > 0) {
+                    renderShareVideos(data.data);
+                    currentPage++;
+                    hasMore = data.data.length === limit;
+                    // 如果数据不足，隐藏加载更多按钮
+                    if (!hasMore) {
+                        loadMoreButton.classList.add('hidden');
+                    }
+                } else {
+                    hasMore = false;
+                    if (currentPage === 1) {
+                        // 显示空状态
+                        emptyState.classList.remove('hidden');
+                        videoList.classList.add('hidden');
+                        loadMoreButton.classList.add('hidden');
+                    } else {
+                        // 隐藏加载更多按钮
+                        loadMoreButton.classList.add('hidden');
+                    }
                 }
-                
-                // 更新频道信息
-                currentChannelName.textContent = channels[index].name;
-                
-                // 播放当前频道的视频
-                await playCurrentVideo();
-                // 重新渲染频道列表，更新选中状态
-                renderChannelList();
-                // 确保频道列表显示，视频列表隐藏
-                document.getElementById('channelList').classList.remove('hidden');
-                document.getElementById('videoList').classList.add('hidden');
             } catch (error) {
-                console.error('切换频道失败:', error);
-                loadingText.textContent = '切换失败，请重试';
-                setTimeout(() => {
-                    loadingOverlay.style.display = 'none';
-                }, 2000);
-            }
-        }
-        
-        // 播放当前视频
-        async function playCurrentVideo() {
-            const channel = channels[currentChannelIndex];
-            if (!channel.videos || channel.videos.length === 0) {
-                loadingText.textContent = '该频道暂无视频';
-                setTimeout(() => {
-                    loadingOverlay.style.display = 'none';
-                }, 2000);
-                return;
-            }
-            
-            const video = channel.videos[currentVideoIndex];
-            currentVideoTitle.textContent = video.title;
-            loadingText.textContent = `加载视频: ${video.title}...`;
-            
-            // 创建新播放器
-            const videoUrl = (video.m3u8 || video.url).replace(/[`]/g, '').trim();
-            const playerOptions = {
-                container: document.getElementById('dplayer'),
-                video: {
-                    url: videoUrl,
-                    pic: (video.image || '').replace(/[`]/g, '').trim(),
-                    title: video.title
-                },
-                autoplay: true,
-                theme: '#3b82f6',
-                contextmenu: [],
-                mutex: true
-            };
-            
-            // 如果是 M3U8 地址，使用 hls.js
-            if (video.m3u8 && window.Hls) {
-                playerOptions.hls = true;
-            }
-            
-            dplayer = new DPlayer(playerOptions);
-            
-            // 监听播放事件
-            dplayer.on('play', () => {
-                isPlaying = true;
-            });
-            
-            // 监听暂停事件
-            dplayer.on('pause', () => {
-                isPlaying = false;
-            });
-            
-            // 监听错误事件
-            dplayer.on('error', (error) => {
-                console.error('播放器错误:', error);
-            });
-            
-            // 隐藏加载覆盖层
-            setTimeout(() => {
+                console.error('加载分享视频失败:', error);
+                showToast('加载失败，请重试');
+            } finally {
                 loadingOverlay.style.display = 'none';
                 isLoading = false;
-            }, 1000);
+            }
         }
+
+        // 渲染分享视频
+        function renderShareVideos(videos) {
+            videos.forEach(video => {
+                const card = document.createElement('div');
+                card.className = 'bg-white rounded-lg overflow-hidden shadow-md video-card';
+                
+                card.innerHTML = `
+                    <div class="video-thumb relative aspect-[2/3] overflow-hidden cursor-pointer group"
+                         onclick="openVideoPlayer('${video.shareId}')">
+                        <img 
+                            src="${FALLBACK_IMAGE}" 
+                            data-src="${video.pic || ''}" 
+                            alt="${video.title}" 
+                            onerror="this.onerror=null;this.src='${FALLBACK_IMAGE}';"
+                            loading="lazy"
+                            class="w-full h-full object-fill lazy-image transition-transform duration-500 group-hover:scale-110"
+                        >
+                        <div class="privacy-mask transition-opacity duration-300 group-hover:opacity-70"></div>
+                        <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                            <div class="w-16 h-16 bg-primary/80 rounded-full flex items-center justify-center text-white text-2xl hover:bg-primary transition-colors duration-300">
+                                <i class="fa fa-play"></i>
+                            </div>
+                        </div>
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end">
+                            <div class="p-3 w-full">
+                                <h3 class="text-white font-medium line-clamp-2">${video.title}</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-4">
+                        <h3 class="font-semibold mb-2 line-clamp-1">
+                            <span class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded mr-2">${video.source || '未知'}</span>
+                            ${video.title}
+                        </h3>
+                        <div class="text-right">
+                            <span class="countdown text-xs text-gray-500" data-expires="${video.expiresAt || 0}"></span>
+                        </div>
+                    </div>
+                `;
+                
+                videoList.appendChild(card);
+            });
+            
+            // 初始化懒加载
+            initLazyLoading();
+        }
+
+        // 初始化懒加载
+        function initLazyLoading() {
+            const lazyImages = document.querySelectorAll('.lazy-image');
+            if ('IntersectionObserver' in window) {
+                const imageObserver = new IntersectionObserver((entries, observer) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            const image = entry.target;
+                            image.src = image.dataset.src || FALLBACK_IMAGE;
+                            imageObserver.unobserve(image);
+                        }
+                    });
+                });
+                lazyImages.forEach(img => imageObserver.observe(img));
+            }
+        }
+
+        // 打开视频播放器
+        function openVideoPlayer(shareId) {
+            // 构建分享链接
+            const baseUrl = window.location.origin;
+            const shareUrl = `${baseUrl}/video/share?sid=${shareId}`;
+            // 在新标签中打开分享链接
+            window.open(shareUrl, '_blank');
+        }
+
+
+
+        // 显示提示
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.className = 'fixed top-20 right-4 bg-gray-800 text-white px-4 py-2 rounded-lg shadow-lg z-50';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'transition-opacity', 'duration-300');
+                setTimeout(() => {
+                    document.body.removeChild(toast);
+                }, 300);
+            }, 2000);
+        }
+
+        // 更新倒计时
+        function updateCountdowns() {
+            const countdownElements = document.querySelectorAll('.countdown');
+            countdownElements.forEach(element => {
+                const expiresAt = Number(element.dataset.expires);
+                if (!expiresAt) {
+                    element.textContent = '永久有效';
+                    return;
+                }
+                const now = Date.now();
+                const timeLeft = expiresAt - now;
+                if (timeLeft <= 0) {
+                    element.textContent = '已过期';
+                    return;
+                }
+                const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+                let countdownText = '';
+                if (days > 0) {
+                    countdownText += `${days}天 `;
+                }
+                if (hours > 0) {
+                    countdownText += `${hours}小时 `;
+                }
+                if (minutes > 0) {
+                    countdownText += `${minutes}分钟 `;
+                }
+                if (seconds > 0) {
+                    countdownText += `${seconds}秒`;
+                }
+                element.textContent = `有效期: ${countdownText.trim()}`;
+            });
+        }
+
+        // 事件监听
+        loadMoreButton.addEventListener('click', loadShareVideos);
         
+        refreshButton.addEventListener('click', () => {
+            // 重置状态
+            currentPage = 1;
+            hasMore = true;
+            videoList.innerHTML = '';
+            emptyState.classList.add('hidden');
+            videoList.classList.remove('hidden');
+            loadMoreButton.classList.remove('hidden');
+            // 重新加载
+            loadShareVideos();
+        });
+        
+        backToVideoButton.addEventListener('click', () => {
+            window.location.href = '../video/index.html';
+        });
+
         // 初始化
         init();
+
+        // 初始化倒计时
+        updateCountdowns();
+        // 每秒钟更新一次倒计时
+        setInterval(updateCountdowns, 1000);
     </script>
 </body>
 </html>

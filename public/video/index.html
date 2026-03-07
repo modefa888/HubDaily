@@ -680,6 +680,9 @@
                 <button onclick="copyShareUrl()" class="btn-secondary w-full mt-2">
                     <i class="fa fa-copy mr-1"></i> 点击复制地址
                 </button>
+                <button id="addToTvButton" onclick="addToTvShareWall()" class="btn-secondary w-full mt-2">
+                    <i class="fa fa-television mr-1"></i> 添加到TV分享墙
+                </button>
             </div>
         </div>
     </div>
@@ -5596,9 +5599,14 @@
             const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
             let result = 's_';
             let n = Math.abs(hash);
+            // 确保即使 n 变成 0，也能生成不同的字符
             for (let i = 0; i < 18; i++) {
                 result += chars.charAt(n % chars.length);
                 n = Math.floor(n / chars.length);
+                // 如果 n 变成 0，使用 hash 的不同部分
+                if (n === 0 && i < 17) {
+                    n = Math.abs(hash * (i + 1));
+                }
             }
             return result;
         }
@@ -5852,6 +5860,54 @@
                 });
             } catch (err) {
                 prompt('请复制分享链接:', currentShareUrl);
+            }
+        }
+
+        async function addToTvShareWall() {
+            if (!currentShareUrl) {
+                showToast('请先点击“确认生成分享”');
+                return;
+            }
+            
+            const token = getUserToken ? getUserToken() : '';
+            if (!token) {
+                showToast('添加到TV分享墙需登录后使用');
+                openAuthModal();
+                return;
+            }
+            
+            showToast('正在添加到TV分享墙...');
+            
+            try {
+                const expireSeconds = getShareExpireSeconds();
+                const expiresAt = expireSeconds > 0 ? Date.now() + expireSeconds * 1000 : 0;
+                
+                const response = await fetch('/api/tv/add-share', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        shareId: currentShareId,
+                        url: currentSharePayload.url,
+                        title: currentSharePayload.title,
+                        pic: currentSharePayload.pic || '',
+                        source: currentSharePayload.source || '',
+                        expireSeconds: expireSeconds,
+                        expiresAt: expiresAt
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.code === 200) {
+                    showToast('添加到TV分享墙成功');
+                } else {
+                    showToast('添加失败，请重试');
+                }
+            } catch (error) {
+                console.error('添加到TV分享墙失败:', error);
+                showToast('添加失败，请重试');
             }
         }
 
@@ -6469,6 +6525,7 @@
             const token = getUserToken ? getUserToken() : '';
             if (token) {
                 try {
+                    // 更新用户分享
                     const res = await fetch(`/api/user/shares/${target.id}`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -6477,6 +6534,20 @@
                     
                     const data = await res.json();
                     if (data && data.code === 200) {
+                        // 同时更新 TV 分享墙中的有效期
+                        try {
+                            await fetch(`/api/tv/shares/${target.id}`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                                body: JSON.stringify({
+                                    expireSeconds: target.expireSeconds,
+                                    expiresAt: target.expiresAt
+                                })
+                            });
+                        } catch (tvErr) {
+                            // TV 分享墙更新失败不影响用户分享的更新
+                            console.error('更新 TV 分享墙有效期失败:', tvErr);
+                        }
                         showToast('分享有效期已成功更新');
                     } else {
                         showToast('更新失败，请重试');
