@@ -293,6 +293,13 @@
             <!-- 视频卡片将在这里动态生成 -->
         </div>
         
+        <!-- 搜索中提示 -->
+        <div id="searchingState" class="hidden flex flex-col items-center justify-center py-16 text-center">
+            <div class="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
+            <h3 class="text-xl font-semibold text-gray-700 mb-2">搜索中...</h3>
+            <p class="text-gray-600">正在从多个接口获取数据，请稍候</p>
+        </div>
+        
         <!-- 加载更多按钮 -->
         <div class="flex justify-center mt-8">
             <button 
@@ -680,9 +687,6 @@
                 <button onclick="copyShareUrl()" class="btn-secondary w-full mt-2">
                     <i class="fa fa-copy mr-1"></i> 点击复制地址
                 </button>
-                <button id="addToTvButton" onclick="addToTvShareWall()" class="btn-secondary w-full mt-2">
-                    <i class="fa fa-television mr-1"></i> 添加到TV分享墙
-                </button>
             </div>
         </div>
     </div>
@@ -738,11 +742,14 @@
     <!-- 悬浮控制按钮 -->
     <div 
         id="floatingButtons" 
-        class="fixed bottom-6 right-6 glass-effect rounded-lg shadow-lg p-2 hidden"
+        class="fixed bottom-6 right-6 glass-effect rounded-lg shadow-lg p-2"
     >
         <div class="flex flex-col space-y-2">
             <div class="text-xs text-gray-600 text-center px-2 py-1 bg-white/80 rounded-full">
                 总数 <span id="loadedTotalCount" class="font-semibold text-gray-800">0</span>
+            </div>
+            <div id="progressDisplay" class="text-xs text-gray-600 text-center px-2 py-1 bg-white/80 rounded-full">
+                进度 <span id="progressText" class="font-semibold"><span class="text-green-600" id="progressDone">0</span>/<span id="progressTotal">0</span></span>
             </div>
             <button 
                 onclick="playRandomVideo()" 
@@ -1586,6 +1593,11 @@
                 aggregateSwitch.checked = aggregateEnabled;
                 updateAggregateSwitchUI(aggregateEnabled);
             }
+            // 根据聚合搜索是否开启来显示/隐藏进度条
+            const progressDisplay = document.getElementById('progressDisplay');
+            if (progressDisplay) {
+                progressDisplay.style.display = aggregateEnabled ? 'block' : 'none';
+            }
             const privacyEnabled = isPrivacyModeEnabled();
             if (privacySwitch) {
                 privacySwitch.checked = privacyEnabled;
@@ -1854,10 +1866,14 @@
             }
             
             hideEmptyState();
+            // 显示搜索中提示
+            document.getElementById('searchingState').classList.remove('hidden');
             showLoading('正在加载推荐视频...');
             hasMore = true;
             fetchData('', 1).finally(() => {
                 hideLoading();
+                // 隐藏搜索中提示
+                document.getElementById('searchingState').classList.add('hidden');
             });
         }
         
@@ -2007,65 +2023,10 @@
                 }
                 
                 let completed = 0;
-                updateAggregateLoading(completed, activeApis.length);
-                const results = await Promise.all(
-                    activeApis.map(item => {
-                        const params = {
-                            wd: keyword,
-                            pg: page,
-                            url: item.url
-                        };
-                        const token = getUserToken ? getUserToken() : '';
-                        return fetch(getProxyUrl('', params), {
-                            headers: token ? { Authorization: `Bearer ${token}` } : {}
-                        })
-                            .then(res => res.json())
-                            .then(data => ({
-                                item,
-                                list: Array.isArray(data.list) ? data.list : []
-                            }))
-                            .catch(() => ({ item, list: [] }))
-                            .finally(() => {
-                                completed += 1;
-                                updateAggregateLoading(completed, activeApis.length);
-                            });
-                    })
-                );
-                
-                const merged = [];
-                results.forEach(({ item, list }) => {
-                    if (!list || list.length === 0) {
-                        aggregateNoMore.add(item.url);
-                    }
-                    const label = getOfficialLabel(item);
-                    const normalizedCategory = normalizeCategory(item.category || getOfficialCategoryByUrl(item.url) || '');
-                    list.forEach(video => {
-                        merged.push({
-                            ...video,
-                            _sourceLabel: label,
-                            _sourceCategory: normalizedCategory
-                        });
-                    });
-                });
-
-                // 普通接口不去重
-                const seenTitles = new Set();
-                const deduped = [];
-                merged.forEach(video => {
-                    const category = normalizeCategory(video._sourceCategory || '');
-                    if (category === 'normal') {
-                        deduped.push(video);
-                        return;
-                    }
-                    const title = (video.vod_name || '').trim();
-                    if (!title) {
-                        deduped.push(video);
-                        return;
-                    }
-                    if (seenTitles.has(title)) return;
-                    seenTitles.add(title);
-                    deduped.push(video);
-                });
+                const progressDone = document.getElementById('progressDone');
+                const progressTotal = document.getElementById('progressTotal');
+                if (progressDone) progressDone.textContent = '0';
+                if (progressTotal) progressTotal.textContent = activeApis.length;
                 
                 if (page === 1) {
                     videoList.innerHTML = '';
@@ -2074,19 +2035,75 @@
                 }
                 
                 hideEmptyState();
-                if (deduped.length === 0) {
-                    if (page === 1) {
-                        showEmptyState();
-                    } else {
-                        showToast('数据加载完毕');
-                    }
-                    hideLoadMoreButton();
-                    hasMore = false;
-                    return [];
-                }
                 
-                renderVideos(deduped);
-                updateLoadedCount(renderedVideos.length);
+                // 并行请求所有接口，但每个接口完成后立即渲染
+                const promises = activeApis.map(async (item) => {
+                    try {
+                        const params = {
+                            wd: keyword,
+                            pg: page,
+                            url: item.url
+                        };
+                        const token = getUserToken ? getUserToken() : '';
+                        const response = await fetch(getProxyUrl('', params), {
+                            headers: token ? { Authorization: `Bearer ${token}` } : {}
+                        });
+                        const data = await response.json();
+                        const list = Array.isArray(data.list) ? data.list : [];
+                        
+                        if (!list || list.length === 0) {
+                            aggregateNoMore.add(item.url);
+                        }
+                        
+                        const label = getOfficialLabel(item);
+                        const normalizedCategory = normalizeCategory(item.category || getOfficialCategoryByUrl(item.url) || '');
+                        const videos = list.map(video => ({
+                            ...video,
+                            _sourceLabel: label,
+                            _sourceCategory: normalizedCategory
+                        }));
+                        
+                        // 普通接口不去重
+                        const seenTitles = new Set();
+                        const deduped = [];
+                        videos.forEach(video => {
+                            const category = normalizeCategory(video._sourceCategory || '');
+                            if (category === 'normal') {
+                                deduped.push(video);
+                                return;
+                            }
+                            const title = (video.vod_name || '').trim();
+                            if (!title) {
+                                deduped.push(video);
+                                return;
+                            }
+                            if (seenTitles.has(title)) return;
+                            seenTitles.add(title);
+                            deduped.push(video);
+                        });
+                        
+                        // 立即渲染数据
+                        if (deduped.length > 0) {
+                            // 隐藏搜索中提示
+                            document.getElementById('searchingState').classList.add('hidden');
+                            renderVideos(deduped);
+                            updateLoadedCount(renderedVideos.length);
+                        }
+                        
+                        return { item, list };
+                    } catch (error) {
+                        console.error(`Error fetching data from ${item.url}:`, error);
+                        return { item, list: [] };
+                    } finally {
+                        completed += 1;
+                        if (progressDone) progressDone.textContent = completed;
+                    }
+                });
+                
+                const results = await Promise.all(promises);
+                
+                // 所有请求完成后，更新进度显示为"完成/总接口数"
+                if (progressDone) progressDone.textContent = '完成';
                 
                 currentPage = page;
                 searchTerm = keyword;
@@ -2100,7 +2117,17 @@
                     hasMore = false;
                 }
                 
-                return deduped;
+                // 检查是否有数据
+                if (renderedVideos.length === 0) {
+                    if (page === 1) {
+                        // 只有当所有接口请求完成且都没有内容时才显示空状态
+                        showEmptyState();
+                    } else {
+                        showToast('数据加载完毕');
+                    }
+                }
+                
+                return renderedVideos;
             } catch (error) {
                 console.error('聚合搜索失败:', error);
                 if (page === 1) {
@@ -2116,6 +2143,11 @@
             if (loadingText) {
                 loadingText.textContent = text;
             }
+            // 同时更新悬浮按钮中的进度显示
+            const progressDone = document.getElementById('progressDone');
+            const progressTotal = document.getElementById('progressTotal');
+            if (progressDone) progressDone.textContent = done;
+            if (progressTotal) progressTotal.textContent = total;
         }
 
         async function ensureFavoritesLoaded() {
@@ -2389,6 +2421,14 @@
             document.getElementById('searchInput').value = input;
             document.getElementById('searchInputMobile').value = input;
             
+            // 防止重复请求
+            if (isLoading) return;
+            isLoading = true;
+            // 隐藏加载更多按钮
+            hideLoadMoreButton();
+            // 显示搜索中提示
+            document.getElementById('searchingState').classList.remove('hidden');
+            
             showLoading('正在搜索...');
             fetchData(input, 1).then((list) => {
                 if (list && list.length > 0) {
@@ -2400,15 +2440,13 @@
                             }
                         }, 200);
                     }
-                    setTimeout(() => {
-                        const firstCard = videoList.firstElementChild;
-                        if (firstCard) {
-                            scrollToElementWithHeaderOffset(firstCard, 12);
-                        }
-                    }, 50);
+                    // 移除滚动到第一条数据的代码
                 }
             }).finally(() => {
                 hideLoading();
+                isLoading = false;
+                // 隐藏搜索中提示
+                document.getElementById('searchingState').classList.add('hidden');
             });
         }
 
@@ -4088,6 +4126,11 @@
             } else {
                 showToast('已关闭聚合搜索');
             }
+            // 根据聚合搜索是否开启来显示/隐藏进度条
+            const progressDisplay = document.getElementById('progressDisplay');
+            if (progressDisplay) {
+                progressDisplay.style.display = enabled ? 'block' : 'none';
+            }
         }
 
         function confirmAggregateSelection() {
@@ -5588,27 +5631,7 @@
         }
 
         function getShareId(url, title, source = '') {
-            // 使用 URL 和标题生成一个唯一的哈希值，然后转换为简短的字符串
-            const combined = `${url || ''}|${title || ''}|${source || ''}`;
-            let hash = 0;
-            for (let i = 0; i < combined.length; i++) {
-                const char = combined.charCodeAt(i);
-                hash = ((hash << 5) - hash) + char;
-                hash = hash & hash; // 转换为32位整数
-            }
-            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-            let result = 's_';
-            let n = Math.abs(hash);
-            // 确保即使 n 变成 0，也能生成不同的字符
-            for (let i = 0; i < 18; i++) {
-                result += chars.charAt(n % chars.length);
-                n = Math.floor(n / chars.length);
-                // 如果 n 变成 0，使用 hash 的不同部分
-                if (n === 0 && i < 17) {
-                    n = Math.abs(hash * (i + 1));
-                }
-            }
-            return result;
+            return `s_${base64Url(`${title || ''}|${source || ''}`)}`;
         }
 
         function normalizeShareItem(item) {
@@ -5732,9 +5755,9 @@
                 shareConfirmButton.classList.remove('opacity-60');
                 shareConfirmButton.innerHTML = `<i class="fa fa-check mr-1"></i> ${isEditMode ? '确认修改' : '确认生成分享'}`;
             } else if (state === 'done') {
-                shareConfirmButton.disabled = false;
-                shareConfirmButton.classList.remove('opacity-60');
-                shareConfirmButton.innerHTML = `<i class="fa fa-check mr-1"></i> ${isEditMode ? '确认修改' : '确认生成分享'}`;
+                shareConfirmButton.disabled = true;
+                shareConfirmButton.classList.add('opacity-60');
+                shareConfirmButton.innerHTML = `<i class="fa fa-check mr-1"></i> ${isEditMode ? '已修改' : '已生成'}`;
             } else if (state === 'loading') {
                 shareConfirmButton.disabled = true;
                 shareConfirmButton.classList.add('opacity-60');
@@ -5860,54 +5883,6 @@
                 });
             } catch (err) {
                 prompt('请复制分享链接:', currentShareUrl);
-            }
-        }
-
-        async function addToTvShareWall() {
-            if (!currentShareUrl) {
-                showToast('请先点击“确认生成分享”');
-                return;
-            }
-            
-            const token = getUserToken ? getUserToken() : '';
-            if (!token) {
-                showToast('添加到TV分享墙需登录后使用');
-                openAuthModal();
-                return;
-            }
-            
-            showToast('正在添加到TV分享墙...');
-            
-            try {
-                const expireSeconds = getShareExpireSeconds();
-                const expiresAt = expireSeconds > 0 ? Date.now() + expireSeconds * 1000 : 0;
-                
-                const response = await fetch('/api/tv/add-share', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({
-                        shareId: currentShareId,
-                        url: currentSharePayload.url,
-                        title: currentSharePayload.title,
-                        pic: currentSharePayload.pic || '',
-                        source: currentSharePayload.source || '',
-                        expireSeconds: expireSeconds,
-                        expiresAt: expiresAt
-                    })
-                });
-                
-                const data = await response.json();
-                if (data.code === 200) {
-                    showToast('添加到TV分享墙成功');
-                } else {
-                    showToast('添加失败，请重试');
-                }
-            } catch (error) {
-                console.error('添加到TV分享墙失败:', error);
-                showToast('添加失败，请重试');
             }
         }
 
@@ -6075,22 +6050,7 @@
             prepareShareSelection(episodes, 0);
             if (episodes.length > 1) {
                 setShareMode('custom');
-                // 解析 item.url 来获取之前选择的集数
-                const selectedEpisodes = parsePlayUrls(item.url);
-                // 重置所有复选框为未勾选
-                setShareEpisodeChecks(false);
-                // 只勾选之前选择的集数
-                if (shareEpisodeList) {
-                    const checks = Array.from(shareEpisodeList.querySelectorAll('input[type="checkbox"]'));
-                    checks.forEach((check, index) => {
-                        const episode = episodes[index];
-                        if (episode) {
-                            // 检查当前集数是否在之前选择的集数中
-                            const isSelected = selectedEpisodes.some(ep => ep.url === episode.url);
-                            check.checked = isSelected;
-                        }
-                    });
-                }
+                setShareEpisodeChecks(true);
             }
             openShareModal('edit');
         }
@@ -6288,20 +6248,20 @@
         
         // 显示加载指示器
         function showLoading(text = '加载中...') {
+            // 不显示加载指示器，以便用户能够看到实时加载的效果
             loadingText.textContent = text;
-            loadingIndicator.classList.remove('hidden');
-            loadingIndicator.classList.add('flex');
         }
         
         // 隐藏加载指示器
         function hideLoading() {
-            loadingIndicator.classList.add('hidden');
-            loadingIndicator.classList.remove('flex');
+            // 不显示加载指示器，以便用户能够看到实时加载的效果
         }
         
         // 显示空状态
         function showEmptyState() {
             videoList.innerHTML = '';
+            // 隐藏搜索中提示
+            document.getElementById('searchingState').classList.add('hidden');
             emptyState.classList.remove('hidden');
             hideLoadMoreButton();
         }
@@ -6525,7 +6485,6 @@
             const token = getUserToken ? getUserToken() : '';
             if (token) {
                 try {
-                    // 更新用户分享
                     const res = await fetch(`/api/user/shares/${target.id}`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -6534,20 +6493,6 @@
                     
                     const data = await res.json();
                     if (data && data.code === 200) {
-                        // 同时更新 TV 分享墙中的有效期
-                        try {
-                            await fetch(`/api/tv/shares/${target.id}`, {
-                                method: 'PUT',
-                                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                                body: JSON.stringify({
-                                    expireSeconds: target.expireSeconds,
-                                    expiresAt: target.expiresAt
-                                })
-                            });
-                        } catch (tvErr) {
-                            // TV 分享墙更新失败不影响用户分享的更新
-                            console.error('更新 TV 分享墙有效期失败:', tvErr);
-                        }
                         showToast('分享有效期已成功更新');
                     } else {
                         showToast('更新失败，请重试');

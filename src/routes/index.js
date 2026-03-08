@@ -82,9 +82,6 @@ registerRoutes(__dirname + "/scheduleJob", router, allRouterInfo, "scheduleJob")
 // 遍历user文件夹下的所有路由模块
 registerRoutes(__dirname + "/user", router, allRouterInfo, "user");
 
-// 遍历tv文件夹下的所有路由模块
-registerRoutes(__dirname + "/tv", router, allRouterInfo, "tv");
-
 // 全部接口路由
 router.get("/api/all", async (ctx) => {
     console.log("获取全部接口路由");
