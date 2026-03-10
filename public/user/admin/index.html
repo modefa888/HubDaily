@@ -87,6 +87,7 @@
         <button class="module-tab w-full text-left px-3 py-2 rounded text-sm bg-slate-200 text-slate-700" data-module-target="articles">文章管理</button>
         <button class="module-tab w-full text-left px-3 py-2 rounded text-sm bg-slate-200 text-slate-700" data-module-target="navigation">导航设置</button>
         <button class="module-tab w-full text-left px-3 py-2 rounded text-sm bg-slate-200 text-slate-700" data-module-target="tv">电视管理</button>
+        <button class="module-tab w-full text-left px-3 py-2 rounded text-sm bg-slate-200 text-slate-700" data-module-target="shareWall">分享墙管理</button>
         <button class="module-tab w-full text-left px-3 py-2 rounded text-sm bg-slate-200 text-slate-700" data-module-target="searchKeywords">搜索关键字</button>
       </aside>
       <main class="flex-1 p-4 ml-0 md:ml-52">
@@ -763,6 +764,32 @@
       </div>
     </section>
 
+    <section class="module-section bg-white rounded-xl shadow p-4 space-y-4 hidden" data-module="shareWall">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <h2 class="font-semibold">分享墙管理（管理员）</h2>
+        <div class="flex flex-wrap items-center gap-2">
+          <button id="loadShareWallBtn" class="hidden px-3 py-1.5 rounded bg-blue-600 text-white text-sm">刷新</button>
+        </div>
+      </div>
+      <div id="shareWallMeta" class="text-sm text-slate-500"></div>
+      <div class="overflow-auto">
+        <table class="min-w-full text-sm">
+          <thead class="text-left text-slate-500">
+            <tr>
+              <th class="py-2">ID</th>
+              <th>标题</th>
+              <th>来源</th>
+              <th>添加人</th>
+              <th>添加时间</th>
+              <th>过期时间</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="shareWallTbody" class="divide-y"></tbody>
+        </table>
+      </div>
+    </section>
+
     <section class="module-section bg-white rounded-xl shadow p-4 space-y-4 hidden" data-module="searchKeywords">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <h2 class="font-semibold">搜索关键字统计（管理员）</h2>
@@ -870,6 +897,117 @@
       <span id="loadingText" class="text-sm text-slate-700">处理中...</span>
     </div>
   </div>
+
+  <!-- 分享墙管理脚本 -->
+  <script>
+    // 加载分享墙列表
+    async function loadShareWall() {
+      const shareWallMeta = document.getElementById('shareWallMeta');
+      const shareWallTbody = document.getElementById('shareWallTbody');
+      const loadShareWallBtn = document.getElementById('loadShareWallBtn');
+      
+      if (shareWallMeta) shareWallMeta.textContent = '加载中...';
+      if (shareWallTbody) shareWallTbody.innerHTML = '';
+      
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          if (shareWallMeta) shareWallMeta.textContent = '请先登录';
+          return;
+        }
+        
+        const response = await fetch('/api/share-wall', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        const data = await response.json();
+        if (data.code === 200 && data.data) {
+          if (shareWallMeta) shareWallMeta.textContent = `共 ${data.data.length} 条记录`;
+          
+          if (shareWallTbody) {
+            shareWallTbody.innerHTML = data.data.map(item => {
+              const addedAt = new Date(item.createdAt).toLocaleString();
+              const expiresAt = item.expiresAt ? new Date(item.expiresAt).toLocaleString() : '永久';
+              return `
+                <tr>
+                  <td class="py-2">${item.shareId}</td>
+                  <td class="py-2">${item.title}</td>
+                  <td class="py-2">${item.source}</td>
+                  <td class="py-2">${item.addedBy}</td>
+                  <td class="py-2">${addedAt}</td>
+                  <td class="py-2">${expiresAt}</td>
+                  <td class="py-2">
+                    <button class="px-2 py-1 rounded bg-rose-600 text-white text-xs" onclick="removeShareWallItem('${item.shareId}')">移除</button>
+                  </td>
+                </tr>
+              `;
+            }).join('');
+          }
+        } else {
+          if (shareWallMeta) shareWallMeta.textContent = '加载失败';
+        }
+      } catch (error) {
+        console.error('加载分享墙失败:', error);
+        if (shareWallMeta) shareWallMeta.textContent = '加载失败';
+      } finally {
+        if (loadShareWallBtn) loadShareWallBtn.classList.remove('hidden');
+      }
+    }
+    
+    // 从分享墙移除项目
+    async function removeShareWallItem(shareId) {
+      if (!confirm('确定要从分享墙移除这个项目吗？')) return;
+      
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          showToast('请先登录');
+          return;
+        }
+        
+        const response = await fetch(`/api/share-wall/${shareId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        const data = await response.json();
+        if (data.code === 200) {
+          showToast('移除成功');
+          loadShareWall();
+        } else {
+          showToast(data.message || '移除失败');
+        }
+      } catch (error) {
+        console.error('移除失败:', error);
+        showToast('移除失败');
+      }
+    }
+    
+    // 初始化分享墙管理模块
+    function initShareWallModule() {
+      const loadShareWallBtn = document.getElementById('loadShareWallBtn');
+      if (loadShareWallBtn) {
+        loadShareWallBtn.addEventListener('click', loadShareWall);
+      }
+      
+      // 当切换到分享墙模块时加载数据
+      const shareWallTab = document.querySelector('[data-module-target="shareWall"]');
+      if (shareWallTab) {
+        shareWallTab.addEventListener('click', function() {
+          setTimeout(loadShareWall, 100);
+        });
+      }
+    }
+    
+    // 页面加载完成后初始化
+    document.addEventListener('DOMContentLoaded', function() {
+      initShareWallModule();
+    });
+  </script>
 
   <!-- 禁用备注弹窗 -->
   <div id="disableModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
