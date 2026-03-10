@@ -201,10 +201,23 @@
             }
         }
 
+        function getExpireLabel(expiresAt) {
+            if (!expiresAt || expiresAt === 0) return '永久';
+            const diff = expiresAt - Date.now();
+            if (diff <= 0) return '已过期';
+            const minutes = Math.ceil(diff / 60000);
+            if (minutes < 60) return `${minutes}分钟后过期`;
+            const hours = Math.ceil(diff / 3600000);
+            if (hours < 24) return `${hours}小时后过期`;
+            const days = Math.ceil(diff / 86400000);
+            return `${days}天后过期`;
+        }
+
         function renderVideos(videos) {
             const grid = document.getElementById('videoGrid');
             grid.innerHTML = videos.map(video => {
                 const shareUrl = `/video/share?sid=${encodeURIComponent(video.shareId)}`;
+                const expireLabel = getExpireLabel(video.expiresAt);
                 return `
                     <div class="video-card" onclick="window.location.href='${shareUrl}'">
                         <div class="thumb-wrapper">
@@ -221,6 +234,9 @@
                             <div class="meta">
                                 <span class="source-badge">${escapeHtml(video.source || '未知')}</span>
                                 ${video.year ? `<span>${video.year}</span>` : ''}
+                            </div>
+                            <div class="meta flex justify-end">
+                                <span class="text-xs text-yellow-400">${expireLabel}</span>
                             </div>
                         </div>
                     </div>

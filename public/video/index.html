@@ -432,21 +432,21 @@
         <div class="border-b border-gray-200 flex">
             <button 
                 class="flex-1 px-4 py-2 text-center text-sm font-medium" 
-                onclick="async function(){ await switchShareTab('all'); }()"
+                onclick="(async () => { await switchShareTab('all'); })()"
                 id="shareTabAll"
             >
                 全部
             </button>
             <button 
                 class="flex-1 px-4 py-2 text-center text-sm font-medium" 
-                onclick="async function(){ await switchShareTab('adult'); }()"
+                onclick="(async () => { await switchShareTab('adult'); })()"
                 id="shareTabAdult"
             >
                 摩西
             </button>
             <button 
                 class="flex-1 px-4 py-2 text-center text-sm font-medium" 
-                onclick="async function(){ await switchShareTab('normal'); }()"
+                onclick="(async () => { await switchShareTab('normal'); })()"
                 id="shareTabNormal"
             >
                 普通
@@ -689,6 +689,9 @@
                 </button>
                 <button id="addToShareWallButton" onclick="addToShareWall()" class="hidden btn-primary w-full mt-2 bg-gradient-to-r from-purple-500 to-pink-500 border-0">
                     <i class="fa fa-th-large mr-1"></i> 添加到分享墙
+                </button>
+                <button id="goToShareWallButton" onclick="goToShareWall()" class="hidden btn-primary w-full mt-2 bg-gradient-to-r from-blue-500 to-green-500 border-0">
+                    <i class="fa fa-th-large mr-1"></i> 前往分享墙
                 </button>
             </div>
         </div>
@@ -2325,6 +2328,7 @@
                                 >
                                     <i class="fa fa-share-alt ${isNormal ? '' : 'mr-1'}"></i><span class="${isNormal ? 'hidden sm:inline' : ''} ${isNormal ? 'sm:ml-1' : ''}">分享</span>
                                 </button>
+
                             </div>
                         </div>
                     </div>
@@ -5808,14 +5812,52 @@
             return 'all';
         }
 
+        // 存储分享集数选择状态
+        let shareEpisodeSelections = loadShareEpisodeSelections();
+
+        // 从localStorage加载选择状态
+        function loadShareEpisodeSelections() {
+            try {
+                const raw = localStorage.getItem('shareEpisodeSelections');
+                return raw ? JSON.parse(raw) : {};
+            } catch (e) {
+                return {};
+            }
+        }
+
+        // 保存选择状态到localStorage
+        function saveShareEpisodeSelections() {
+            try {
+                localStorage.setItem('shareEpisodeSelections', JSON.stringify(shareEpisodeSelections));
+            } catch (e) {
+                // 忽略存储错误
+            }
+        }
+
         function renderShareEpisodeList(episodes) {
             if (!shareEpisodeList) return;
+            // 生成唯一键，基于当前视频的URL或标题
+            const key = currentSharePayload ? (currentSharePayload.allEpisodesUrl || currentSharePayload.url || currentSharePayload.title) : 'default';
+            // 确保当前视频的选择状态存在
+            if (!shareEpisodeSelections[key]) {
+                // 默认勾选当前正在播放的集数
+                shareEpisodeSelections[key] = episodes.map((_, idx) => idx === pendingShareCurrentIndex);
+                saveShareEpisodeSelections();
+            }
             shareEpisodeList.innerHTML = episodes.map((ep, idx) => `
                 <label class="flex items-center space-x-2 text-xs w-full">
-                    <input type="checkbox" value="${idx}">
+                    <input type="checkbox" value="${idx}" ${shareEpisodeSelections[key][idx] ? 'checked' : ''} onchange="updateShareEpisodeSelection(${idx}, this.checked)">
                     <span class="truncate">${ep.name || `第${idx + 1}集`}</span>
                 </label>
             `).join('');
+        }
+
+        function updateShareEpisodeSelection(index, checked) {
+            const key = currentSharePayload ? (currentSharePayload.allEpisodesUrl || currentSharePayload.url || currentSharePayload.title) : 'default';
+            if (shareEpisodeSelections[key]) {
+                shareEpisodeSelections[key][index] = checked;
+                saveShareEpisodeSelections();
+            }
         }
 
         function toggleShareEpisodeList(show) {
@@ -5827,9 +5869,15 @@
 
         function setShareEpisodeChecks(checked) {
             if (!shareEpisodeList) return;
-            shareEpisodeList.querySelectorAll('input[type="checkbox"]').forEach((input) => {
-                input.checked = !!checked;
-            });
+            const key = currentSharePayload ? (currentSharePayload.allEpisodesUrl || currentSharePayload.url || currentSharePayload.title) : 'default';
+            if (shareEpisodeSelections[key]) {
+                // 更新存储的选择状态
+                shareEpisodeSelections[key] = shareEpisodeSelections[key].map(() => !!checked);
+                saveShareEpisodeSelections();
+            }
+            // 重新渲染列表以反映更新后的状态
+            const episodes = pendingShareEpisodes || [];
+            renderShareEpisodeList(episodes);
         }
 
         function prepareShareSelection(episodes, currentIndex) {
@@ -5867,10 +5915,13 @@
                 return pendingShareEpisodes[pendingShareCurrentIndex] ? [pendingShareEpisodes[pendingShareCurrentIndex]] : [];
             }
             if (mode === 'custom') {
-                if (!shareEpisodeList) return [];
-                const checks = Array.from(shareEpisodeList.querySelectorAll('input[type="checkbox"]'));
-                const indices = checks.filter(c => c.checked).map(c => Number(c.value));
-                return indices.map(idx => pendingShareEpisodes[idx]).filter(Boolean);
+                const key = currentSharePayload ? (currentSharePayload.allEpisodesUrl || currentSharePayload.url || currentSharePayload.title) : 'default';
+                if (shareEpisodeSelections[key]) {
+                    // 使用存储的选择状态
+                    const indices = shareEpisodeSelections[key].map((checked, idx) => checked ? idx : null).filter(idx => idx !== null);
+                    return indices.map(idx => pendingShareEpisodes[idx]).filter(Boolean);
+                }
+                return [];
             }
             return pendingShareEpisodes;
         }
@@ -5897,11 +5948,17 @@
             // 显示/隐藏"添加到分享墙"按钮（仅管理员可见）
             const addToShareWallButton = document.getElementById('addToShareWallButton');
             if (addToShareWallButton) {
-                if (isAdmin() && currentShareUrl) {
+                if (isAdmin()) {
                     addToShareWallButton.classList.remove('hidden');
                 } else {
                     addToShareWallButton.classList.add('hidden');
                 }
+            }
+            
+            // 显示/隐藏"前往分享墙"按钮（仅在添加到分享墙成功后显示）
+            const goToShareWallButton = document.getElementById('goToShareWallButton');
+            if (goToShareWallButton) {
+                goToShareWallButton.classList.add('hidden');
             }
             
             setShareCopyLabel(currentShareUrl ? '点击复制地址' : '生成分享链接');
@@ -5932,11 +5989,6 @@
         }
 
         async function addToShareWall() {
-            if (!currentShareUrl) {
-                showToast('请先点击"确认生成分享"');
-                return;
-            }
-            
             const token = getUserToken ? getUserToken() : '';
             if (!token) {
                 showToast('请先登录');
@@ -5948,18 +6000,48 @@
                 return;
             }
             
+            if (!currentSharePayload) {
+                showToast('无法获取视频信息');
+                return;
+            }
+            
+            // 获取按钮元素
+            const addToShareWallButton = document.getElementById('addToShareWallButton');
+            if (addToShareWallButton) {
+                // 保存原始按钮内容
+                const originalContent = addToShareWallButton.innerHTML;
+                // 修改按钮内容，添加旋转图标
+                addToShareWallButton.innerHTML = '<i class="fa fa-spinner fa-spin mr-1"></i> 添加中...';
+                addToShareWallButton.disabled = true;
+            }
+            
+            // 如果还没有生成分享链接，先生成
+            if (!currentShareUrl) {
+                const success = await createShareFromSelection();
+                if (!success) {
+                    // 恢复按钮状态
+                    if (addToShareWallButton) {
+                        addToShareWallButton.innerHTML = '<i class="fa fa-th-large mr-1"></i> 添加到分享墙';
+                        addToShareWallButton.disabled = false;
+                    }
+                    showToast('生成分享链接失败，请重试');
+                    return;
+                }
+            }
+            
             const urlObj = new URL(currentShareUrl, window.location.origin);
             const shareId = urlObj.searchParams.get('sid');
             if (!shareId) {
+                // 恢复按钮状态
+                if (addToShareWallButton) {
+                    addToShareWallButton.innerHTML = '<i class="fa fa-th-large mr-1"></i> 添加到分享墙';
+                    addToShareWallButton.disabled = false;
+                }
                 showToast('无法获取分享ID');
                 return;
             }
             
             const videoData = currentSharePayload;
-            if (!videoData) {
-                showToast('无法获取视频信息');
-                return;
-            }
             
             try {
                 const res = await fetch('/api/share-wall', {
@@ -5978,7 +6060,9 @@
                         class: videoData.class || '',
                         actor: videoData.actor || '',
                         year: videoData.year || '',
-                        remarks: videoData.remarks || ''
+                        remarks: videoData.remarks || '',
+                        expireSeconds: videoData.expireSeconds || 0,
+                        expiresAt: videoData.expiresAt || 0
                     })
                 });
                 const data = await res.json();
@@ -5990,8 +6074,27 @@
             } catch (err) {
                 console.error('添加到分享墙失败:', err);
                 showToast('添加失败，请稍后重试');
+            } finally {
+                // 显示前往分享墙按钮（无论添加是否成功）
+                const goToShareWallButton = document.getElementById('goToShareWallButton');
+                if (goToShareWallButton) {
+                    goToShareWallButton.classList.remove('hidden');
+                }
+                // 恢复按钮状态
+                if (addToShareWallButton) {
+                    addToShareWallButton.innerHTML = '<i class="fa fa-th-large mr-1"></i> 添加到分享墙';
+                    addToShareWallButton.disabled = false;
+                }
             }
         }
+
+        function goToShareWall() {
+            window.open('/shareWall', '_blank');
+        }
+
+
+
+
 
         async function createShortShare(payload) {
             const token = getUserToken ? getUserToken() : '';
@@ -6056,6 +6159,10 @@
             const finalShareId = isShareEditing ? currentShareId : shortId;
             currentShareId = finalShareId;
             currentShareUrl = buildShareUrl(url, title, currentSharePayload.pic || '', currentSharePayload.source || '', expireSeconds, finalShareId);
+            const expiresAt = expireSeconds > 0 ? Date.now() + expireSeconds * 1000 : 0;
+            // 更新currentSharePayload，确保包含最新的过期时间信息
+            currentSharePayload.expireSeconds = expireSeconds;
+            currentSharePayload.expiresAt = expiresAt;
             saveShareItem({
                 id: finalShareId,
                 url,
@@ -6069,7 +6176,7 @@
                 year: currentSharePayload.year || '',
                 remarks: currentSharePayload.remarks || '',
                 expireSeconds,
-                expiresAt: expireSeconds > 0 ? Date.now() + expireSeconds * 1000 : 0,
+                expiresAt,
                 shareUrl: currentShareUrl,
                 createdAt: Date.now()
             }, { skipRemote: true });
@@ -6106,7 +6213,9 @@
                 class: videoClass || '',
                 actor: videoActor || '',
                 year: videoYear || '',
-                remarks: videoRemarks || ''
+                remarks: videoRemarks || '',
+                expireSeconds: getShareExpireSeconds(),
+                expiresAt: 0
             };
             const episodes = parsePlayUrls(videoUrl);
             prepareShareSelection(episodes, currentIndex);
@@ -6144,7 +6253,9 @@
                 allEpisodesUrl: item.allEpisodesUrl || item.url,
                 title: item.title,
                 pic: item.pic || '',
-                source: item.source || ''
+                source: item.source || '',
+                expireSeconds: item.expireSeconds || 0,
+                expiresAt: item.expiresAt || 0
             };
             currentShareId = item.shareId || item.id;
             currentShareUrl = '';
@@ -6157,10 +6268,29 @@
             }
             // 使用 allEpisodesUrl 解析集数，这样可以看到所有集数
             const episodes = parsePlayUrls(item.allEpisodesUrl || item.url);
+            // 解析分享的URL，确定哪些集数被分享了
+            const sharedEpisodes = parsePlayUrls(item.url);
             prepareShareSelection(episodes, 0);
             if (episodes.length > 1) {
                 setShareMode('custom');
-                setShareEpisodeChecks(true);
+                // 生成唯一键
+                const key = currentSharePayload ? (currentSharePayload.allEpisodesUrl || currentSharePayload.url || currentSharePayload.title) : 'default';
+                // 根据分享的内容更新选择状态
+                if (sharedEpisodes.length === 1) {
+                    // 如果只分享了一集，找到对应的索引并勾选
+                    const sharedUrl = sharedEpisodes[0].url;
+                    const sharedIndex = episodes.findIndex(ep => ep.url === sharedUrl);
+                    if (sharedIndex !== -1) {
+                        shareEpisodeSelections[key] = episodes.map((_, idx) => idx === sharedIndex);
+                    }
+                } else if (sharedEpisodes.length > 1) {
+                    // 如果分享了多集，找到对应的索引并勾选
+                    const sharedUrls = new Set(sharedEpisodes.map(ep => ep.url));
+                    shareEpisodeSelections[key] = episodes.map(ep => sharedUrls.has(ep.url));
+                }
+                saveShareEpisodeSelections();
+                // 重新渲染列表以反映更新后的状态
+                renderShareEpisodeList(episodes);
             }
             openShareModal('edit');
         }
@@ -6466,7 +6596,11 @@
             let filteredShares = shares;
             if (currentShareTab !== 'all') {
                 filteredShares = shares.filter(item => {
-                    const category = getOfficialCategoryByName(item.source) || '';
+                    let category = getOfficialCategoryByName(item.source) || '';
+                    if (!category) {
+                        // 如果无法通过source获取分类，使用当前host的分类作为默认值
+                        category = getCurrentHostCategory();
+                    }
                     return normalizeCategory(category) === currentShareTab;
                 });
             }

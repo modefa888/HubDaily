@@ -326,20 +326,35 @@ shareRouter.put("/user/shares/:shareId", authMiddleware, async (ctx) => {
     const safeExpireSeconds = parseExpireSeconds(expireSeconds);
     const now = new Date();
     const db = await getDb();
+    const expiresAt = buildExpiresAt(safeExpireSeconds);
+    
+    // 更新用户分享的有效期
     const updateResult = await db.collection("user_shares").updateOne(
         { shareId: safeShareId, userId: ctx.state.user._id },
         {
             $set: {
                 expireSeconds: safeExpireSeconds,
-                expiresAt: buildExpiresAt(safeExpireSeconds),
+                expiresAt: expiresAt,
                 updatedAt: now
             }
         }
     );
+    
     if (updateResult.matchedCount === 0) {
         ctx.body = { code: 404, message: "分享不存在" };
         return;
     }
+    
+    // 检查该分享是否在分享墙中，如果在，也更新分享墙中的有效期
+    await db.collection("share_wall").updateOne(
+        { shareId: safeShareId },
+        {
+            $set: {
+                expiresAt: expiresAt
+            }
+        }
+    );
+    
     ctx.body = { code: 200, message: "更新成功" };
 });
 
@@ -367,6 +382,7 @@ shareRouter.get("/share-wall", async (ctx) => {
         year: item.year || "",
         remarks: item.remarks || "",
         addedBy: item.addedBy || "",
+        expiresAt: item.expiresAt ? item.expiresAt.getTime() : 0,
         createdAt: item.createdAt ? item.createdAt.getTime() : 0,
     }));
     
@@ -375,7 +391,7 @@ shareRouter.get("/share-wall", async (ctx) => {
 
 // 添加到分享墙（仅管理员）
 shareRouter.post("/share-wall", authMiddleware, requireAdmin, async (ctx) => {
-    const { shareId, title, url, pic, source, desc, class: videoClass, actor, year, remarks } = ctx.request.body || {};
+    const { shareId, title, url, pic, source, desc, class: videoClass, actor, year, remarks, expireSeconds, expiresAt } = ctx.request.body || {};
     
     const safeShareId = String(shareId || "").trim();
     if (!safeShareId) {
@@ -393,6 +409,18 @@ shareRouter.post("/share-wall", authMiddleware, requireAdmin, async (ctx) => {
     }
     
     const now = new Date();
+    let safeExpiresAt = null;
+    
+    // 优先使用传入的expiresAt，如果没有则根据expireSeconds计算
+    if (expiresAt) {
+        safeExpiresAt = new Date(Number(expiresAt));
+    } else if (expireSeconds) {
+        const safeExpireSeconds = parseExpireSeconds(expireSeconds);
+        if (safeExpireSeconds > 0) {
+            safeExpiresAt = new Date(Date.now() + safeExpireSeconds * 1000);
+        }
+    }
+    
     const payload = {
         shareId: safeShareId,
         title: String(title || "").trim(),
@@ -405,6 +433,7 @@ shareRouter.post("/share-wall", authMiddleware, requireAdmin, async (ctx) => {
         year: String(year || "").trim(),
         remarks: String(remarks || "").trim(),
         addedBy: ctx.state.user.username || "",
+        expiresAt: safeExpiresAt,
         createdAt: now,
     };
     
@@ -416,6 +445,7 @@ shareRouter.post("/share-wall", authMiddleware, requireAdmin, async (ctx) => {
         data: {
             shareId: safeShareId,
             title: payload.title,
+            expiresAt: safeExpiresAt ? safeExpiresAt.getTime() : 0,
             createdAt: now.getTime(),
         },
     };
