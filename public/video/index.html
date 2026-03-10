@@ -687,6 +687,9 @@
                 <button onclick="copyShareUrl()" class="btn-secondary w-full mt-2">
                     <i class="fa fa-copy mr-1"></i> 点击复制地址
                 </button>
+                <button id="addToShareWallButton" onclick="addToShareWall()" class="hidden btn-primary w-full mt-2 bg-gradient-to-r from-purple-500 to-pink-500 border-0">
+                    <i class="fa fa-th-large mr-1"></i> 添加到分享墙
+                </button>
             </div>
         </div>
     </div>
@@ -1086,6 +1089,29 @@
             window.location.href = '/login/index.html';
         }
 
+        async function fetchUserRole() {
+            const token = getUserToken ? getUserToken() : '';
+            if (!token) {
+                currentUserRole = null;
+                return;
+            }
+            try {
+                const res = await fetch('/api/user/profile', {
+                    headers: { Authorization: 'Bearer ' + token }
+                });
+                const data = await res.json();
+                if (data.code === 200 && data.data) {
+                    currentUserRole = data.data.role || null;
+                }
+            } catch (e) {
+                console.error('获取用户角色失败:', e);
+            }
+        }
+
+        function isAdmin() {
+            return currentUserRole === 'admin';
+        }
+
         function applyAvatar(url) {
             const safe = String(url || '').trim();
             if (safe) {
@@ -1169,6 +1195,7 @@
         let pendingShareCurrentIndex = 0;
         let isShareEditing = false;
         let shareListLoaded = false;
+        let currentUserRole = null;
         const userAvatarImg = document.getElementById('userAvatarImg');
         const userAvatarText = document.getElementById('userAvatarText');
         const userAvatarPreview = document.getElementById('userAvatarPreview');
@@ -1579,6 +1606,8 @@
             applyAvatarFromStorage();
             // 检查登录状态
             checkLoginStatus();
+            // 获取用户角色
+            fetchUserRole();
             if (customTypeSelect) {
                 customTypeSelect.addEventListener('change', () => {
                     const value = customTypeSelect.value;
@@ -5631,7 +5660,13 @@
         }
 
         function getShareId(url, title, source = '') {
-            return `s_${base64Url(`${title || ''}|${source || ''}`)}`;
+            const content = (title || '') + (source || '');
+            let encrypted = base64Url(content);
+            while (encrypted.length < 18) {
+                encrypted += Math.random().toString(36).substring(2, 10);
+            }
+            encrypted = encrypted.substring(0, 18);
+            return `s_${encrypted}`;
         }
 
         function normalizeShareItem(item) {
@@ -5859,6 +5894,16 @@
                 titleElement.textContent = isEditMode ? '修改分享视频' : '分享视频';
             }
             
+            // 显示/隐藏"添加到分享墙"按钮（仅管理员可见）
+            const addToShareWallButton = document.getElementById('addToShareWallButton');
+            if (addToShareWallButton) {
+                if (isAdmin() && currentShareUrl) {
+                    addToShareWallButton.classList.remove('hidden');
+                } else {
+                    addToShareWallButton.classList.add('hidden');
+                }
+            }
+            
             setShareCopyLabel(currentShareUrl ? '点击复制地址' : '生成分享链接');
             setShareConfirmState(currentShareUrl ? 'done' : 'ready', isEditMode);
             showToast(isEditMode ? '修改面板已打开' : '分享面板已打开');
@@ -5886,6 +5931,68 @@
             }
         }
 
+        async function addToShareWall() {
+            if (!currentShareUrl) {
+                showToast('请先点击"确认生成分享"');
+                return;
+            }
+            
+            const token = getUserToken ? getUserToken() : '';
+            if (!token) {
+                showToast('请先登录');
+                return;
+            }
+            
+            if (!isAdmin()) {
+                showToast('只有管理员可以添加到分享墙');
+                return;
+            }
+            
+            const urlObj = new URL(currentShareUrl, window.location.origin);
+            const shareId = urlObj.searchParams.get('sid');
+            if (!shareId) {
+                showToast('无法获取分享ID');
+                return;
+            }
+            
+            const videoData = currentSharePayload;
+            if (!videoData) {
+                showToast('无法获取视频信息');
+                return;
+            }
+            
+            try {
+                const res = await fetch('/api/share-wall', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json', 
+                        Authorization: `Bearer ${token}` 
+                    },
+                    body: JSON.stringify({
+                        shareId: shareId,
+                        title: videoData.title || '',
+                        url: videoData.url || '',
+                        pic: videoData.pic || '',
+                        source: videoData.source || '',
+                        desc: videoData.desc || '',
+                        class: videoData.class || '',
+                        actor: videoData.actor || '',
+                        year: videoData.year || '',
+                        remarks: videoData.remarks || ''
+                    })
+                });
+                const data = await res.json();
+                if (data && data.code === 200) {
+                    showToast('已成功添加到分享墙');
+                } else {
+                    showToast(data.message || '添加失败');
+                }
+            } catch (err) {
+                console.error('添加到分享墙失败:', err);
+                showToast('添加失败，请稍后重试');
+            }
+        }
+
         async function createShortShare(payload) {
             const token = getUserToken ? getUserToken() : '';
             if (!token) return '';
@@ -5893,7 +6000,10 @@
                 const res = await fetch('/api/user/share', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify({
+                        ...payload,
+                        apiName: payload.source || ''
+                    })
                 });
                 const data = await res.json();
                 if (data && data.code === 200 && data.data && data.data.shareId) {

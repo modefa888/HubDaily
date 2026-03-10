@@ -197,6 +197,41 @@
         });
       });
 
+      // 登录表单回车自动下一个
+      const loginInputs = ["loginUsername", "loginPassword"];
+      loginInputs.forEach((id, index) => {
+        const input = document.getElementById(id);
+        input.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            if (index < loginInputs.length - 1) {
+              document.getElementById(loginInputs[index + 1]).focus();
+            } else {
+              document.getElementById("loginBtn").click();
+            }
+          }
+        });
+      });
+
+      // 注册表单回车自动下一个
+      const regInputs = ["regUsername", "regNickname", "regPassword", "regPasswordConfirm", "regSecurityQuestion", "regSecurityAnswer", "regCaptcha"];
+      regInputs.forEach((id, index) => {
+        const input = document.getElementById(id);
+        if (input) {
+          input.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              if (index < regInputs.length - 1) {
+                const nextInput = document.getElementById(regInputs[index + 1]);
+                if (nextInput) nextInput.focus();
+              } else {
+                document.getElementById("regBtn").click();
+              }
+            }
+          });
+        }
+      });
+
       document.getElementById("regBtn").addEventListener("click", async () => {
         const username = document.getElementById("regUsername").value.trim();
         const nickname = document.getElementById("regNickname").value.trim();

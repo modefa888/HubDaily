@@ -385,7 +385,7 @@
             }
         }
 
-        async function initPlayer(payload) {
+        function initPlayer(payload) {
             const titleEl = document.getElementById('playerTitle');
             const sourceEl = document.getElementById('shareSource');
             const shareTitleEl = document.getElementById('shareTitle');
@@ -421,8 +421,7 @@
             if (shareActorEl) shareActorEl.textContent = payload.actor || '未知';
             if (shareRemarksEl) shareRemarksEl.textContent = payload.remarks || '未知';
             if (posterEl) {
-                const imageUrl = await loadImageWithCache(payload.pic || '', '../loading.gif');
-                posterEl.src = imageUrl;
+                posterEl.src = payload.pic || '../loading.gif';
                 posterEl.onerror = () => {
                     posterEl.src = '../loading.gif';
                 };

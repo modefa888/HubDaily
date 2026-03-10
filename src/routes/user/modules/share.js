@@ -17,24 +17,30 @@ const toBase64Url = (buf) =>
         .replace(/\//g, "_")
         .replace(/=+$/g, "");
 
-const SHARE_ID_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-const buildShortShareId = (length = 10) => {
+const generateShareIdFromContent = (title, apiName) => {
     const crypto = require("crypto");
-    const bytes = crypto.randomBytes(length);
-    let out = "";
-    for (let i = 0; i < length; i += 1) {
-        out += SHARE_ID_CHARS[bytes[i] % SHARE_ID_CHARS.length];
+    const content = (title || "") + (apiName || "");
+    const hash = crypto.createHash("md5").update(content).digest("hex");
+    const num = parseInt(hash.substring(0, 8), 16);
+    let encrypted = Buffer.from(String(num)).toString("base64").replace(/[\+\/=]/g, "");
+    while (encrypted.length < 18) {
+        encrypted += Math.random().toString(36).substring(2, 10);
     }
-    return out;
+    encrypted = encrypted.substring(0, 18);
+    return `s_${encrypted}`;
 };
 
-const generateShareId = async (db, attempts = 8) => {
-    for (let i = 0; i < attempts; i += 1) {
-        const candidate = `s_${buildShortShareId(10)}`; // s_ + 10 chars
-        const exists = await db.collection("user_shares").findOne({ shareId: candidate });
-        if (!exists) return candidate;
+const generateShareId = async (db, title, apiName) => {
+    const candidate = generateShareIdFromContent(title, apiName);
+    const exists = await db.collection("user_shares").findOne({ shareId: candidate });
+    if (!exists) return candidate;
+    const crypto = require("crypto");
+    const randomPart = crypto.randomBytes(4).toString("hex");
+    let newId = `s_${randomPart}${candidate.substring(2, 20)}`;
+    while (newId.length < 20) {
+        newId += Math.random().toString(36).substring(2, 20 - newId.length + 2);
     }
-    return `s_${buildShortShareId(12)}`;
+    return newId.substring(0, 20);
 };
 
 const buildExpiresAt = (seconds, fallbackMs) => {
@@ -151,13 +157,14 @@ shareRouter.delete("/user/:id/shares", authMiddleware, requireAdmin, async (ctx)
 
 // 创建或更新分享（登录用户）
 shareRouter.post("/user/share", authMiddleware, async (ctx) => {
-    const { shareId, title, url, allEpisodesUrl, pic, source, expireSeconds, desc, class: videoClass, actor, year, remarks } = ctx.request.body || {};
+    const { shareId, title, url, apiName, allEpisodesUrl, pic, source, expireSeconds, desc, class: videoClass, actor, year, remarks } = ctx.request.body || {};
     const safeUrl = String(url || "").trim();
     if (!safeUrl) {
         ctx.body = { code: 400, message: "分享地址不能为空" };
         return;
     }
     const safeTitle = String(title || "").trim();
+    const safeApiName = String(apiName || "").trim();
     const safeAllEpisodesUrl = String(allEpisodesUrl || url || "").trim();
     const safePic = String(pic || "").trim();
     const safeSource = String(source || "").trim();
@@ -173,14 +180,13 @@ shareRouter.post("/user/share", authMiddleware, async (ctx) => {
     
     let finalShareId = shareId;
     if (!finalShareId) {
-        // 生成新的分享ID
-        finalShareId = await generateShareId(db);
-        // 创建新分享
+        finalShareId = await generateShareId(db, safeTitle, safeApiName);
         const payload = {
             shareId: finalShareId,
             userId: ctx.state.user._id,
             title: safeTitle,
             url: safeUrl,
+            apiName: safeApiName,
             allEpisodesUrl: safeAllEpisodesUrl,
             pic: safePic,
             source: safeSource,
@@ -218,13 +224,13 @@ shareRouter.post("/user/share", authMiddleware, async (ctx) => {
             },
         };
     } else {
-        // 先尝试更新现有分享
         const updateResult = await db.collection("user_shares").updateOne(
             { shareId: finalShareId, userId: ctx.state.user._id },
             {
                 $set: {
                     title: safeTitle,
                     url: safeUrl,
+                    apiName: safeApiName,
                     allEpisodesUrl: safeAllEpisodesUrl,
                     pic: safePic,
                     source: safeSource,
@@ -241,12 +247,12 @@ shareRouter.post("/user/share", authMiddleware, async (ctx) => {
         );
         
         if (updateResult.matchedCount === 0) {
-            // 如果分享不存在，创建新的分享
             const payload = {
                 shareId: finalShareId,
                 userId: ctx.state.user._id,
                 title: safeTitle,
                 url: safeUrl,
+                apiName: safeApiName,
                 allEpisodesUrl: safeAllEpisodesUrl,
                 pic: safePic,
                 source: safeSource,
@@ -284,7 +290,6 @@ shareRouter.post("/user/share", authMiddleware, async (ctx) => {
                 },
             };
         } else {
-            // 更新成功
             ctx.body = {
                 code: 200,
                 message: "修改成功",
@@ -336,6 +341,100 @@ shareRouter.put("/user/shares/:shareId", authMiddleware, async (ctx) => {
         return;
     }
     ctx.body = { code: 200, message: "更新成功" };
+});
+
+// ==================== 分享墙功能 ====================
+
+// 获取分享墙列表（公开接口）
+shareRouter.get("/share-wall", async (ctx) => {
+    const db = await getDb();
+    const wallItems = await db
+        .collection("share_wall")
+        .find({})
+        .sort({ createdAt: -1 })
+        .toArray();
+    
+    const data = wallItems.map((item) => ({
+        id: String(item._id),
+        shareId: item.shareId,
+        title: item.title || "",
+        url: item.url || "",
+        pic: item.pic || "",
+        source: item.source || "",
+        desc: item.desc || "",
+        class: item.class || "",
+        actor: item.actor || "",
+        year: item.year || "",
+        remarks: item.remarks || "",
+        addedBy: item.addedBy || "",
+        createdAt: item.createdAt ? item.createdAt.getTime() : 0,
+    }));
+    
+    ctx.body = { code: 200, message: "获取成功", data };
+});
+
+// 添加到分享墙（仅管理员）
+shareRouter.post("/share-wall", authMiddleware, requireAdmin, async (ctx) => {
+    const { shareId, title, url, pic, source, desc, class: videoClass, actor, year, remarks } = ctx.request.body || {};
+    
+    const safeShareId = String(shareId || "").trim();
+    if (!safeShareId) {
+        ctx.body = { code: 400, message: "缺少 shareId 参数" };
+        return;
+    }
+    
+    const db = await getDb();
+    
+    // 检查是否已存在
+    const exists = await db.collection("share_wall").findOne({ shareId: safeShareId });
+    if (exists) {
+        ctx.body = { code: 400, message: "该分享已在分享墙中" };
+        return;
+    }
+    
+    const now = new Date();
+    const payload = {
+        shareId: safeShareId,
+        title: String(title || "").trim(),
+        url: String(url || "").trim(),
+        pic: String(pic || "").trim(),
+        source: String(source || "").trim(),
+        desc: String(desc || "").trim(),
+        class: String(videoClass || "").trim(),
+        actor: String(actor || "").trim(),
+        year: String(year || "").trim(),
+        remarks: String(remarks || "").trim(),
+        addedBy: ctx.state.user.username || "",
+        createdAt: now,
+    };
+    
+    await db.collection("share_wall").insertOne(payload);
+    
+    ctx.body = {
+        code: 200,
+        message: "添加成功",
+        data: {
+            shareId: safeShareId,
+            title: payload.title,
+            createdAt: now.getTime(),
+        },
+    };
+});
+
+// 从分享墙移除（仅管理员）
+shareRouter.delete("/share-wall/:shareId", authMiddleware, requireAdmin, async (ctx) => {
+    const { shareId } = ctx.params;
+    const safeShareId = String(shareId || "").trim();
+    
+    if (!safeShareId) {
+        ctx.body = { code: 400, message: "缺少 shareId 参数" };
+        return;
+    }
+    
+    const db = await getDb();
+    await db.collection("share_wall").deleteOne({ shareId: safeShareId });
+    
+    ctx.body = { code: 200, message: "移除成功" };
 });
 
 module.exports = {
