@@ -81,6 +81,42 @@ router.get("/admin/tv/channels/:id", authMiddleware, requireAdmin, async (ctx) =
   }
 });
 
+// 获取频道视频列表（管理员）
+router.get("/admin/tv/channels/:channelId/videos", authMiddleware, requireAdmin, async (ctx) => {
+  try {
+    const db = await getDb();
+    if (!db) {
+      ctx.body = {
+        code: 500,
+        message: "数据库连接失败"
+      };
+      return;
+    }
+    const { channelId } = ctx.params;
+    const channel = await db.collection("tv_channels").findOne(
+      { _id: new ObjectId(channelId) }
+    );
+    if (!channel) {
+      ctx.body = {
+        code: 404,
+        message: "频道不存在"
+      };
+      return;
+    }
+    ctx.body = {
+      code: 200,
+      message: "获取视频列表成功",
+      data: channel.videos || []
+    };
+  } catch (error) {
+    console.error("获取视频列表失败:", error);
+    ctx.body = {
+      code: 500,
+      message: "获取视频列表失败"
+    };
+  }
+});
+
 // 添加频道（管理员）
 router.post("/admin/tv/channels", authMiddleware, requireAdmin, async (ctx) => {
   try {
