@@ -89,7 +89,7 @@ shareRouter.get("/user/shares", authMiddleware, async (ctx) => {
 });
 
 // 获取分享列表（管理员指定用户）
-shareRouter.get("/user/:id/shares", authMiddleware, requireAdmin, async (ctx) => {
+shareRouter.get("/user/shares/:id", authMiddleware, requireAdmin, async (ctx) => {
     const { id } = ctx.params;
     if (!ObjectId.isValid(id)) {
         ctx.body = { code: 400, message: "用户ID不合法" };
@@ -139,7 +139,7 @@ shareRouter.delete("/user/shares", authMiddleware, async (ctx) => {
 });
 
 // 删除分享（管理员指定用户）
-shareRouter.delete("/user/:id/shares", authMiddleware, requireAdmin, async (ctx) => {
+shareRouter.delete("/user/shares/:id", authMiddleware, requireAdmin, async (ctx) => {
     const { id } = ctx.params;
     if (!ObjectId.isValid(id)) {
         ctx.body = { code: 400, message: "用户ID不合法" };
@@ -314,6 +314,57 @@ shareRouter.post("/user/share", authMiddleware, async (ctx) => {
     }
 });
 
+// 批量更新分享有效期（登录用户）
+shareRouter.put("/user/shares/batch", authMiddleware, async (ctx) => {
+    const { shareIds, expireSeconds } = ctx.request.body || {};
+    const safeShareIds = Array.isArray(shareIds) ? shareIds.map(id => String(id || "").trim()).filter(Boolean) : [];
+    if (safeShareIds.length === 0) {
+        ctx.body = { code: 400, message: "缺少 shareIds 参数" };
+        return;
+    }
+    const safeExpireSeconds = parseExpireSeconds(expireSeconds);
+    const now = new Date();
+    const db = await getDb();
+    const expiresAt = buildExpiresAt(safeExpireSeconds);
+    
+    // 构建更新条件，管理员可以更新任何分享，普通用户只能更新自己的分享
+    let updateCondition = { shareId: { $in: safeShareIds } };
+    if (!ctx.state.user.isAdmin) {
+        updateCondition.userId = ctx.state.user._id;
+    }
+    
+    // 批量更新用户分享的有效期
+    const updateResult = await db.collection("user_shares").updateMany(
+        updateCondition,
+        {
+            $set: {
+                expireSeconds: safeExpireSeconds,
+                expiresAt: expiresAt,
+                updatedAt: now
+            }
+        }
+    );
+    
+    // 批量更新分享墙中的有效期
+    await db.collection("share_wall").updateMany(
+        { shareId: { $in: safeShareIds } },
+        {
+            $set: {
+                expiresAt: expiresAt
+            }
+        }
+    );
+    
+    ctx.body = {
+        code: 200, 
+        message: `成功更新 ${updateResult.modifiedCount} 个分享的有效期`,
+        data: {
+            updatedCount: updateResult.modifiedCount,
+            totalCount: safeShareIds.length
+        }
+    };
+});
+
 // 更新分享有效期（登录用户）
 shareRouter.put("/user/shares/:shareId", authMiddleware, async (ctx) => {
     const { shareId } = ctx.params;
@@ -328,9 +379,15 @@ shareRouter.put("/user/shares/:shareId", authMiddleware, async (ctx) => {
     const db = await getDb();
     const expiresAt = buildExpiresAt(safeExpireSeconds);
     
+    // 构建更新条件，管理员可以更新任何分享，普通用户只能更新自己的分享
+    let updateCondition = { shareId: safeShareId };
+    if (!ctx.state.user.isAdmin) {
+        updateCondition.userId = ctx.state.user._id;
+    }
+    
     // 更新用户分享的有效期
     const updateResult = await db.collection("user_shares").updateOne(
-        { shareId: safeShareId, userId: ctx.state.user._id },
+        updateCondition,
         {
             $set: {
                 expireSeconds: safeExpireSeconds,

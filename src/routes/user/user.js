@@ -34,6 +34,7 @@ userRouter.use(officialApiModule.router.routes(), officialApiModule.router.allow
 userRouter.use(parseApiModule.router.routes(), parseApiModule.router.allowedMethods());
 userRouter.use(routeAccessModule.router.routes(), routeAccessModule.router.allowedMethods());
 userRouter.use(favoriteModule.router.routes(), favoriteModule.router.allowedMethods());
+// 直接注册share模块，不需要添加/user前缀
 userRouter.use(shareModule.router.routes(), shareModule.router.allowedMethods());
 userRouter.use(navigationModule.router.routes(), navigationModule.router.allowedMethods());
 userRouter.use(tvModule.router.routes(), tvModule.router.allowedMethods());

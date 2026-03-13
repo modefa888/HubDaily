@@ -7,9 +7,12 @@ const ALWAYS_OPEN_PATHS = new Set(["/user/login", "/user/register"]);
 
 // 从路径中提取路由模板
 const getRouteTemplate = (path) => {
+    // 移除/api/前缀进行处理
+    const normalizedPath = path.startsWith("/api") ? path.substring(4) : path;
+    
     // 处理 /91/ 开头的路径
-    if (path.startsWith("/91/")) {
-        const parts = path.split("/").filter(Boolean);
+    if (normalizedPath.startsWith("/91/")) {
+        const parts = normalizedPath.split("/").filter(Boolean);
         if (parts.length >= 2) {
             let template = "/91";
             for (let i = 1; i < parts.length; i++) {
@@ -34,8 +37,8 @@ const getRouteTemplate = (path) => {
     }
     
     // 处理 /xvideos/ 开头的路径
-    if (path.startsWith("/xvideos/")) {
-        const parts = path.split("/").filter(Boolean);
+    if (normalizedPath.startsWith("/xvideos/")) {
+        const parts = normalizedPath.split("/").filter(Boolean);
         if (parts.length >= 2) {
             let template = "/xvideos";
             for (let i = 1; i < parts.length; i++) {
@@ -60,8 +63,8 @@ const getRouteTemplate = (path) => {
     }
     
     // 处理 /jabletv/ 开头的路径
-    if (path.startsWith("/jabletv/")) {
-        const parts = path.split("/").filter(Boolean);
+    if (normalizedPath.startsWith("/jabletv/")) {
+        const parts = normalizedPath.split("/").filter(Boolean);
         if (parts.length >= 2) {
             let template = "/jabletv";
             for (let i = 1; i < parts.length; i++) {
@@ -86,8 +89,8 @@ const getRouteTemplate = (path) => {
     }
     
     // 处理 /51cg/ 开头的路径
-    if (path.startsWith("/51cg/")) {
-        const parts = path.split("/").filter(Boolean);
+    if (normalizedPath.startsWith("/51cg/")) {
+        const parts = normalizedPath.split("/").filter(Boolean);
         if (parts.length >= 2) {
             let template = "/51cg";
             // 定义固定路径段
@@ -108,8 +111,8 @@ const getRouteTemplate = (path) => {
     }
     
     // 处理 /hsex/ 开头的路径
-    if (path.startsWith("/hsex/")) {
-        const parts = path.split("/").filter(Boolean);
+    if (normalizedPath.startsWith("/hsex/")) {
+        const parts = normalizedPath.split("/").filter(Boolean);
         if (parts.length >= 2) {
             let template = "/hsex";
             for (let i = 1; i < parts.length; i++) {
@@ -134,8 +137,8 @@ const getRouteTemplate = (path) => {
     }
     
     // 处理 /kanav/ 开头的路径
-    if (path.startsWith("/kanav/")) {
-        const parts = path.split("/").filter(Boolean);
+    if (normalizedPath.startsWith("/kanav/")) {
+        const parts = normalizedPath.split("/").filter(Boolean);
         if (parts.length >= 2) {
             let template = "/kanav";
             for (let i = 1; i < parts.length; i++) {
@@ -160,8 +163,8 @@ const getRouteTemplate = (path) => {
     }
     
     // 处理 /madoutv/ 开头的路径
-    if (path.startsWith("/madoutv/")) {
-        const parts = path.split("/").filter(Boolean);
+    if (normalizedPath.startsWith("/madoutv/")) {
+        const parts = normalizedPath.split("/").filter(Boolean);
         if (parts.length >= 2) {
             let template = "/madoutv";
             for (let i = 1; i < parts.length; i++) {
@@ -186,8 +189,8 @@ const getRouteTemplate = (path) => {
     }
     
     // 处理 /spankbang/ 开头的路径
-    if (path.startsWith("/spankbang/")) {
-        const parts = path.split("/").filter(Boolean);
+    if (normalizedPath.startsWith("/spankbang/")) {
+        const parts = normalizedPath.split("/").filter(Boolean);
         if (parts.length >= 2) {
             let template = "/spankbang";
             for (let i = 1; i < parts.length; i++) {
@@ -212,13 +215,13 @@ const getRouteTemplate = (path) => {
     }
     
     // 处理 /proxy 路径
-    if (path === "/proxy") {
+    if (normalizedPath === "/proxy") {
         return "/proxy";
     }
     
     // 处理 /proxy/ 开头的路径
-    if (path.startsWith("/proxy/")) {
-        const parts = path.split("/").filter(Boolean);
+    if (normalizedPath.startsWith("/proxy/")) {
+        const parts = normalizedPath.split("/").filter(Boolean);
         if (parts.length >= 2) {
             let template = "/proxy";
             for (let i = 1; i < parts.length; i++) {
@@ -245,8 +248,8 @@ const getRouteTemplate = (path) => {
     // 处理其他带参数的路径
     const routePrefixes = ["/hot/", "/video/", "/other/", "/music/", "/bit/", "/comics/", "/live/", "/story/", "/v19/", "/proxy/"];
     for (const prefix of routePrefixes) {
-        if (path.startsWith(prefix)) {
-            const parts = path.split("/").filter(Boolean);
+        if (normalizedPath.startsWith(prefix)) {
+            const parts = normalizedPath.split("/").filter(Boolean);
             if (parts.length >= 2) {
                 let template = "/" + parts[0];
                 for (let i = 1; i < parts.length; i++) {
@@ -272,9 +275,9 @@ const getRouteTemplate = (path) => {
     }
     
     // 处理 /user/ 开头的路径
-    if (path.startsWith("/user/")) {
+    if (normalizedPath.startsWith("/user/")) {
         // 检查是否是 /user/:id 这样的路径
-        const userPathMatch = path.match(/^\/user\/([^/]+)/);
+        const userPathMatch = normalizedPath.match(/^\/user\/([^/]+)/);
         if (userPathMatch && userPathMatch[1] && !userPathMatch[1].includes("/")) {
             // 检查是否是已知的用户接口
             const userActions = ["login", "register", "profile", "logout", "favorites", "shares", "feedback"];
@@ -285,33 +288,33 @@ const getRouteTemplate = (path) => {
     }
     
     // 如果没有匹配的模板，返回原始路径
-    return path;
+    return normalizedPath;
 };
 
 // 检查路径是否是routers里面的接口
 const isRoutePath = (path) => {
     // 定义需要统计的路由前缀
     const routePrefixes = [
-        "/91/", // 像 /91/eb4f1958453cff394bb8 这样的路径
-        "/xvideos/", // xvideos相关接口
-        "/jabletv/", // jabletv相关接口
-        "/51cg/", // 51cg相关接口
-        "/hsex/", // hsex相关接口
-        "/kanav/", // kanav相关接口
-        "/madoutv/", // madoutv相关接口
-        "/spankbang/", // spankbang相关接口
-        "/user/", // 用户相关接口
-        "/hot/", // 热点相关接口
-        "/video/", // 视频相关接口
-        "/other/", // 其他接口
-        "/music/", // 音乐相关接口
-        "/bit/", // bit相关接口
-        "/comics/", // 漫画相关接口
-        "/live/", // 直播相关接口
-        "/story/", // 故事相关接口
-        "/v19/", // v19相关接口
-        "/proxy/", // 代理相关接口
-        "/scheduleJob/" // 定时任务相关接口
+        "/api/91/", // 像 /api/91/eb4f1958453cff394bb8 这样的路径
+        "/api/xvideos/", // xvideos相关接口
+        "/api/jabletv/", // jabletv相关接口
+        "/api/51cg/", // 51cg相关接口
+        "/api/hsex/", // hsex相关接口
+        "/api/kanav/", // kanav相关接口
+        "/api/madoutv/", // madoutv相关接口
+        "/api/spankbang/", // spankbang相关接口
+        "/api/user/", // 用户相关接口
+        "/api/hot/", // 热点相关接口
+        "/api/video/", // 视频相关接口
+        "/api/other/", // 其他接口
+        "/api/music/", // 音乐相关接口
+        "/api/bit/", // bit相关接口
+        "/api/comics/", // 漫画相关接口
+        "/api/live/", // 直播相关接口
+        "/api/story/", // 故事相关接口
+        "/api/v19/", // v19相关接口
+        "/api/proxy/", // 代理相关接口
+        "/api/scheduleJob/" // 定时任务相关接口
     ];
     
     // 检查路径是否以任何一个路由前缀开头

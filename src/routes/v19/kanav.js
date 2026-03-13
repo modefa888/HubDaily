@@ -33,7 +33,8 @@ async function fetchHtml(url) {
         return res.data;
     } catch (err) {
         console.warn(`[Kanav][FETCH_FAILED] ${url} ${err.message}`);
-        throw new Error("FETCH_BLOCKED");
+        // 不抛出错误，让axiosClient的fallback机制正常工作
+        throw err;
     }
 }
 

@@ -245,9 +245,17 @@
             overlay.classList.add('flex');
         }
 
-        function showPausedOverlay() {
+        function showPausedOverlay(message) {
             const overlay = document.getElementById('pausedOverlay');
             if (!overlay) return;
+            const titleEl = overlay.querySelector('.text-4xl');
+            if (titleEl) {
+                titleEl.textContent = message || '已暂停';
+            }
+            const messageEl = overlay.querySelector('.mt-3');
+            if (messageEl) {
+                messageEl.textContent = message || '该视频已被暂停分享';
+            }
             overlay.classList.remove('hidden');
             overlay.classList.add('flex');
         }
@@ -532,7 +540,7 @@
                 }
                 if (remote.__error === 'paused') {
                     showError(remote.message || '该视频已被暂停分享');
-                    showPausedOverlay();
+                    showPausedOverlay(remote.message);
                     hideLoading();
                     return;
                 }

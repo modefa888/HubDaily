@@ -440,9 +440,7 @@
             <div class="text-xs text-gray-600 text-center px-2 py-1 bg-white/80 rounded-full">
                 总数 <span id="loadedTotalCount" class="font-semibold text-gray-800">0</span>
             </div>
-            <div class="text-xs text-gray-600 text-center px-2 py-1 bg-white/80 rounded-full">
-                进度 <span id="progressText" class="font-semibold text-gray-800">0/0</span>
-            </div>
+
             <button onclick="loadMoreData()" class="p-3 rounded-full hover:bg-gray-200 transition-colors" title="加载更多">
                 <i class="fa fa-refresh"></i>
             </button>
@@ -613,9 +611,6 @@
                 // 确定要使用的搜索词
                 const termToUse = searchTerm && searchTerm.trim() !== '' ? searchTerm : '空姐';
                 
-                // 显示进度条
-                const progressText = document.getElementById('progressText');
-                
                 if (page === 1) {
                     clearDataContainer();
                     document.getElementById('loadedTotalCount').textContent = '0';
@@ -623,15 +618,11 @@
                 
                 // 并行请求所有站点
                 const sites = siteOptions.map(site => site.value);
-                const totalSites = sites.length;
-                let completedSites = 0;
-                
-                progressText.textContent = `0/${totalSites}`;
                 
                 // 并行请求所有站点，不等待所有请求完成
                 sites.forEach(async (site) => {
                     try {
-                        const URL = `${host}/${site}/${encodeURIComponent(termToUse)}/${page}`;
+                        const URL = `${host}/api/${site}/${encodeURIComponent(termToUse)}/${page}`;
                         const response = await fetch(URL);
                         const responseData = await response.json();
                         const data = responseData.data.data;
@@ -641,9 +632,6 @@
                         }
                     } catch (error) {
                         console.error(`Error fetching data from ${site}:`, error);
-                    } finally {
-                        completedSites++;
-                        progressText.textContent = `${completedSites}/${totalSites}`;
                     }
                 });
                 

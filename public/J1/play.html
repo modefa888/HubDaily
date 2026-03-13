@@ -994,7 +994,7 @@
                 const host = window.location.origin;
 
                 async function fetchVideoInfo(key, parm) {
-                    const apiUrl = `${host}/${key}/${parm}`;
+                    const apiUrl = `${host}/api/${key}/${parm}`;
                     const response = await fetch(apiUrl);
                     if (!response.ok) {
                         throw new Error(`接口请求失败，状态码：${response.status}`);
@@ -1191,7 +1191,7 @@
                     lastPlayedAt: Date.now(),
                     playCount: (existing && existing.playCount ? existing.playCount : 0) + 1
                 };
-                renderHistory(saveHistory(historyItem));
+                saveHistory(historyItem);
 
                 // 6. 绑定复制事件（按钮+输入框点击都可复制）
                 el.copyBtn.addEventListener('click', () => copyText(currentM3u8, el.copyTip));
@@ -1317,8 +1317,6 @@
         window.addEventListener('resize', () => {
             const player = document.getElementById('video-player');
             if (player) player.style.width = '100%';
-            renderHistory(loadHistory());
-            renderLikes(loadLikes());
         });
     </script>
     <script src="/assets/login-guard.js"></script>

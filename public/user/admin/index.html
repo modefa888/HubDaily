@@ -780,6 +780,21 @@
       <div class="flex flex-wrap items-center justify-between gap-3">
         <h2 class="font-semibold">分享墙管理（管理员）</h2>
         <div class="flex flex-wrap items-center gap-2">
+          <div class="flex items-center gap-2">
+            <input type="checkbox" id="selectAllShares" class="h-4 w-4 text-blue-600">
+            <label for="selectAllShares" class="text-sm">全选</label>
+          </div>
+          <select id="batchExpireTimeSelect" class="border rounded px-3 py-1.5 text-sm">
+            <option value="1800">30分钟</option>
+            <option value="7200">2小时</option>
+            <option value="86400">1天</option>
+            <option value="604800">7天</option>
+            <option value="0">永久</option>
+          </select>
+          <button id="batchUpdateExpireBtn" class="px-3 py-1.5 rounded bg-amber-600 text-white text-sm flex items-center justify-center">
+            <span id="batchUpdateBtnText">批量更新</span>
+            <span id="batchUpdateBtnSpinner" class="ml-2 w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin hidden"></span>
+          </button>
           <button id="loadShareWallBtn" class="hidden px-3 py-1.5 rounded bg-blue-600 text-white text-sm">刷新</button>
         </div>
       </div>
@@ -982,16 +997,21 @@
               // 计算过期状态
               let statusLabel = '正常';
               let statusColor = '#10b981'; // 绿色
+              let expireColor = '#f59e0b'; // 黄色
               if (!item.expiresAt) {
                 statusLabel = '永久';
               } else if (new Date(item.expiresAt) < new Date()) {
                 statusLabel = '过期';
                 statusColor = '#ef4444'; // 红色
+                expireColor = '#ef4444'; // 红色
               }
               
               return `
                 <div class="video-card" style="position: relative; overflow: hidden; border-radius: 12px; background: rgba(30, 41, 59, 0.8); transition: all 0.3s ease;">
                   <div class="thumb-wrapper" style="position: relative; aspect-ratio: 3/4; overflow: hidden;">
+                    <div style="position: absolute; top: 8px; left: 8px; z-index: 10;">
+                      <input type="checkbox" class="share-checkbox h-4 w-4 text-blue-600" data-share-id="${item.shareId}">
+                    </div>
                     <img src="${item.pic || '/video/loading.gif'}" 
                          alt="${item.title}" 
                          loading="lazy"
@@ -1013,7 +1033,7 @@
                     </div>
                     <div class="meta flex justify-end" style="display: flex; justify-content: flex-end; align-items: center; gap: 8px; font-size: 12px; margin-top: 4px;">
                       <span style="font-size: 12px; color: ${statusColor};">${statusLabel}</span>
-                      <span class="text-xs text-yellow-400" style="font-size: 12px; color: #f59e0b;">${expireLabel}</span>
+                      <span class="text-xs" style="font-size: 12px; color: ${expireColor};">${expireLabel}</span>
                     </div>
                     <div class="meta" style="display: flex; justify-content: flex-end; margin-top: 8px;">
                       <button class="px-2 py-1 rounded bg-slate-600 text-white text-xs" onclick="openShareActionsModal('${item.shareId}', '${item.title}')">操作</button>
@@ -1208,12 +1228,14 @@
       let statusLabel = '正常';
       let statusColor = '#10b981'; // 绿色
       let expireLabel = '永久';
+      let expireColor = '#f59e0b'; // 黄色
       
       if (!expiresAt) {
         statusLabel = '永久';
       } else if (expiresAt < new Date()) {
         statusLabel = '过期';
         statusColor = '#ef4444'; // 红色
+        expireColor = '#ef4444'; // 红色
         expireLabel = expiresAt.toLocaleString();
       } else {
         expireLabel = expiresAt.toLocaleString();
@@ -1238,6 +1260,7 @@
             const expireSpan = card.querySelector('.meta.flex.justify-end span.text-xs.text-yellow-400');
             if (expireSpan) {
               expireSpan.textContent = expireLabel;
+              expireSpan.style.color = expireColor;
             }
           }
         });
@@ -1250,6 +1273,76 @@
       if (loadShareWallBtn) {
         loadShareWallBtn.addEventListener('click', loadShareWall);
         loadShareWallBtn.classList.remove('hidden');
+      }
+      
+      // 全选/取消全选功能
+      const selectAllCheckbox = document.getElementById('selectAllShares');
+      if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+          const checkboxes = document.querySelectorAll('.share-checkbox');
+          checkboxes.forEach(checkbox => {
+            checkbox.checked = this.checked;
+          });
+        });
+      }
+      
+      // 批量更新按钮点击事件
+      const batchUpdateBtn = document.getElementById('batchUpdateExpireBtn');
+      if (batchUpdateBtn) {
+        batchUpdateBtn.addEventListener('click', function() {
+          const selectedCheckboxes = document.querySelectorAll('.share-checkbox:checked');
+          if (selectedCheckboxes.length === 0) {
+            showToast('请至少选择一个分享');
+            return;
+          }
+          
+          const shareIds = Array.from(selectedCheckboxes).map(checkbox => checkbox.dataset.shareId);
+          const expireSelect = document.getElementById('batchExpireTimeSelect');
+          const expireSeconds = parseInt(expireSelect.value, 10);
+          
+          // 显示旋转图标，隐藏按钮文本
+          const btnText = document.getElementById('batchUpdateBtnText');
+          const btnSpinner = document.getElementById('batchUpdateBtnSpinner');
+          if (btnText) btnText.classList.add('hidden');
+          if (btnSpinner) btnSpinner.classList.remove('hidden');
+          
+          batchUpdateShareExpireTime(shareIds, expireSeconds).finally(() => {
+            // 恢复按钮状态
+            if (btnText) btnText.classList.remove('hidden');
+            if (btnSpinner) btnSpinner.classList.add('hidden');
+          });
+        });
+      }
+    }
+    
+    // 批量更新分享过期时间
+    async function batchUpdateShareExpireTime(shareIds, expireSeconds) {
+      try {
+        const token = getToken();
+        if (!token) {
+          showToast('请先登录');
+          return;
+        }
+        
+        const response = await fetch('/api/user/shares/batch', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ shareIds, expireSeconds })
+        });
+        
+        const data = await response.json();
+        if (data.code === 200) {
+          showToast(`成功更新 ${data.data.updatedCount} 个分享的有效期`);
+          loadShareWall();
+        } else {
+          showToast(data.message || '更新失败');
+        }
+      } catch (error) {
+        console.error('批量更新失败:', error);
+        showToast('批量更新失败');
       }
     }
     
