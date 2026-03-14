@@ -1062,6 +1062,42 @@
         const loadedTotalCount = document.getElementById('loadedTotalCount');
         let originalPageTitle = document.title;
 
+        // 通用fetch函数，处理401错误
+        async function fetchWithAuth(url, options = {}) {
+            const token = getUserToken ? getUserToken() : '';
+            if (token && !options.headers) {
+                options.headers = {};
+            }
+            if (token) {
+                options.headers.Authorization = `Bearer ${token}`;
+            }
+
+            const response = await fetch(url, options);
+            
+            // 检查是否是JSON响应
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                // 克隆响应对象，因为响应体只能读取一次
+                const clonedResponse = response.clone();
+                try {
+                    const data = await clonedResponse.json();
+                    
+                    // 检查是否登录已过期
+                    if (data.code === 401 && data.message === '登录已过期') {
+                        showToast('登录已过期，请重新登录');
+                        setTimeout(() => {
+                            window.location.href = '/login/index.html';
+                        }, 1000);
+                        throw new Error('登录已过期');
+                    }
+                } catch (error) {
+                    // 如果解析JSON失败，继续返回原始响应
+                }
+            }
+            
+            return response;
+        }
+
         // 用户相关函数
         function getUserToken() {
             const token = String(localStorage.getItem(USER_TOKEN_KEY) || '').trim();
@@ -1099,9 +1135,7 @@
                 return;
             }
             try {
-                const res = await fetch('/api/user/profile', {
-                    headers: { Authorization: 'Bearer ' + token }
-                });
+                const res = await fetchWithAuth('/api/user/profile');
                 const data = await res.json();
                 if (data.code === 200 && data.data) {
                     currentUserRole = data.data.role || null;
@@ -1963,6 +1997,15 @@
                     data = {};
                 }
                 
+                // 检查是否登录已过期
+                if (data.code === 401 && data.message === '登录已过期') {
+                    showToast('登录已过期，请重新登录');
+                    setTimeout(() => {
+                        window.location.href = '/login/index.html';
+                    }, 1000);
+                    return [];
+                }
+                
                 if (!data.list || data.list.length === 0) {
                     if (page === 1) {
                         showEmptyState();
@@ -2081,6 +2124,16 @@
                             headers: token ? { Authorization: `Bearer ${token}` } : {}
                         });
                         const data = await response.json();
+                        
+                        // 检查是否登录已过期
+                        if (data.code === 401 && data.message === '登录已过期') {
+                            showToast('登录已过期，请重新登录');
+                            setTimeout(() => {
+                                window.location.href = '/login/index.html';
+                            }, 1000);
+                            return { item, list: [] };
+                        }
+                        
                         const list = Array.isArray(data.list) ? data.list : [];
                         
                         if (!list || list.length === 0) {
@@ -6838,8 +6891,8 @@
         
 
     </script>
-    <script src="/assets/login-guard.js"></script>
-  <script src="/assets/page-permission.js"></script>
-  <script src="/assets/announcement.js"></script>
+    <script src="../assets/login-guard.js"></script>
+  <script src="../assets/page-permission.js"></script>
+  <script src="../assets/announcement.js"></script>
   </body>
 </html>

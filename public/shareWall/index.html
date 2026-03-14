@@ -139,11 +139,27 @@
                 <h1 class="text-2xl font-bold">分享墙</h1>
             </div>
             <div class="flex items-center space-x-4">
+                <button id="searchButton" class="text-sm text-slate-400 hover:text-white transition-colors" onclick="toggleSearchBox()">
+                    <i class="fa fa-search mr-1"></i> 本地搜索
+                </button>
                 <a href="/video/index.html" class="text-sm text-slate-400 hover:text-white transition-colors">
                     <i class="fa fa-video-camera mr-1"></i> 视频搜索
                 </a>
             </div>
         </header>
+
+        <!-- Search Box -->
+        <div id="searchBox" class="mb-6 hidden">
+            <div class="flex items-center bg-slate-800 rounded-lg p-2">
+                <input type="text" id="searchInput" placeholder="搜索视频..." class="flex-1 bg-transparent border-none outline-none text-white px-3">
+                <button id="searchSubmit" onclick="performSearch()" class="px-4 py-2 bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
+                    <i class="fa fa-search mr-1"></i> 搜索
+                </button>
+                <button id="searchCancel" onclick="toggleSearchBox()" class="ml-2 px-3 py-2 bg-slate-700 rounded-lg hover:bg-slate-600 transition-colors">
+                    <i class="fa fa-times"></i>
+                </button>
+            </div>
+        </div>
 
         <!-- Video Grid -->
         <div id="videoGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
@@ -174,6 +190,10 @@
 
     <script>
         const API_BASE = '/api';
+        let originalVideos = [];
+        let currentPage = 1;
+        const pageSize = 24;
+        let filteredVideos = [];
 
         async function loadShareWall() {
             const grid = document.getElementById('videoGrid');
@@ -185,21 +205,181 @@
                 const data = await response.json();
 
                 if (data.code === 200 && data.data && data.data.length > 0) {
-                    renderVideos(data.data);
+                    originalVideos = data.data;
+                    filteredVideos = data.data;
+                    currentPage = 1;
+                    renderVideosWithPagination();
+                    renderPagination();
                     emptyState.classList.add('hidden');
                     errorState.classList.add('hidden');
                 } else {
+                    originalVideos = [];
+                    filteredVideos = [];
                     grid.innerHTML = '';
+                    hidePagination();
                     emptyState.classList.remove('hidden');
                     errorState.classList.add('hidden');
                 }
             } catch (error) {
                 console.error('加载分享墙失败:', error);
+                originalVideos = [];
+                filteredVideos = [];
                 grid.innerHTML = '';
+                hidePagination();
                 errorState.classList.remove('hidden');
                 emptyState.classList.add('hidden');
             }
         }
+
+        function renderVideosWithPagination() {
+            const start = (currentPage - 1) * pageSize;
+            const end = start + pageSize;
+            const pageVideos = filteredVideos.slice(start, end);
+            renderVideos(pageVideos);
+        }
+
+        function renderPagination() {
+            const totalPages = Math.ceil(filteredVideos.length / pageSize);
+            if (totalPages <= 1) {
+                hidePagination();
+                return;
+            }
+
+            let paginationHTML = `
+                <div class="flex justify-center items-center space-x-2 mt-8">
+                    <button onclick="changePage(1)" class="px-4 py-2 bg-slate-800 rounded-lg hover:bg-slate-700 transition-colors ${currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}">
+                        <i class="fa fa-angle-double-left"></i>
+                    </button>
+                    <button onclick="changePage(${currentPage - 1})" class="px-4 py-2 bg-slate-800 rounded-lg hover:bg-slate-700 transition-colors ${currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}">
+                        <i class="fa fa-angle-left"></i>
+                    </button>
+            `;
+
+            // 显示当前页附近的页码
+            const startPage = Math.max(1, currentPage - 2);
+            const endPage = Math.min(totalPages, startPage + 4);
+
+            for (let i = startPage; i <= endPage; i++) {
+                paginationHTML += `
+                    <button onclick="changePage(${i})" class="px-4 py-2 ${i === currentPage ? 'bg-blue-600' : 'bg-slate-800'} rounded-lg hover:bg-slate-700 transition-colors">
+                        ${i}
+                    </button>
+                `;
+            }
+
+            paginationHTML += `
+                    <button onclick="changePage(${currentPage + 1})" class="px-4 py-2 bg-slate-800 rounded-lg hover:bg-slate-700 transition-colors ${currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : ''}">
+                        <i class="fa fa-angle-right"></i>
+                    </button>
+                    <button onclick="changePage(${totalPages})" class="px-4 py-2 bg-slate-800 rounded-lg hover:bg-slate-700 transition-colors ${currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : ''}">
+                        <i class="fa fa-angle-double-right"></i>
+                    </button>
+                </div>
+            `;
+
+            // 检查是否存在分页容器，不存在则创建
+            let paginationContainer = document.getElementById('paginationContainer');
+            if (!paginationContainer) {
+                paginationContainer = document.createElement('div');
+                paginationContainer.id = 'paginationContainer';
+                const container = document.querySelector('.max-w-7xl');
+                container.appendChild(paginationContainer);
+            }
+            paginationContainer.innerHTML = paginationHTML;
+        }
+
+        function hidePagination() {
+            const paginationContainer = document.getElementById('paginationContainer');
+            if (paginationContainer) {
+                paginationContainer.innerHTML = '';
+            }
+        }
+
+        function changePage(page) {
+            const totalPages = Math.ceil(filteredVideos.length / pageSize);
+            if (page < 1 || page > totalPages) return;
+            currentPage = page;
+            renderVideosWithPagination();
+            renderPagination();
+            // 滚动到顶部
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function toggleSearchBox() {
+            const searchBox = document.getElementById('searchBox');
+            const isHidden = searchBox.classList.contains('hidden');
+            const emptyState = document.getElementById('emptyState');
+            
+            if (!isHidden) {
+                // 关闭搜索框时，显示所有视频并恢复空状态默认文本
+                document.getElementById('searchInput').value = '';
+                filteredVideos = originalVideos;
+                currentPage = 1;
+                renderVideosWithPagination();
+                renderPagination();
+                // 恢复空状态默认文本
+                const emptyText = emptyState.querySelector('p');
+                if (emptyText) {
+                    emptyText.textContent = '暂无分享内容';
+                }
+                emptyState.classList.add('hidden');
+            }
+            
+            searchBox.classList.toggle('hidden');
+            
+            if (!searchBox.classList.contains('hidden')) {
+                document.getElementById('searchInput').focus();
+            }
+        }
+
+        function performSearch() {
+            const searchTerm = document.getElementById('searchInput').value.trim().toLowerCase();
+            const grid = document.getElementById('videoGrid');
+            const emptyState = document.getElementById('emptyState');
+            
+            if (!searchTerm) {
+                filteredVideos = originalVideos;
+                currentPage = 1;
+                renderVideosWithPagination();
+                renderPagination();
+                emptyState.classList.add('hidden');
+                return;
+            }
+
+            filteredVideos = originalVideos.filter(video => {
+                const title = (video.title || '').toLowerCase();
+                const source = (video.source || '').toLowerCase();
+                return title.includes(searchTerm) || source.includes(searchTerm);
+            });
+
+            if (filteredVideos.length === 0) {
+                grid.innerHTML = '';
+                hidePagination();
+                emptyState.classList.remove('hidden');
+                // 修改空状态文本
+                const emptyText = emptyState.querySelector('p');
+                if (emptyText) {
+                    emptyText.textContent = `未找到与"${searchTerm}"相关的视频`;
+                }
+            } else {
+                currentPage = 1;
+                renderVideosWithPagination();
+                renderPagination();
+                emptyState.classList.add('hidden');
+            }
+        }
+
+        // 监听回车键
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.getElementById('searchInput');
+            if (searchInput) {
+                searchInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        performSearch();
+                    }
+                });
+            }
+        });
 
         function getExpireLabel(expiresAt) {
             if (!expiresAt || expiresAt === 0) return '永久';

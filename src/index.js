@@ -88,7 +88,17 @@ app.use(views(__dirname + "/../public", {
 
 // 设置404页面的路由处理程序
 app.use(async (ctx) => {
-  ctx.redirect("/404.html"); // 重定向到404.html
+  // 检查是否是API请求或特殊路径
+  if (ctx.path.startsWith('/api') || ctx.path.includes('@vite/client')) {
+    ctx.status = 404;
+    ctx.body = {
+      code: 404,
+      message: 'Not Found'
+    };
+  } else {
+    // 对于普通页面请求，重定向到404.html
+    ctx.redirect("/404.html");
+  }
 });
 
 const isVercel = !!process.env.VERCEL;
