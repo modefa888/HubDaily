@@ -59,7 +59,7 @@
         }
         .video-card .thumb-wrapper {
             position: relative;
-            aspect-ratio: 3/4;
+            aspect-ratio: 16/9;
             overflow: hidden;
         }
         .video-card .thumb-wrapper img {
@@ -122,7 +122,8 @@
         .loading-skeleton {
             background: linear-gradient(90deg, #334155 25%, #475569 50%, #334155 75%);
             background-size: 200% 100%;
-            animation: loading 1.5s infinite;
+            animation: loading 1.5s ease-in-out infinite;
+            border-radius: 4px;
         }
         @keyframes loading {
             0% { background-position: 200% 0; }
@@ -131,6 +132,22 @@
     </style>
 </head>
 <body class="text-white">
+    <!-- Age Verification Modal -->
+    <div id="ageVerificationModal" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+        <div class="bg-slate-800 rounded-xl p-8 max-w-md w-full text-center">
+            <h2 class="text-2xl font-bold mb-4 text-white">年龄验证</h2>
+            <p class="text-slate-300 mb-8">请确认您已年满18周岁</p>
+            <div class="flex justify-center space-x-4">
+                <button id="ageVerifyYes" class="px-6 py-3 bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors text-white font-medium">
+                    成年了，进入
+                </button>
+                <button id="ageVerifyNo" class="px-6 py-3 bg-slate-600 rounded-lg hover:bg-slate-500 transition-colors text-white font-medium">
+                    未成年，退出
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div class="max-w-7xl mx-auto px-4 py-6">
         <!-- Header -->
         <header class="flex items-center justify-between mb-8">
@@ -162,14 +179,53 @@
         </div>
 
         <!-- Video Grid -->
-        <div id="videoGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+        <div id="videoGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
             <!-- Loading Skeletons -->
-            <div class="video-card loading-skeleton" style="height: 280px;"></div>
-            <div class="video-card loading-skeleton" style="height: 280px;"></div>
-            <div class="video-card loading-skeleton" style="height: 280px;"></div>
-            <div class="video-card loading-skeleton" style="height: 280px;"></div>
-            <div class="video-card loading-skeleton" style="height: 280px;"></div>
-            <div class="video-card loading-skeleton" style="height: 280px;"></div>
+            <div class="video-card">
+                <div class="thumb-wrapper loading-skeleton"></div>
+                <div class="info">
+                    <div class="title loading-skeleton h-6 w-4/5 rounded"></div>
+                    <div class="meta mt-2">
+                        <div class="source-badge loading-skeleton h-4 w-20 rounded"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="video-card">
+                <div class="thumb-wrapper loading-skeleton"></div>
+                <div class="info">
+                    <div class="title loading-skeleton h-6 w-4/5 rounded"></div>
+                    <div class="meta mt-2">
+                        <div class="source-badge loading-skeleton h-4 w-20 rounded"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="video-card">
+                <div class="thumb-wrapper loading-skeleton"></div>
+                <div class="info">
+                    <div class="title loading-skeleton h-6 w-4/5 rounded"></div>
+                    <div class="meta mt-2">
+                        <div class="source-badge loading-skeleton h-4 w-20 rounded"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="video-card">
+                <div class="thumb-wrapper loading-skeleton"></div>
+                <div class="info">
+                    <div class="title loading-skeleton h-6 w-4/5 rounded"></div>
+                    <div class="meta mt-2">
+                        <div class="source-badge loading-skeleton h-4 w-20 rounded"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="video-card">
+                <div class="thumb-wrapper loading-skeleton"></div>
+                <div class="info">
+                    <div class="title loading-skeleton h-6 w-4/5 rounded"></div>
+                    <div class="meta mt-2">
+                        <div class="source-badge loading-skeleton h-4 w-20 rounded"></div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Empty State -->
@@ -430,8 +486,22 @@
             return div.innerHTML;
         }
 
-        // Load on page load
-        document.addEventListener('DOMContentLoaded', loadShareWall);
+        // Age verification
+        document.addEventListener('DOMContentLoaded', function() {
+            const ageModal = document.getElementById('ageVerificationModal');
+            const ageVerifyYes = document.getElementById('ageVerifyYes');
+            const ageVerifyNo = document.getElementById('ageVerifyNo');
+
+            ageVerifyYes.addEventListener('click', function() {
+                ageModal.classList.add('hidden');
+                loadShareWall();
+            });
+
+            ageVerifyNo.addEventListener('click', function() {
+                // 重定向到一个安全页面或关闭窗口
+                window.location.href = '/video/index.html';
+            });
+        });
     </script>
 </body>
 </html>

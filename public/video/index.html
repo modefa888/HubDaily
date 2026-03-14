@@ -3626,6 +3626,13 @@
         
         // 切换历史分类Tab
         function switchHistoryTab(tab) {
+            const privacyEnabled = isPrivacyModeEnabled();
+            // 隐私模式开启时只能选择普通
+            if (privacyEnabled && tab !== 'normal') {
+                showToast('隐私模式下只能查看普通内容');
+                return;
+            }
+            
             currentHistoryTab = tab;
             
             // 更新Tab样式
@@ -3640,14 +3647,22 @@
         
         // 初始化历史面板Tab
         function initHistoryTabs() {
-            // 设置默认选中为全部
-            document.getElementById('historyTabAll').className = 'flex-1 px-4 py-2 text-center text-sm font-medium bg-blue-100 text-blue-800';
+            // 默认选择普通
+            document.getElementById('historyTabAll').className = 'flex-1 px-4 py-2 text-center text-sm font-medium';
             document.getElementById('historyTabAdult').className = 'flex-1 px-4 py-2 text-center text-sm font-medium';
-            document.getElementById('historyTabNormal').className = 'flex-1 px-4 py-2 text-center text-sm font-medium';
+            document.getElementById('historyTabNormal').className = 'flex-1 px-4 py-2 text-center text-sm font-medium bg-blue-100 text-blue-800';
+            currentHistoryTab = 'normal';
         }
         
         // 切换喜欢分类Tab
         function switchFavoriteTab(tab) {
+            const privacyEnabled = isPrivacyModeEnabled();
+            // 隐私模式开启时只能选择普通
+            if (privacyEnabled && tab !== 'normal') {
+                showToast('隐私模式下只能查看普通内容');
+                return;
+            }
+            
             currentFavoriteTab = tab;
             
             // 更新Tab样式
@@ -3662,10 +3677,11 @@
         
         // 初始化喜欢面板Tab
         function initFavoriteTabs() {
-            // 设置默认选中为全部
-            document.getElementById('favoriteTabAll').className = 'flex-1 px-4 py-2 text-center text-sm font-medium bg-blue-100 text-blue-800';
+            // 默认选择普通
+            document.getElementById('favoriteTabAll').className = 'flex-1 px-4 py-2 text-center text-sm font-medium';
             document.getElementById('favoriteTabAdult').className = 'flex-1 px-4 py-2 text-center text-sm font-medium';
-            document.getElementById('favoriteTabNormal').className = 'flex-1 px-4 py-2 text-center text-sm font-medium';
+            document.getElementById('favoriteTabNormal').className = 'flex-1 px-4 py-2 text-center text-sm font-medium bg-blue-100 text-blue-800';
+            currentFavoriteTab = 'normal';
         }
         
         // 分享功能
@@ -3682,6 +3698,13 @@
         }
 
         async function switchShareTab(tab) {
+            const privacyEnabled = isPrivacyModeEnabled();
+            // 隐私模式开启时只能选择普通
+            if (privacyEnabled && tab !== 'normal') {
+                showToast('隐私模式下只能查看普通内容');
+                return;
+            }
+            
             currentShareTab = tab;
             
             // 更新Tab样式
@@ -3696,10 +3719,11 @@
         
         // 初始化分享面板Tab
         function initShareTabs() {
-            // 设置默认选中为全部
-            document.getElementById('shareTabAll').className = 'flex-1 px-4 py-2 text-center text-sm font-medium bg-blue-100 text-blue-800';
+            // 默认选择普通
+            document.getElementById('shareTabAll').className = 'flex-1 px-4 py-2 text-center text-sm font-medium';
             document.getElementById('shareTabAdult').className = 'flex-1 px-4 py-2 text-center text-sm font-medium';
-            document.getElementById('shareTabNormal').className = 'flex-1 px-4 py-2 text-center text-sm font-medium';
+            document.getElementById('shareTabNormal').className = 'flex-1 px-4 py-2 text-center text-sm font-medium bg-blue-100 text-blue-800';
+            currentShareTab = 'normal';
         }
         
         // 页面加载完成后初始化
@@ -4322,12 +4346,21 @@
             return value === '1';
         }
 
-        function togglePrivacyMode() {
+        async function togglePrivacyMode() {
             if (!privacySwitch) return;
             const enabled = !!privacySwitch.checked;
             localStorage.setItem('privacyMode', enabled ? '1' : '0');
             updatePrivacySwitchUI(enabled);
             applyPrivacyMode(enabled);
+            
+            // 开启隐私模式时，自动切换所有面板到普通tab
+            if (enabled) {
+                // 强制切换所有面板到普通tab，无论当前状态如何
+                switchHistoryTab('normal');
+                switchFavoriteTab('normal');
+                await switchShareTab('normal');
+            }
+            
             showToast(enabled ? '已开启隐私遮挡' : '已关闭隐私遮挡');
         }
 
