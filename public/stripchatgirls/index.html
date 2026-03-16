@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stripchat Girls Models</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3b82f6',
+                        secondary: '#6366f1',
+                        accent: '#f59e0b'
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .glass-effect {
+                @apply backdrop-blur-md bg-white/80 border border-white/20;
+            }
+            .card-hover {
+                @apply transition-all duration-300 hover:shadow-xl hover:-translate-y-1;
+            }
+            .scrollbar-hide::-webkit-scrollbar {
+                display: none;
+            }
+            .scrollbar-hide {
+                -ms-overflow-style: none;
+                scrollbar-width: none;
+            }
+        }
+    </style>
+    
+    <style>
+        body {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            min-height: 100vh;
+        }
+        .masonry-grid {
+            column-count: 1;
+            column-gap: 16px;
+        }
+        @media (min-width: 640px) {
+            .masonry-grid {
+                column-count: 2;
+            }
+        }
+        @media (min-width: 768px) {
+            .masonry-grid {
+                column-count: 3;
+            }
+        }
+        @media (min-width: 1024px) {
+            .masonry-grid {
+                column-count: 4;
+            }
+        }
+        @media (min-width: 1280px) {
+            .masonry-grid {
+                column-count: 5;
+            }
+        }
+        .model-card {
+            break-inside: avoid;
+            margin-bottom: 16px;
+            position: relative;
+            overflow: hidden;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .model-card:hover {
+            transform: scale(1.02);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            z-index: 10;
+        }
+        .model-card img {
+            width: 100%;
+            display: block;
+            transition: transform 0.3s ease;
+        }
+        .model-card:hover img {
+            transform: scale(1.05);
+        }
+        .model-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%);
+            color: white;
+            padding: 16px;
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+        }
+        .model-card:hover .model-overlay {
+            transform: translateY(0);
+        }
+        .loading-skeleton {
+            background: linear-gradient(90deg, #334155 25%, #475569 50%, #334155 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s ease-in-out infinite;
+            break-inside: avoid;
+            margin-bottom: 16px;
+            border-radius: 8px;
+        }
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+    </style>
+</head>
+<body class="text-white">
+    <div class="max-w-7xl mx-auto px-4 py-6">
+        <!-- Header -->
+        <header class="flex items-center justify-between mb-8">
+            <div class="flex items-center space-x-3">
+                <i class="fa fa-users text-blue-400 text-2xl"></i>
+                <h1 class="text-2xl font-bold">Stripchat Girls Models</h1>
+            </div>
+            <div class="flex items-center space-x-4">
+                <a href="/video/index.html" class="text-sm text-slate-400 hover:text-white transition-colors">
+                    <i class="fa fa-video-camera mr-1"></i> 视频搜索
+                </a>
+                <a href="/shareWall" class="text-sm text-slate-400 hover:text-white transition-colors">
+                    <i class="fa fa-th-large mr-1"></i> 分享墙
+                </a>
+            </div>
+        </header>
+
+        <!-- Model Grid -->
+        <div id="modelGrid" class="masonry-grid">
+            <!-- Loading Skeletons -->
+            <div class="model-card loading-skeleton" style="height: 400px;"></div>
+            <div class="model-card loading-skeleton" style="height: 350px;"></div>
+            <div class="model-card loading-skeleton" style="height: 450px;"></div>
+            <div class="model-card loading-skeleton" style="height: 380px;"></div>
+            <div class="model-card loading-skeleton" style="height: 420px;"></div>
+        </div>
+
+        <!-- Pagination -->
+        <div id="pagination" class="flex justify-center items-center space-x-2 mt-8 hidden">
+            <button id="prevPage" class="px-4 py-2 bg-slate-800 rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                <i class="fa fa-angle-left"></i>
+            </button>
+            <span id="pageInfo" class="px-4 py-2 text-sm"></span>
+            <button id="nextPage" class="px-4 py-2 bg-slate-800 rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                <i class="fa fa-angle-right"></i>
+            </button>
+        </div>
+
+        <!-- Empty State -->
+        <div id="emptyState" class="hidden text-center py-20">
+            <i class="fa fa-user-o text-6xl text-slate-600 mb-4"></i>
+            <p class="text-slate-400">暂无模特数据</p>
+        </div>
+
+        <!-- Error State -->
+        <div id="errorState" class="hidden text-center py-20">
+            <i class="fa fa-exclamation-circle text-6xl text-red-500 mb-4"></i>
+            <p class="text-slate-400 mb-4">加载失败</p>
+            <button id="retryButton" class="px-4 py-2 bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
+                重试
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = '/api/stripchatgirls/models';
+        let currentPage = 1;
+        const pageSize = 60;
+        let totalModels = 0;
+        let isLoading = false;
+
+        async function loadModels(page = 1) {
+            if (isLoading) return;
+            
+            isLoading = true;
+            const grid = document.getElementById('modelGrid');
+            const pagination = document.getElementById('pagination');
+            const emptyState = document.getElementById('emptyState');
+            const errorState = document.getElementById('errorState');
+            const pageInfo = document.getElementById('pageInfo');
+            const prevPage = document.getElementById('prevPage');
+            const nextPage = document.getElementById('nextPage');
+
+            try {
+                // 显示加载状态
+                grid.innerHTML = `
+                    <div class="model-card loading-skeleton" style="height: 400px;"></div>
+                    <div class="model-card loading-skeleton" style="height: 350px;"></div>
+                    <div class="model-card loading-skeleton" style="height: 450px;"></div>
+                    <div class="model-card loading-skeleton" style="height: 380px;"></div>
+                    <div class="model-card loading-skeleton" style="height: 420px;"></div>
+                `;
+                pagination.classList.add('hidden');
+                emptyState.classList.add('hidden');
+                errorState.classList.add('hidden');
+
+                const offset = (page - 1) * pageSize;
+                const response = await fetch(`${API_URL}?limit=${pageSize}&offset=${offset}&sortBy=stripRanking`);
+                const data = await response.json();
+
+                if (data.code === 200 && data.data && data.data.models) {
+                    const models = data.data.models;
+                    totalModels = models.length; // 实际项目中应该从API返回的total字段获取
+                    
+                    if (models.length === 0) {
+                        grid.innerHTML = '';
+                        pagination.classList.add('hidden');
+                        emptyState.classList.remove('hidden');
+                    } else {
+                        renderModels(models);
+                        pagination.classList.remove('hidden');
+                        pageInfo.textContent = `第 ${page} 页`;
+                        prevPage.disabled = page === 1;
+                        nextPage.disabled = models.length < pageSize;
+                    }
+                } else {
+                    grid.innerHTML = '';
+                    pagination.classList.add('hidden');
+                    errorState.classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('加载模特数据失败:', error);
+                grid.innerHTML = '';
+                pagination.classList.add('hidden');
+                errorState.classList.remove('hidden');
+            } finally {
+                isLoading = false;
+            }
+        }
+
+        function renderModels(models) {
+            const grid = document.getElementById('modelGrid');
+            grid.innerHTML = models.map(model => `
+                <div class="model-card" onclick="window.open('https://zh.stripchatgirls.com/${model.username}', '_blank')">
+                    <img 
+                        src="${model.snapshotTimestamp && model.streamName ? `https://img.doppiocdn.org/thumbs/${model.snapshotTimestamp}/${model.streamName}` : model.avatarUrl || '/video/loading.gif'}" 
+                        alt="${model.username}" 
+                        class="w-full object-cover"
+                        loading="lazy"
+                        onerror="this.src='/video/loading.gif'"
+                    >
+                    ${model.isLive ? '<div class="absolute top-2 left-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full">直播中</div>' : ''}
+                    <div class="model-overlay">
+                        <h3 class="font-semibold text-lg mb-1">${model.username}</h3>
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-sm">${model.gender === 'female' ? '女性' : model.gender === 'male' ? '男性' : '其他'}</span>
+                            <span class="text-sm"><i class="fa fa-eye mr-1"></i> ${model.viewersCount}</span>
+                        </div>
+                        ${model.groupShowTopic ? `<p class="text-sm truncate">${model.groupShowTopic}</p>` : ''}
+                        <div class="flex items-center justify-between mt-1">
+                            <span class="text-xs">${model.country || '未知国家'}</span>
+                            <span class="text-xs">${model.isHd ? 'HD' : ''}</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 事件监听
+        document.addEventListener('DOMContentLoaded', function() {
+            loadModels();
+
+            document.getElementById('prevPage').addEventListener('click', function() {
+                if (currentPage > 1) {
+                    currentPage--;
+                    loadModels(currentPage);
+                }
+            });
+
+            document.getElementById('nextPage').addEventListener('click', function() {
+                currentPage++;
+                loadModels(currentPage);
+            });
+
+            document.getElementById('retryButton').addEventListener('click', function() {
+                loadModels(currentPage);
+            });
+        });
+    </script>
+</body>
+</html>

@@ -46,30 +46,69 @@
             background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
             min-height: 100vh;
         }
+        .masonry-grid {
+            column-count: 1;
+            column-gap: 16px;
+        }
+        @media (min-width: 640px) {
+            .masonry-grid {
+                column-count: 2;
+            }
+        }
+        @media (min-width: 768px) {
+            .masonry-grid {
+                column-count: 3;
+            }
+        }
+        @media (min-width: 1024px) {
+            .masonry-grid {
+                column-count: 4;
+            }
+        }
+        @media (min-width: 1280px) {
+            .masonry-grid {
+                column-count: 5;
+            }
+        }
         .video-card {
+            break-inside: avoid;
+            margin-bottom: 16px;
             position: relative;
             overflow: hidden;
-            border-radius: 12px;
-            background: rgba(30, 41, 59, 0.8);
+            border-radius: 8px;
             transition: all 0.3s ease;
+            cursor: pointer;
         }
         .video-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            transform: scale(1.02);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            z-index: 10;
         }
-        .video-card .thumb-wrapper {
-            position: relative;
-            aspect-ratio: 16/9;
-            overflow: hidden;
-        }
-        .video-card .thumb-wrapper img {
+        .video-card img {
             width: 100%;
-            height: 100%;
-            object-fit: cover;
+            display: block;
+            transition: transform 0.3s ease, opacity 0.5s ease;
+            opacity: 0;
+        }
+        .video-card img.loaded {
+            opacity: 1;
+        }
+        .video-card:hover img {
+            transform: scale(1.05);
+        }
+        .video-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%);
+            color: white;
+            padding: 16px;
+            transform: translateY(100%);
             transition: transform 0.3s ease;
         }
-        .video-card:hover .thumb-wrapper img {
-            transform: scale(1.05);
+        .video-card:hover .video-overlay {
+            transform: translateY(0);
         }
         .video-card .play-overlay {
             position: absolute;
@@ -80,7 +119,6 @@
             justify-content: center;
             opacity: 0;
             transition: opacity 0.3s ease;
-            cursor: pointer;
         }
         .video-card:hover .play-overlay {
             opacity: 1;
@@ -89,9 +127,6 @@
             font-size: 48px;
             color: white;
             text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
-        }
-        .video-card .info {
-            padding: 12px;
         }
         .video-card .title {
             font-size: 14px;
@@ -123,7 +158,9 @@
             background: linear-gradient(90deg, #334155 25%, #475569 50%, #334155 75%);
             background-size: 200% 100%;
             animation: loading 1.5s ease-in-out infinite;
-            border-radius: 4px;
+            break-inside: avoid;
+            margin-bottom: 16px;
+            border-radius: 8px;
         }
         @keyframes loading {
             0% { background-position: 200% 0; }
@@ -179,53 +216,13 @@
         </div>
 
         <!-- Video Grid -->
-        <div id="videoGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+        <div id="videoGrid" class="masonry-grid">
             <!-- Loading Skeletons -->
-            <div class="video-card">
-                <div class="thumb-wrapper loading-skeleton"></div>
-                <div class="info">
-                    <div class="title loading-skeleton h-6 w-4/5 rounded"></div>
-                    <div class="meta mt-2">
-                        <div class="source-badge loading-skeleton h-4 w-20 rounded"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="video-card">
-                <div class="thumb-wrapper loading-skeleton"></div>
-                <div class="info">
-                    <div class="title loading-skeleton h-6 w-4/5 rounded"></div>
-                    <div class="meta mt-2">
-                        <div class="source-badge loading-skeleton h-4 w-20 rounded"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="video-card">
-                <div class="thumb-wrapper loading-skeleton"></div>
-                <div class="info">
-                    <div class="title loading-skeleton h-6 w-4/5 rounded"></div>
-                    <div class="meta mt-2">
-                        <div class="source-badge loading-skeleton h-4 w-20 rounded"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="video-card">
-                <div class="thumb-wrapper loading-skeleton"></div>
-                <div class="info">
-                    <div class="title loading-skeleton h-6 w-4/5 rounded"></div>
-                    <div class="meta mt-2">
-                        <div class="source-badge loading-skeleton h-4 w-20 rounded"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="video-card">
-                <div class="thumb-wrapper loading-skeleton"></div>
-                <div class="info">
-                    <div class="title loading-skeleton h-6 w-4/5 rounded"></div>
-                    <div class="meta mt-2">
-                        <div class="source-badge loading-skeleton h-4 w-20 rounded"></div>
-                    </div>
-                </div>
-            </div>
+            <div class="video-card loading-skeleton" style="height: 400px;"></div>
+            <div class="video-card loading-skeleton" style="height: 350px;"></div>
+            <div class="video-card loading-skeleton" style="height: 450px;"></div>
+            <div class="video-card loading-skeleton" style="height: 380px;"></div>
+            <div class="video-card loading-skeleton" style="height: 420px;"></div>
         </div>
 
         <!-- Empty State -->
@@ -257,6 +254,17 @@
             const errorState = document.getElementById('errorState');
 
             try {
+                // 显示加载状态
+                grid.innerHTML = `
+                    <div class="video-card loading-skeleton" style="height: 400px;"></div>
+                    <div class="video-card loading-skeleton" style="height: 350px;"></div>
+                    <div class="video-card loading-skeleton" style="height: 450px;"></div>
+                    <div class="video-card loading-skeleton" style="height: 380px;"></div>
+                    <div class="video-card loading-skeleton" style="height: 420px;"></div>
+                `;
+                emptyState.classList.add('hidden');
+                errorState.classList.add('hidden');
+                
                 const response = await fetch(`${API_BASE}/share-wall`);
                 const data = await response.json();
 
@@ -456,16 +464,15 @@
                 const expireLabel = getExpireLabel(video.expiresAt);
                 return `
                     <div class="video-card" onclick="window.location.href='${shareUrl}'">
-                        <div class="thumb-wrapper">
-                            <img src="${video.pic || '/video/loading.gif'}" 
-                                 alt="${video.title}" 
-                                 loading="lazy"
-                                 onerror="this.src='/video/loading.gif'">
-                            <div class="play-overlay">
-                                <i class="fa fa-play-circle"></i>
-                            </div>
+                        <img src="${video.pic || '/video/loading.gif'}" 
+                             alt="${video.title}" 
+                             loading="lazy"
+                             onload="this.classList.add('loaded')"
+                             onerror="this.src='/video/loading.gif'; this.classList.add('loaded')">
+                        <div class="play-overlay">
+                            <i class="fa fa-play-circle"></i>
                         </div>
-                        <div class="info">
+                        <div class="video-overlay">
                             <div class="title">${escapeHtml(video.title)}</div>
                             <div class="meta">
                                 <span class="source-badge">${escapeHtml(video.source || '未知')}</span>
