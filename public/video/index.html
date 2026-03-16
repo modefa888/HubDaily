@@ -2563,18 +2563,37 @@
             const html = history.length === 0
                 ? `<div class="px-3 py-2 text-xs text-gray-500">暂无搜索历史</div>`
                 : `
-                    <div class="flex flex-wrap gap-2 p-2 max-h-[96px] overflow-hidden">
-                        ${history.map(item => `
+                    <div class="p-2">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-xs text-gray-500">搜索历史</span>
                             <button 
-                                class="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded hover:bg-gray-200"
-                                onclick="selectSearchHistory('${item}')"
-                                title="${item}"
-                            >${item}</button>
-                        `).join('')}
+                                class="text-xs text-gray-400 hover:text-red-500"
+                                onclick="clearSearchHistory()"
+                                title="清除搜索历史"
+                            >
+                                <i class="fa fa-trash-o mr-1"></i> 清除
+                            </button>
+                        </div>
+                        <div class="flex flex-wrap gap-2 max-h-[96px] overflow-hidden">
+                            ${history.map(item => `
+                                <button 
+                                    class="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded hover:bg-gray-200"
+                                    onclick="selectSearchHistory('${item}')"
+                                    title="${item}"
+                                >${item}</button>
+                            `).join('')}
+                        </div>
                     </div>
                 `;
             if (box) box.innerHTML = html;
             if (boxMobile) boxMobile.innerHTML = html;
+        }
+
+        function clearSearchHistory() {
+            localStorage.removeItem('searchHistory');
+            renderSearchHistory();
+            // 更新用户信息面板中的搜索历史计数
+            updateUserInfo();
         }
 
         function showSearchHistory() {
