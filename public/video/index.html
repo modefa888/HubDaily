@@ -3554,6 +3554,7 @@
                 console.error('保存播放历史失败:', error);
             }
             scheduleUserStatsUpdate();
+            updatePanelTabCounts();
         }
         
         // 当前选中的历史分类
@@ -3664,6 +3665,8 @@
             
             // 重新显示历史记录
             updateHistoryDisplay();
+            // 更新Tab数量
+            updatePanelTabCounts();
         }
         
         // 初始化历史面板Tab
@@ -3673,6 +3676,7 @@
             document.getElementById('historyTabAdult').className = 'flex-1 px-4 py-2 text-center text-sm font-medium';
             document.getElementById('historyTabNormal').className = 'flex-1 px-4 py-2 text-center text-sm font-medium bg-blue-100 text-blue-800';
             currentHistoryTab = 'normal';
+            updatePanelTabCounts();
         }
         
         // 切换喜欢分类Tab
@@ -3694,6 +3698,8 @@
             
             // 重新显示喜欢内容
             renderFavoriteContent(buildFavoriteStatusList());
+            // 更新Tab数量
+            updatePanelTabCounts();
         }
         
         // 初始化喜欢面板Tab
@@ -3703,6 +3709,7 @@
             document.getElementById('favoriteTabAdult').className = 'flex-1 px-4 py-2 text-center text-sm font-medium';
             document.getElementById('favoriteTabNormal').className = 'flex-1 px-4 py-2 text-center text-sm font-medium bg-blue-100 text-blue-800';
             currentFavoriteTab = 'normal';
+            updatePanelTabCounts();
         }
         
         // 分享功能
@@ -3736,8 +3743,59 @@
             
             // 重新显示分享内容
             await loadShareList();
+            // 更新Tab数量
+            updatePanelTabCounts();
         }
         
+        // 更新所有面板的Tab数量
+        function updatePanelTabCounts() {
+            // 更新历史面板Tab数量
+            const history = JSON.parse(localStorage.getItem('videoPlayHistory') || '[]');
+            const historyAllCount = history.length;
+            const historyAdultCount = history.filter(item => {
+                const category = getOfficialCategoryByName(item.source) || '';
+                return normalizeCategory(category) === 'adult';
+            }).length;
+            const historyNormalCount = history.filter(item => {
+                const category = getOfficialCategoryByName(item.source) || '';
+                return normalizeCategory(category) === 'normal';
+            }).length;
+            document.getElementById('historyTabAll').textContent = `全部 (${historyAllCount})`;
+            document.getElementById('historyTabAdult').textContent = `摩西 (${historyAdultCount})`;
+            document.getElementById('historyTabNormal').textContent = `普通 (${historyNormalCount})`;
+
+            // 更新喜欢面板Tab数量
+            ensureFavoritesCacheImmediate();
+            const favorites = getFavorites();
+            const favoriteAllCount = favorites.length;
+            const favoriteAdultCount = favorites.filter(item => {
+                const category = item.category || getOfficialCategoryByName(item.source) || '';
+                return normalizeCategory(category) === 'adult';
+            }).length;
+            const favoriteNormalCount = favorites.filter(item => {
+                const category = item.category || getOfficialCategoryByName(item.source) || '';
+                return normalizeCategory(category) === 'normal';
+            }).length;
+            document.getElementById('favoriteTabAll').textContent = `全部 (${favoriteAllCount})`;
+            document.getElementById('favoriteTabAdult').textContent = `摩西 (${favoriteAdultCount})`;
+            document.getElementById('favoriteTabNormal').textContent = `普通 (${favoriteNormalCount})`;
+
+            // 更新分享面板Tab数量
+            const shares = getShareList();
+            const shareAllCount = shares.length;
+            const shareAdultCount = shares.filter(item => {
+                const category = item.category || getOfficialCategoryByName(item.source) || '';
+                return normalizeCategory(category) === 'adult';
+            }).length;
+            const shareNormalCount = shares.filter(item => {
+                const category = item.category || getOfficialCategoryByName(item.source) || '';
+                return normalizeCategory(category) === 'normal';
+            }).length;
+            document.getElementById('shareTabAll').textContent = `全部 (${shareAllCount})`;
+            document.getElementById('shareTabAdult').textContent = `摩西 (${shareAdultCount})`;
+            document.getElementById('shareTabNormal').textContent = `普通 (${shareNormalCount})`;
+        }
+
         // 初始化分享面板Tab
         function initShareTabs() {
             // 默认选择普通
@@ -3745,6 +3803,7 @@
             document.getElementById('shareTabAdult').className = 'flex-1 px-4 py-2 text-center text-sm font-medium';
             document.getElementById('shareTabNormal').className = 'flex-1 px-4 py-2 text-center text-sm font-medium bg-blue-100 text-blue-800';
             currentShareTab = 'normal';
+            updatePanelTabCounts();
         }
         
         // 页面加载完成后初始化
@@ -4138,6 +4197,7 @@
                 toggleHistory();
                 showToast('历史记录已清空');
                 scheduleUserStatsUpdate();
+                updatePanelTabCounts();
             }
         }
         
@@ -5855,6 +5915,7 @@
                     })
                 }).catch(() => {});
             }
+            updatePanelTabCounts();
         }
 
         function encodeSharePayload(fields) {
@@ -6496,6 +6557,8 @@
                     }).catch(() => {});
                 }
             }
+            scheduleUserStatsUpdate();
+            updatePanelTabCounts();
         }
 
         function updateCardFavoriteByUrl(rawUrl, isLiked) {
