@@ -154,6 +154,14 @@
                 <i class="fa fa-angle-left"></i>
             </button>
             <span id="pageInfo" class="px-4 py-2 text-sm"></span>
+            <div id="pageNumbers" class="flex space-x-1"></div>
+            <div class="flex items-center space-x-2">
+                <span class="text-sm">跳转到</span>
+                <input type="number" id="jumpPageInput" class="w-16 px-2 py-2 bg-slate-800 rounded-lg text-white text-center" min="1" value="1">
+                <button id="jumpPageButton" class="px-3 py-2 bg-slate-800 rounded-lg hover:bg-slate-700 transition-colors">
+                    确定
+                </button>
+            </div>
             <button id="nextPage" class="px-4 py-2 bg-slate-800 rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                 <i class="fa fa-angle-right"></i>
             </button>
@@ -216,16 +224,18 @@
                     totalModels = models.length; // 实际项目中应该从API返回的total字段获取
                     
                     if (models.length === 0) {
-                        grid.innerHTML = '';
-                        pagination.classList.add('hidden');
-                        emptyState.classList.remove('hidden');
-                    } else {
-                        renderModels(models);
-                        pagination.classList.remove('hidden');
-                        pageInfo.textContent = `第 ${page} 页`;
-                        prevPage.disabled = page === 1;
-                        nextPage.disabled = models.length < pageSize;
-                    }
+                    grid.innerHTML = '';
+                    pagination.classList.add('hidden');
+                    emptyState.classList.remove('hidden');
+                } else {
+                    renderModels(models);
+                    pagination.classList.remove('hidden');
+                    pageInfo.textContent = `第 ${page} 页`;
+                    prevPage.disabled = page === 1;
+                    nextPage.disabled = models.length < pageSize;
+                    renderPageNumbers(page);
+                    document.getElementById('jumpPageInput').value = page;
+                }
                 } else {
                     grid.innerHTML = '';
                     pagination.classList.add('hidden');
@@ -269,6 +279,27 @@
             `).join('');
         }
 
+        function renderPageNumbers(currentPage) {
+            const pageNumbersContainer = document.getElementById('pageNumbers');
+            pageNumbersContainer.innerHTML = '';
+            
+            // 生成前5页的页码按钮
+            const maxPageButtons = 5;
+            const startPage = Math.max(1, currentPage - Math.floor(maxPageButtons / 2));
+            const endPage = Math.min(startPage + maxPageButtons - 1, 100); // 假设最大页数为100
+            
+            for (let i = startPage; i <= endPage; i++) {
+                const pageButton = document.createElement('button');
+                pageButton.className = `px-3 py-2 rounded-lg transition-colors ${i === currentPage ? 'bg-blue-600' : 'bg-slate-800 hover:bg-slate-700'}`;
+                pageButton.textContent = i;
+                pageButton.addEventListener('click', function() {
+                    currentPage = i;
+                    loadModels(i);
+                });
+                pageNumbersContainer.appendChild(pageButton);
+            }
+        }
+
         // 事件监听
         document.addEventListener('DOMContentLoaded', function() {
             loadModels();
@@ -287,6 +318,24 @@
 
             document.getElementById('retryButton').addEventListener('click', function() {
                 loadModels(currentPage);
+            });
+
+            document.getElementById('jumpPageButton').addEventListener('click', function() {
+                const jumpPage = parseInt(document.getElementById('jumpPageInput').value);
+                if (jumpPage >= 1) {
+                    currentPage = jumpPage;
+                    loadModels(currentPage);
+                }
+            });
+
+            document.getElementById('jumpPageInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    const jumpPage = parseInt(this.value);
+                    if (jumpPage >= 1) {
+                        currentPage = jumpPage;
+                        loadModels(currentPage);
+                    }
+                }
             });
         });
     </script>
