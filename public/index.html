@@ -65,69 +65,92 @@
         margin: 4rem 2rem;
         font-size: 6rem;
         color: var(--text-color-gray);
+        transition: all 0.3s ease;
       }
       .title {
         font-size: 2rem;
         font-weight: bold;
+        transition: all 0.3s ease;
       }
       .text {
         margin: 1rem;
+        font-size: 1.1rem;
+        color: var(--text-color-gray);
+        transition: all 0.3s ease;
       }
       .control button {
         background-color: var(--text-color-hover);
-        border: var(--text-color) solid;
-        border-radius: 4px;
-        padding: 0.5rem 1rem;
+        border: var(--text-color) solid 2px;
+        border-radius: 50px;
+        padding: 0.8rem 2rem;
         transition: all 0.5s ease;
-        margin: 1rem 0.2rem;
+        margin: 1.5rem 0.5rem;
         color: var(--text-color);
         cursor: pointer;
+        font-size: 1.1rem;
+        font-weight: 500;
+        min-width: 180px;
       }
       .control button:hover {
-        border: var(--text-color) solid;
+        border: var(--text-color) solid 2px;
         background: var(--text-color);
         color: var(--text-color-hover);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.2);
       }
       .control button i {
-        margin-right: 6px;
+        margin-right: 8px;
+        font-size: 1.2rem;
       }
       .apps {
         width: 100%;
         max-width: 900px;
-        padding: 0 16px 24px;
+        padding: 0 16px 32px;
+        transition: all 0.3s ease;
       }
       .apps-title {
-        font-size: 16px;
+        font-size: 18px;
         font-weight: 600;
-        margin: 0 0 12px;
+        margin: 2rem 0 16px;
         color: var(--text-color);
+        padding-bottom: 8px;
+        border-bottom: 2px solid rgba(148, 163, 184, 0.2);
+        transition: all 0.3s ease;
       }
       .app-grid {
         display: grid;
         grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 12px;
+        gap: 16px;
+        transition: all 0.3s ease;
       }
       .app-card {
         border: 1px solid rgba(148, 163, 184, 0.35);
-        border-radius: 10px;
-        padding: 12px;
+        border-radius: 12px;
+        padding: 16px;
         display: flex;
+        flex-direction: column;
         align-items: center;
-        gap: 10px;
-        background: rgba(255, 255, 255, 0.6);
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        gap: 12px;
+        background: rgba(255, 255, 255, 0.8);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        min-height: 100px;
+        justify-content: center;
       }
       .app-card i {
-        font-size: 18px;
+        font-size: 24px;
         color: var(--icon-color);
+        transition: all 0.3s ease;
       }
       .app-card span {
-        font-size: 14px;
+        font-size: 16px;
         color: var(--text-color);
+        text-align: center;
+        transition: all 0.3s ease;
       }
       .app-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
+        transform: translateY(-4px);
+        box-shadow: 0 12px 24px rgba(15, 23, 42, 0.15);
+        border-color: var(--text-color);
       }
       footer {
         line-height: 1.75rem;
@@ -158,32 +181,98 @@
       @media (max-width: 900px) {
         main {
           justify-content: flex-start;
-          padding-top: 24px;
+          padding-top: 40px;
         }
         .ico {
-          margin: 1.5rem 1rem;
-          font-size: 4rem;
+          margin: 2rem 1rem;
+          font-size: 5rem;
         }
         .title {
-          font-size: 1.5rem;
+          font-size: 1.8rem;
+          text-align: center;
+          padding: 0 20px;
         }
         .text {
-          margin: 0.5rem 0 1rem;
+          margin: 1rem 0 1.5rem;
+          font-size: 1.1rem;
+          text-align: center;
+          padding: 0 20px;
         }
         .control {
           display: flex;
           flex-wrap: wrap;
           justify-content: center;
         }
+        .control button {
+          margin: 1rem 0.5rem;
+          padding: 1rem 2.5rem;
+          font-size: 1.2rem;
+          min-width: 200px;
+        }
         .apps {
-          padding: 0 16px 16px;
+          padding: 0 20px 32px;
+        }
+        .apps-title {
+          font-size: 1.2rem;
+          margin: 2.5rem 0 20px;
         }
         .app-grid {
           grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 20px;
+        }
+        .app-card {
+          padding: 20px;
+          min-height: 120px;
+        }
+        .app-card i {
+          font-size: 28px;
+        }
+        .app-card span {
+          font-size: 18px;
         }
         footer {
           height: auto;
-          padding: 12px 0 20px;
+          padding: 20px 0 30px;
+        }
+        footer .social {
+          font-size: 18px;
+        }
+        footer .social i {
+          margin: 0 16px;
+        }
+        .power,
+        .icp {
+          font-size: 14px;
+          text-align: center;
+          padding: 0 20px;
+        }
+      }
+      
+      @media (max-width: 480px) {
+        .ico {
+          font-size: 4.5rem;
+          margin: 1.5rem 1rem;
+        }
+        .title {
+          font-size: 1.6rem;
+        }
+        .control button {
+          min-width: 180px;
+          padding: 0.9rem 2rem;
+        }
+        .app-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 16px;
+        }
+        .app-card {
+          padding: 16px;
+          min-height: 100px;
+        }
+        .app-card i {
+          font-size: 24px;
+        }
+        .app-card span {
+          font-size: 16px;
         }
       }
     </style>
