@@ -499,7 +499,17 @@
             const ageVerifyYes = document.getElementById('ageVerifyYes');
             const ageVerifyNo = document.getElementById('ageVerifyNo');
 
+            // 检查是否已经验证过
+            const isVerified = localStorage.getItem('ageVerified');
+            if (isVerified === 'true') {
+                ageModal.classList.add('hidden');
+                loadShareWall();
+                return;
+            }
+
             ageVerifyYes.addEventListener('click', function() {
+                // 存储验证状态
+                localStorage.setItem('ageVerified', 'true');
                 ageModal.classList.add('hidden');
                 loadShareWall();
             });
