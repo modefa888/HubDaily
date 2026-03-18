@@ -271,14 +271,23 @@
 
     sendBtn.addEventListener("click", async () => {
       const message = (messageInput.value || "").trim();
-      if (!message) return;
-      const captcha = (captchaInput.value || "").trim();
-      if (!captcha) {
-        showHint("请输入验证码");
+      if (!message) {
+        showToast("请输入反馈内容", "error");
         return;
       }
-      // 验证验证码
+      const captcha = (captchaInput.value || "").trim();
+      if (!captcha) {
+        showToast("请输入验证码", "error");
+        return;
+      }
+      const token = getToken();
+      if (!token) {
+        redirectToLogin();
+        return;
+      }
+      setBtnLoading(sendBtn, true, "发送中...");
       try {
+        // 验证验证码
         const verifyRes = await fetch("/api/user/verify-captcha", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -290,24 +299,12 @@
           loadCaptcha();
           return;
         }
-      } catch (e) {
-        showToast("验证码验证失败", "error");
-        loadCaptcha();
-        return;
-      }
-      const payload = {
-        type: typeSelect.value || "建议",
-        message,
-        email: (emailInput.value || "").trim(),
-        page: window.location.pathname
-      };
-      const token = getToken();
-      if (!token) {
-        redirectToLogin();
-        return;
-      }
-      try {
-        setBtnLoading(sendBtn, true, "发送中...");
+        const payload = {
+          type: typeSelect.value || "建议",
+          message,
+          email: (emailInput.value || "").trim(),
+          page: window.location.pathname
+        };
         const res = await fetch("/api/user/feedbacks", {
           method: "POST",
           headers: { "Content-Type": "application/json", ...authHeaders() },
