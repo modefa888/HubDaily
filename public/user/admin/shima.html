@@ -53,6 +53,18 @@
         padding-bottom: 4px !important;
       }
     }
+    
+    /* 视频卡片样式 */
+    .video-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    }
+    .video-card:hover .thumb-wrapper img {
+      transform: scale(1.05);
+    }
+    .video-card:hover .play-overlay {
+      opacity: 1;
+    }
   </style>
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen">
@@ -87,6 +99,7 @@
         <button class="module-tab w-full text-left px-3 py-2 rounded text-sm bg-slate-200 text-slate-700" data-module-target="articles">文章管理</button>
         <button class="module-tab w-full text-left px-3 py-2 rounded text-sm bg-slate-200 text-slate-700" data-module-target="navigation">导航设置</button>
         <button class="module-tab w-full text-left px-3 py-2 rounded text-sm bg-slate-200 text-slate-700" data-module-target="tv">电视管理</button>
+        <button class="module-tab w-full text-left px-3 py-2 rounded text-sm bg-slate-200 text-slate-700" data-module-target="shareWall">分享墙管理</button>
         <button class="module-tab w-full text-left px-3 py-2 rounded text-sm bg-slate-200 text-slate-700" data-module-target="searchKeywords">搜索关键字</button>
       </aside>
       <main class="flex-1 p-4 ml-0 md:ml-52">
@@ -684,29 +697,215 @@
       <div class="flex flex-wrap items-center justify-between gap-3">
         <h2 class="font-semibold">电视管理（管理员）</h2>
         <div class="flex flex-wrap items-center gap-2">
-          <button id="addChannelBtn" class="px-3 py-1.5 rounded bg-emerald-600 text-white text-sm">新增频道</button>
           <button id="loadChannelsBtn" class="hidden px-3 py-1.5 rounded bg-blue-600 text-white text-sm">刷新</button>
         </div>
       </div>
+      
+      <!-- Tab切换 -->
+      <div class="flex items-center bg-slate-100 rounded-lg p-1 text-xs">
+        <button id="tvTabChannels" type="button" class="flex-1 px-2 py-1 rounded-md bg-white shadow text-slate-800">频道管理</button>
+        <button id="tvTabVideos" type="button" class="flex-1 px-2 py-1 rounded-md text-slate-600">视频管理</button>
+      </div>
+      
       <div id="tvMeta" class="text-sm text-slate-500"></div>
       
-
-      
-      <!-- 频道列表 -->
-      <div class="overflow-auto">
-        <table class="min-w-full text-sm">
-          <thead class="text-left text-slate-500">
-            <tr>
-              <th class="py-2">排序</th>
-              <th class="py-2">频道名称</th>
-              <th class="py-2">描述</th>
-              <th class="py-2">视频数量</th>
-              <th class="py-2">操作</th>
-            </tr>
-          </thead>
-          <tbody id="channelsTbody" class="divide-y"></tbody>
-        </table>
+      <!-- 频道管理区域 -->
+      <div id="channelsSection">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <div></div>
+          <button id="addChannelBtn" class="px-3 py-1.5 rounded bg-emerald-600 text-white text-sm">新增频道</button>
+        </div>
+        
+        <!-- 频道编辑表单 -->
+        <div id="channelEditForm" class="space-y-4 hidden">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-slate-700">频道名称</label>
+              <input id="channelNameInput" class="w-full border rounded px-3 py-2 text-sm" placeholder="请输入频道名称">
+            </div>
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-slate-700">排序</label>
+              <input id="channelOrderInput" type="number" class="w-full border rounded px-3 py-2 text-sm" placeholder="请输入排序序号" value="1">
+            </div>
+          </div>
+          <div class="space-y-2">
+            <label class="block text-sm font-medium text-slate-700">频道描述</label>
+            <textarea id="channelDescriptionInput" class="w-full border rounded px-3 py-2 text-sm" placeholder="请输入频道描述" rows="2"></textarea>
+          </div>
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div class="flex flex-wrap items-center gap-2">
+              <button id="cancelChannelBtn" class="px-3 py-1.5 rounded border text-slate-600 text-sm">取消</button>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <button id="saveChannelBtn" class="px-3 py-1.5 rounded bg-emerald-600 text-white text-sm">保存频道</button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 频道列表 -->
+        <div class="overflow-auto">
+          <table class="min-w-full text-sm">
+            <thead class="text-left text-slate-500">
+              <tr>
+                <th class="py-2">排序</th>
+                <th class="py-2">频道名称</th>
+                <th class="py-2">描述</th>
+                <th class="py-2">视频数量</th>
+                <th class="py-2">操作</th>
+              </tr>
+            </thead>
+            <tbody id="channelsTbody" class="divide-y"></tbody>
+          </table>
+        </div>
       </div>
+      
+      <!-- 视频管理区域 -->
+      <div id="videosSection" class="hidden">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <div class="flex items-center gap-2">
+            <div id="currentChannelDisplay" class="border rounded px-3 py-1.5 text-sm bg-slate-50 min-w-[120px]">选择频道</div>
+            <select id="videoChannelSelect" class="hidden border rounded px-3 py-1.5 text-sm">
+              <option value="">选择频道</option>
+            </select>
+            <button id="addVideoBtn" class="px-3 py-1.5 rounded bg-emerald-600 text-white text-sm">
+              <i class="fa fa-plus mr-1"></i>添加视频
+            </button>
+          </div>
+          <div class="flex items-center gap-2">
+            <input id="shareUrlInput" class="border rounded px-3 py-1.5 text-sm" placeholder="输入分享链接">
+            <button id="addFromShareBtn" class="px-3 py-1.5 rounded bg-purple-600 text-white text-sm">
+              <i class="fa fa-link mr-1"></i>从分享添加
+            </button>
+            <button id="refreshVideosBtn" class="px-3 py-1.5 rounded bg-blue-600 text-white text-sm">
+              <i class="fa fa-refresh mr-1"></i>刷新
+            </button>
+          </div>
+        </div>
+        
+        <!-- 视频编辑表单 -->
+        <div id="videoEditForm" class="space-y-4 hidden">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-slate-700">视频标题</label>
+              <input id="videoTitleInput" class="w-full border rounded px-3 py-2 text-sm" placeholder="请输入视频标题">
+            </div>
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-slate-700">排序</label>
+              <input id="videoOrderInput" type="number" class="w-full border rounded px-3 py-2 text-sm" placeholder="请输入排序序号" value="1">
+            </div>
+          </div>
+          <div class="space-y-2">
+            <label class="block text-sm font-medium text-slate-700">视频链接</label>
+            <input id="videoUrlInput" type="text" class="w-full border rounded px-3 py-2 text-sm" placeholder="请输入视频URL">
+          </div>
+          <div class="space-y-2">
+            <label class="block text-sm font-medium text-slate-700">视频封面</label>
+            <input id="videoImageInput" type="text" class="w-full border rounded px-3 py-2 text-sm" placeholder="请输入视频封面URL">
+          </div>
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div class="flex flex-wrap items-center gap-2">
+              <button id="cancelVideoBtn" class="px-3 py-1.5 rounded border text-slate-600 text-sm">取消</button>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <button id="saveVideoBtn" class="px-3 py-1.5 rounded bg-emerald-600 text-white text-sm">保存视频</button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 视频列表 -->
+        <div class="space-y-4">
+          <!-- 骨架屏 -->
+          <div id="videosSkeleton" class="hidden">
+            <div class="space-y-4">
+              <div class="h-4 bg-slate-200 rounded w-1/4"></div>
+              <div class="space-y-3">
+                <div class="flex items-center gap-4">
+                  <div class="h-4 bg-slate-200 rounded w-12"></div>
+                  <div class="flex-1 space-y-2">
+                    <div class="h-4 bg-slate-200 rounded w-2/3"></div>
+                    <div class="h-4 bg-slate-200 rounded w-1/2"></div>
+                  </div>
+                  <div class="h-4 bg-slate-200 rounded w-24"></div>
+                </div>
+                <div class="flex items-center gap-4">
+                  <div class="h-4 bg-slate-200 rounded w-12"></div>
+                  <div class="flex-1 space-y-2">
+                    <div class="h-4 bg-slate-200 rounded w-2/3"></div>
+                    <div class="h-4 bg-slate-200 rounded w-1/2"></div>
+                  </div>
+                  <div class="h-4 bg-slate-200 rounded w-24"></div>
+                </div>
+                <div class="flex items-center gap-4">
+                  <div class="h-4 bg-slate-200 rounded w-12"></div>
+                  <div class="flex-1 space-y-2">
+                    <div class="h-4 bg-slate-200 rounded w-2/3"></div>
+                    <div class="h-4 bg-slate-200 rounded w-1/2"></div>
+                  </div>
+                  <div class="h-4 bg-slate-200 rounded w-24"></div>
+                </div>
+              </div>
+              <div class="flex items-center justify-between">
+                <div class="h-4 bg-slate-200 rounded w-32"></div>
+                <div class="flex items-center gap-2">
+                  <div class="h-8 bg-slate-200 rounded w-16"></div>
+                  <div class="h-8 bg-slate-200 rounded w-16"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 实际内容 -->
+          <div id="videosContent">
+            <div class="overflow-auto max-h-96">
+              <table class="min-w-full text-sm">
+                <thead class="text-left text-slate-500">
+                  <tr>
+                    <th class="py-2">排序</th>
+                    <th class="py-2">标题</th>
+                    <th class="py-2">链接</th>
+                    <th class="py-2">操作</th>
+                  </tr>
+                </thead>
+                <tbody id="videosTbody" class="divide-y"></tbody>
+              </table>
+            </div>
+            <!-- 分页控件 -->
+            <div class="flex items-center justify-between" id="videosPagination">
+              <div class="text-sm text-slate-500" id="videosPaginationInfo">显示 1-10 条，共 0 条</div>
+              <div class="flex items-center gap-1">
+                <button id="videosPrevPage" class="px-3 py-1 rounded border text-slate-600 text-sm" disabled>上一页</button>
+                <button id="videosNextPage" class="px-3 py-1 rounded border text-slate-600 text-sm" disabled>下一页</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="module-section bg-white rounded-xl shadow p-4 space-y-4 hidden" data-module="shareWall">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <h2 class="font-semibold">分享墙管理（管理员）</h2>
+        <div class="flex flex-wrap items-center gap-2">
+          <div class="flex items-center gap-2">
+            <input type="checkbox" id="selectAllShares" class="h-4 w-4 text-blue-600">
+            <label for="selectAllShares" class="text-sm">全选</label>
+          </div>
+          <select id="batchExpireTimeSelect" class="border rounded px-3 py-1.5 text-sm">
+            <option value="1800">30分钟</option>
+            <option value="7200">2小时</option>
+            <option value="86400">1天</option>
+            <option value="604800">7天</option>
+            <option value="0">永久</option>
+          </select>
+          <button id="batchUpdateExpireBtn" class="px-3 py-1.5 rounded bg-amber-600 text-white text-sm flex items-center justify-center">
+            <span id="batchUpdateBtnText">批量更新</span>
+            <span id="batchUpdateBtnSpinner" class="ml-2 w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin hidden"></span>
+          </button>
+          <button id="loadShareWallBtn" class="hidden px-3 py-1.5 rounded bg-blue-600 text-white text-sm">刷新</button>
+        </div>
+      </div>
+      <div id="shareWallMeta" class="text-sm text-slate-500"></div>
+      <div id="shareWallGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4"></div>
     </section>
 
     <section class="module-section bg-white rounded-xl shadow p-4 space-y-4 hidden" data-module="searchKeywords">
@@ -816,6 +1015,463 @@
       <span id="loadingText" class="text-sm text-slate-700">处理中...</span>
     </div>
   </div>
+
+  <!-- 分享操作模态框 -->
+  <div id="shareActionsModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/60">
+    <div class="bg-white rounded-xl shadow-lg w-full max-w-md p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-semibold text-gray-800" id="shareActionsTitle">操作</h3>
+        <button onclick="closeShareActionsModal()" class="text-gray-500 hover:text-gray-700">
+          <i class="fa fa-times"></i>
+        </button>
+      </div>
+      <div class="space-y-4">
+        <div class="p-4 bg-gray-50 rounded-lg">
+          <div class="text-sm text-gray-600" id="shareActionsInfo"></div>
+        </div>
+        <div class="flex flex-col space-y-2" id="shareActionsContent">
+          <button class="w-full px-4 py-2 rounded bg-blue-600 text-white text-sm" id="viewShareBtn">查看</button>
+          <div class="space-y-2">
+            <label class="block text-sm text-gray-500">有效时间</label>
+            <div class="flex items-center space-x-2">
+              <select class="flex-3 border rounded px-3 py-2 text-sm" id="expireTimeSelect">
+                <option value="1800">30分钟</option>
+                <option value="7200">2小时</option>
+                <option value="86400">1天</option>
+                <option value="604800">7天</option>
+                <option value="0">永久</option>
+              </select>
+              <button class="flex-1 px-4 py-2 rounded bg-amber-600 text-white text-sm flex items-center justify-center" id="editExpireBtn">
+                <span id="editExpireBtnText">修改</span>
+                <span id="editExpireBtnSpinner" class="ml-2 w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin hidden"></span>
+              </button>
+            </div>
+          </div>
+          <button class="w-full px-4 py-2 rounded bg-rose-600 text-white text-sm" id="removeShareBtn">移除</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- 删除确认悬浮框 -->
+  <div id="deleteConfirmModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/60">
+    <div class="bg-white rounded-xl shadow-lg w-full max-w-md p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-semibold text-gray-800">确认删除</h3>
+        <button onclick="closeDeleteConfirmModal()" class="text-gray-500 hover:text-gray-700">
+          <i class="fa fa-times"></i>
+        </button>
+      </div>
+      <div class="space-y-4">
+        <div class="p-4 bg-gray-50 rounded-lg">
+          <div class="text-sm text-gray-600" id="deleteConfirmInfo">确定要从分享墙移除这个项目吗？</div>
+        </div>
+        <div class="flex space-x-2">
+          <button class="flex-1 px-4 py-2 rounded border text-slate-600 text-sm" onclick="closeDeleteConfirmModal()">取消</button>
+          <button class="flex-1 px-4 py-2 rounded bg-rose-600 text-white text-sm" id="confirmDeleteBtn">确认删除</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 分享墙管理脚本 -->
+  <script>
+    let currentShareId = '';
+    
+    // 加载分享墙列表
+    async function loadShareWall() {
+      const shareWallMeta = document.getElementById('shareWallMeta');
+      const shareWallGrid = document.getElementById('shareWallGrid');
+      const loadShareWallBtn = document.getElementById('loadShareWallBtn');
+      
+      if (shareWallMeta) shareWallMeta.textContent = '加载中...';
+      
+      try {
+        // 获取分享墙列表不需要认证，因为它是公开接口
+        const response = await fetch('/api/share-wall');
+        
+        const data = await response.json();
+        if (data.code === 200 && data.data) {
+          if (shareWallMeta) shareWallMeta.textContent = `共 ${data.data.length} 条记录`;
+          
+          if (shareWallGrid) {
+            shareWallGrid.innerHTML = data.data.map(item => {
+              const addedAt = new Date(item.createdAt).toLocaleString();
+              const expireLabel = item.expiresAt ? new Date(item.expiresAt).toLocaleString() : '永久';
+              const shareUrl = `/video/share?sid=${encodeURIComponent(item.shareId)}`;
+              
+              // 计算过期状态
+              let statusLabel = '正常';
+              let statusColor = '#10b981'; // 绿色
+              let expireColor = '#f59e0b'; // 黄色
+              if (!item.expiresAt) {
+                statusLabel = '永久';
+              } else if (new Date(item.expiresAt) < new Date()) {
+                statusLabel = '过期';
+                statusColor = '#ef4444'; // 红色
+                expireColor = '#ef4444'; // 红色
+              }
+              
+              return `
+                <div class="video-card" style="position: relative; overflow: hidden; border-radius: 12px; background: rgba(30, 41, 59, 0.8); transition: all 0.3s ease;">
+                  <div class="thumb-wrapper" style="position: relative; aspect-ratio: 3/4; overflow: hidden;">
+                    <div style="position: absolute; top: 8px; left: 8px; z-index: 10;">
+                      <input type="checkbox" class="share-checkbox h-4 w-4 text-blue-600" data-share-id="${item.shareId}">
+                    </div>
+                    <img src="${item.pic || '/video/loading.gif'}" 
+                         alt="${item.title}" 
+                         loading="lazy"
+                         onerror="this.src='/video/loading.gif'" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s ease;">
+                    <div class="play-overlay" style="position: absolute; inset: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s ease; cursor: pointer;">
+                      <i class="fa fa-play-circle" style="font-size: 48px; color: white; text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);"></i>
+                    </div>
+                  </div>
+                  <div class="info" style="padding: 12px;">
+                    <div class="title" style="font-size: 14px; font-weight: 500; color: white; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 8px;">${item.title}</div>
+                    <div class="meta" style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: #94a3b8;">
+                      <span class="source-badge" style="display: inline-block; padding: 2px 8px; background: rgba(59, 130, 246, 0.2); color: #60a5fa; border-radius: 4px; font-size: 11px;">${item.source || '未知'}</span>
+                    </div>
+                    <div class="meta" style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: #94a3b8; margin-top: 4px;">
+                      <span>添加人: ${item.addedBy || '未知'}</span>
+                    </div>
+                    <div class="meta" style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: #94a3b8; margin-top: 4px;">
+                      <span>添加时间: ${addedAt}</span>
+                    </div>
+                    <div class="meta flex justify-end" style="display: flex; justify-content: flex-end; align-items: center; gap: 8px; font-size: 12px; margin-top: 4px;">
+                      <span style="font-size: 12px; color: ${statusColor};">${statusLabel}</span>
+                      <span class="text-xs" style="font-size: 12px; color: ${expireColor};">${expireLabel}</span>
+                    </div>
+                    <div class="meta" style="display: flex; justify-content: flex-end; margin-top: 8px;">
+                      <button class="px-2 py-1 rounded bg-slate-600 text-white text-xs" onclick="openShareActionsModal('${item.shareId}', '${item.title}')">操作</button>
+                    </div>
+                  </div>
+                </div>
+              `;
+            }).join('');
+          }
+        } else {
+          if (shareWallMeta) shareWallMeta.textContent = '加载失败';
+        }
+      } catch (error) {
+        console.error('加载分享墙失败:', error);
+        if (shareWallMeta) shareWallMeta.textContent = '加载失败';
+      } finally {
+        if (loadShareWallBtn) loadShareWallBtn.classList.remove('hidden');
+      }
+    }
+    
+    // 打开分享操作模态框
+    function openShareActionsModal(shareId, title) {
+      currentShareId = shareId;
+      const modal = document.getElementById('shareActionsModal');
+      const titleElement = document.getElementById('shareActionsTitle');
+      const infoElement = document.getElementById('shareActionsInfo');
+      
+      if (titleElement) titleElement.textContent = `操作: ${title}`;
+      if (infoElement) infoElement.textContent = `分享ID: ${shareId}`;
+      if (modal) modal.classList.remove('hidden');
+      
+      // 绑定按钮事件
+      const viewBtn = document.getElementById('viewShareBtn');
+      const editBtn = document.getElementById('editExpireBtn');
+      const removeBtn = document.getElementById('removeShareBtn');
+      
+      if (viewBtn) {
+        viewBtn.onclick = function() {
+          viewShareItem(shareId);
+          closeShareActionsModal();
+        };
+      }
+      
+      if (editBtn) {
+        editBtn.onclick = function() {
+          const expireSelect = document.getElementById('expireTimeSelect');
+          const btnText = document.getElementById('editExpireBtnText');
+          const btnSpinner = document.getElementById('editExpireBtnSpinner');
+          
+          if (expireSelect) {
+            const expireSeconds = parseInt(expireSelect.value, 10);
+            
+            // 显示旋转图标，隐藏按钮文本
+            if (btnText) btnText.classList.add('hidden');
+            if (btnSpinner) btnSpinner.classList.remove('hidden');
+            
+            updateShareExpireTime(shareId, expireSeconds).finally(() => {
+              // 恢复按钮状态
+              if (btnText) btnText.classList.remove('hidden');
+              if (btnSpinner) btnSpinner.classList.add('hidden');
+            });
+          }
+        };
+      }
+      
+      if (removeBtn) {
+        removeBtn.onclick = function() {
+          openDeleteConfirmModal(shareId);
+        };
+      }
+    }
+    
+    // 关闭分享操作模态框
+    function closeShareActionsModal() {
+      const modal = document.getElementById('shareActionsModal');
+      if (modal) modal.classList.add('hidden');
+    }
+    
+    // 关闭删除确认悬浮框
+    function closeDeleteConfirmModal() {
+      const modal = document.getElementById('deleteConfirmModal');
+      if (modal) modal.classList.add('hidden');
+    }
+    
+    // 从分享墙移除项目
+    async function removeShareWallItem(shareId) {
+      try {
+        const token = getToken();
+        if (!token) {
+          showToast('请先登录');
+          return;
+        }
+        
+        const response = await fetch(`/api/share-wall/${shareId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        const data = await response.json();
+        if (data.code === 200) {
+          showToast('移除成功');
+          loadShareWall();
+          closeShareActionsModal();
+          closeDeleteConfirmModal();
+        } else {
+          showToast(data.message || '移除失败');
+        }
+      } catch (error) {
+        console.error('移除失败:', error);
+        showToast('移除失败');
+      }
+    }
+    
+    // 打开删除确认悬浮框
+    function openDeleteConfirmModal(shareId) {
+      currentShareId = shareId;
+      const modal = document.getElementById('deleteConfirmModal');
+      if (modal) modal.classList.remove('hidden');
+      
+      // 绑定确认删除按钮事件
+      const confirmBtn = document.getElementById('confirmDeleteBtn');
+      if (confirmBtn) {
+        confirmBtn.onclick = function() {
+          removeShareWallItem(shareId);
+        };
+      }
+    }
+    
+    // 查看分享项
+    function viewShareItem(shareId) {
+      const shareUrl = `/video/share?sid=${encodeURIComponent(shareId)}`;
+      window.open(shareUrl, '_blank');
+    }
+    
+    // 修改过期时间
+    function editExpireTime(shareId) {
+      const expireSeconds = prompt('请输入新的过期时间（秒），0表示永久：', '0');
+      if (expireSeconds === null) return;
+      
+      const seconds = parseInt(expireSeconds, 10);
+      if (isNaN(seconds) || seconds < 0) {
+        showToast('请输入有效的数字');
+        return;
+      }
+      
+      updateShareExpireTime(shareId, seconds);
+    }
+    
+    // 更新分享过期时间
+    async function updateShareExpireTime(shareId, expireSeconds) {
+      try {
+        const token = getToken();
+        if (!token) {
+          showToast('请先登录');
+          return;
+        }
+        
+        const response = await fetch(`/api/user/shares/${shareId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ expireSeconds })
+        });
+        
+        const data = await response.json();
+        if (data.code === 200) {
+          showToast('更新成功');
+          // 直接更新对应视频卡片的过期时间
+          updateShareCardExpireTime(shareId, expireSeconds);
+        } else {
+          showToast(data.message || '更新失败');
+        }
+      } catch (error) {
+        console.error('更新失败:', error);
+        showToast('更新失败');
+      }
+    }
+    
+    // 更新分享卡片的过期时间显示
+    function updateShareCardExpireTime(shareId, expireSeconds) {
+      // 构建过期时间
+      let expiresAt = null;
+      if (expireSeconds > 0) {
+        expiresAt = new Date(Date.now() + expireSeconds * 1000);
+      }
+      
+      // 计算过期状态和标签
+      let statusLabel = '正常';
+      let statusColor = '#10b981'; // 绿色
+      let expireLabel = '永久';
+      let expireColor = '#f59e0b'; // 黄色
+      
+      if (!expiresAt) {
+        statusLabel = '永久';
+      } else if (expiresAt < new Date()) {
+        statusLabel = '过期';
+        statusColor = '#ef4444'; // 红色
+        expireColor = '#ef4444'; // 红色
+        expireLabel = expiresAt.toLocaleString();
+      } else {
+        expireLabel = expiresAt.toLocaleString();
+      }
+      
+      // 查找对应的视频卡片
+      const shareWallGrid = document.getElementById('shareWallGrid');
+      if (shareWallGrid) {
+        const cards = shareWallGrid.querySelectorAll('.video-card');
+        cards.forEach(card => {
+          // 查找包含分享ID的操作按钮
+          const actionBtn = card.querySelector(`button[onclick="openShareActionsModal('${shareId}',`);
+          if (actionBtn) {
+            // 更新状态标签
+            const statusSpan = card.querySelector('.meta.flex.justify-end span:first-child');
+            if (statusSpan) {
+              statusSpan.textContent = statusLabel;
+              statusSpan.style.color = statusColor;
+            }
+            
+            // 更新过期时间标签
+            const expireSpan = card.querySelector('.meta.flex.justify-end span.text-xs.text-yellow-400');
+            if (expireSpan) {
+              expireSpan.textContent = expireLabel;
+              expireSpan.style.color = expireColor;
+            }
+          }
+        });
+      }
+    }
+    
+    // 初始化分享墙管理模块
+    function initShareWallModule() {
+      const loadShareWallBtn = document.getElementById('loadShareWallBtn');
+      if (loadShareWallBtn) {
+        loadShareWallBtn.addEventListener('click', loadShareWall);
+        loadShareWallBtn.classList.remove('hidden');
+      }
+      
+      // 全选/取消全选功能
+      const selectAllCheckbox = document.getElementById('selectAllShares');
+      if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+          const checkboxes = document.querySelectorAll('.share-checkbox');
+          checkboxes.forEach(checkbox => {
+            checkbox.checked = this.checked;
+          });
+        });
+      }
+      
+      // 批量更新按钮点击事件
+      const batchUpdateBtn = document.getElementById('batchUpdateExpireBtn');
+      if (batchUpdateBtn) {
+        batchUpdateBtn.addEventListener('click', function() {
+          const selectedCheckboxes = document.querySelectorAll('.share-checkbox:checked');
+          if (selectedCheckboxes.length === 0) {
+            showToast('请至少选择一个分享');
+            return;
+          }
+          
+          const shareIds = Array.from(selectedCheckboxes).map(checkbox => checkbox.dataset.shareId);
+          const expireSelect = document.getElementById('batchExpireTimeSelect');
+          const expireSeconds = parseInt(expireSelect.value, 10);
+          
+          // 显示旋转图标，隐藏按钮文本
+          const btnText = document.getElementById('batchUpdateBtnText');
+          const btnSpinner = document.getElementById('batchUpdateBtnSpinner');
+          if (btnText) btnText.classList.add('hidden');
+          if (btnSpinner) btnSpinner.classList.remove('hidden');
+          
+          batchUpdateShareExpireTime(shareIds, expireSeconds).finally(() => {
+            // 恢复按钮状态
+            if (btnText) btnText.classList.remove('hidden');
+            if (btnSpinner) btnSpinner.classList.add('hidden');
+          });
+        });
+      }
+    }
+    
+    // 批量更新分享过期时间
+    async function batchUpdateShareExpireTime(shareIds, expireSeconds) {
+      try {
+        const token = getToken();
+        if (!token) {
+          showToast('请先登录');
+          return;
+        }
+        
+        const response = await fetch('/api/user/shares/batch', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ shareIds, expireSeconds })
+        });
+        
+        const data = await response.json();
+        if (data.code === 200) {
+          showToast(`成功更新 ${data.data.updatedCount} 个分享的有效期`);
+          loadShareWall();
+        } else {
+          showToast(data.message || '更新失败');
+        }
+      } catch (error) {
+        console.error('批量更新失败:', error);
+        showToast('批量更新失败');
+      }
+    }
+    
+    // 显示提示信息
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      if (toast) {
+        toast.textContent = message;
+        toast.classList.remove('hidden');
+        setTimeout(() => {
+          toast.classList.add('hidden');
+        }, 3000);
+      } else {
+        // 如果没有toast元素，使用alert
+        alert(message);
+      }
+    }
+    
+    // 页面加载完成后初始化
+    document.addEventListener('DOMContentLoaded', function() {
+      initShareWallModule();
+    });
+  </script>
 
   <!-- 禁用备注弹窗 -->
   <div id="disableModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
@@ -1072,28 +1728,84 @@
     // 电视管理相关功能
     let currentChannelId = null;
     let currentVideoId = null;
+    let channelsData = []; // 缓存频道数据
+    let channelsLoaded = false; // 标记频道数据是否已加载
     
     // 加载频道列表
     const loadChannelsData = async () => {
       try {
-        setLoading(true, "加载频道数据...");
-        const response = await fetch('/api/admin/tv/channels', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem(TOKEN_KEY)}`
+        if (!channelsLoaded) {
+          const response = await fetch('/api/admin/tv/channels', {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem(TOKEN_KEY)}`
+            }
+          });
+          const data = await response.json();
+          if (data.code === 200) {
+            channelsData = data.data;
+            channelsLoaded = true;
+          } else {
+            toast('加载频道数据失败');
           }
-        });
-        const data = await response.json();
-        if (data.code === 200) {
-          renderChannelsList(data.data);
-          document.getElementById('tvMeta').textContent = `共 ${data.data.length} 个频道`;
-        } else {
-          toast('加载频道数据失败');
         }
+        renderChannelsList(channelsData);
+        document.getElementById('tvMeta').textContent = `共 ${channelsData.length} 个频道`;
       } catch (error) {
         console.error('加载频道数据失败:', error);
         toast('加载频道数据失败');
-      } finally {
-        setLoading(false);
+      }
+    };
+    
+    // 加载频道到视频管理的选择框
+    const loadChannelsForVideoSelect = async () => {
+      try {
+        if (!channelsLoaded) {
+          const response = await fetch('/api/admin/tv/channels', {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem(TOKEN_KEY)}`
+            }
+          });
+          const data = await response.json();
+          if (data.code === 200) {
+            channelsData = data.data;
+            channelsLoaded = true;
+          }
+        }
+        const select = document.getElementById('videoChannelSelect');
+        const channelDisplay = document.getElementById('currentChannelDisplay');
+        if (select && channelDisplay) {
+          // 保存当前选择的频道ID
+          const currentSelectedValue = select.value;
+          select.innerHTML = '<option value="">选择频道</option>';
+          channelsData.forEach(channel => {
+            const option = document.createElement('option');
+            option.value = channel._id;
+            option.textContent = channel.name;
+            select.appendChild(option);
+          });
+          // 恢复之前选择的频道
+          if (currentSelectedValue) {
+            select.value = currentSelectedValue;
+            updateChannelDisplay(currentSelectedValue);
+          }
+        }
+      } catch (error) {
+        console.error('加载频道数据失败:', error);
+      }
+    };
+    
+    // 更新频道显示
+    const updateChannelDisplay = (channelId) => {
+      const channelDisplay = document.getElementById('currentChannelDisplay');
+      if (channelDisplay) {
+        if (channelId) {
+          const channel = channelsData.find(c => c._id === channelId);
+          if (channel) {
+            channelDisplay.textContent = channel.name;
+          }
+        } else {
+          channelDisplay.textContent = '选择频道';
+        }
       }
     };
     
@@ -1112,7 +1824,7 @@
           <td>${channel.videos ? channel.videos.length : 0}</td>
           <td>
             <button class="text-blue-600 hover:underline mr-2" onclick="editChannel('${channel._id}')">编辑</button>
-            <button class="text-green-600 hover:underline mr-2" onclick="manageVideos('${channel._id}')">管理视频</button>
+            <button class="text-green-600 hover:underline mr-2" onclick="switchToVideoManagement('${channel._id}')">管理视频</button>
             <button class="text-red-600 hover:underline" onclick="deleteChannel('${channel._id}')">删除</button>
           </td>
         `;
@@ -1120,214 +1832,71 @@
       });
     };
     
-    // 显示频道编辑悬浮框
+    // 显示频道编辑表单
     const showChannelEditForm = (channel = null) => {
       currentChannelId = channel ? channel._id : null;
-      
-      // 创建悬浮框
-      const modal = document.createElement('div');
-      modal.className = 'fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4';
-      modal.innerHTML = `
-        <div class="bg-white rounded-xl p-6 w-full max-w-md transform transition-all">
-          <div class="flex items-center justify-between mb-6">
-            <h3 class="text-xl font-bold text-gray-800">${channel ? '编辑频道' : '添加频道'}</h3>
-            <button class="text-gray-500 hover:text-gray-700 close-btn">
-              <i class="fa fa-times text-xl"></i>
-            </button>
-          </div>
-          <div class="space-y-4">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div class="space-y-2">
-                <label class="block text-sm font-medium text-slate-700">频道名称</label>
-                <input type="text" id="channelNameInputModal" class="w-full border rounded px-3 py-2 text-sm" placeholder="请输入频道名称" value="${channel ? channel.name : ''}">
-              </div>
-              <div class="space-y-2">
-                <label class="block text-sm font-medium text-slate-700">排序</label>
-                <input type="number" id="channelOrderInputModal" class="w-full border rounded px-3 py-2 text-sm" placeholder="请输入排序序号" value="${channel ? channel.order : 1}">
-              </div>
-            </div>
-            <div class="space-y-2">
-              <label class="block text-sm font-medium text-slate-700">频道描述</label>
-              <textarea id="channelDescriptionInputModal" class="w-full border rounded px-3 py-2 text-sm" placeholder="请输入频道描述" rows="2">${channel ? channel.description : ''}</textarea>
-            </div>
-
-            <div class="flex justify-end gap-2">
-              <button type="button" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 close-btn">取消</button>
-              <button type="button" class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:opacity-90 save-btn">保存</button>
-            </div>
-          </div>
-        </div>
-      `;
-      document.body.appendChild(modal);
-      
-      // 关闭按钮事件
-      modal.querySelectorAll('.close-btn').forEach(btn => {
-        btn.addEventListener('click', () => modal.remove());
-      });
-      
-      // 保存按钮事件
-      modal.querySelector('.save-btn').addEventListener('click', async () => {
-        const name = document.getElementById('channelNameInputModal').value.trim();
-        const order = parseInt(document.getElementById('channelOrderInputModal').value) || 1;
-        const description = document.getElementById('channelDescriptionInputModal').value.trim();
-        
-        if (!name) {
-          toast('频道名称不能为空');
-          return;
-        }
-        
-        try {
-          setLoading(true, "保存频道...");
-          const url = currentChannelId ? `/api/admin/tv/channels/${currentChannelId}` : '/api/admin/tv/channels';
-          const method = currentChannelId ? 'PUT' : 'POST';
-          
-          const response = await fetch(url, {
-            method,
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${localStorage.getItem(TOKEN_KEY)}`
-            },
-            body: JSON.stringify({ name, order, description })
-          });
-          
-          const data = await response.json();
-          if (data.code === 200) {
-            toast('保存频道成功');
-            modal.remove();
-            loadChannelsData();
-          } else {
-            toast('保存频道失败');
-          }
-        } catch (error) {
-          console.error('保存频道失败:', error);
-          toast('保存频道失败');
-        } finally {
-          setLoading(false);
-        }
-      });
+      document.getElementById('channelNameInput').value = channel ? channel.name : '';
+      document.getElementById('channelOrderInput').value = channel ? channel.order : 1;
+      document.getElementById('channelDescriptionInput').value = channel ? channel.description : '';
+      document.getElementById('channelEditForm').classList.remove('hidden');
+      document.getElementById('videoEditForm').classList.add('hidden');
     };
     
-    // 显示视频编辑悬浮框
-    const showVideoEditForm = async (video = null) => {
+    // 隐藏频道编辑表单
+    const hideChannelEditForm = () => {
+      document.getElementById('channelEditForm').classList.add('hidden');
+      currentChannelId = null;
+    };
+    
+    // 显示视频编辑表单
+    const showVideoEditForm = (video = null) => {
       currentVideoId = video ? video._id : null;
+      document.getElementById('videoTitleInput').value = video ? video.title : '';
+      document.getElementById('videoOrderInput').value = video ? video.order : 1;
+      document.getElementById('videoUrlInput').value = video ? video.url : '';
+      document.getElementById('videoImageInput').value = video ? video.image : '';
+      document.getElementById('videoEditForm').classList.remove('hidden');
+    };
+    
+    // 保存频道
+    const saveChannel = async () => {
+      const name = document.getElementById('channelNameInput').value.trim();
+      const order = parseInt(document.getElementById('channelOrderInput').value) || 1;
+      const description = document.getElementById('channelDescriptionInput').value.trim();
       
-      // 计算默认排序值
-      let defaultOrder = 1;
-      if (!video && currentChannelId) {
-        try {
-          const response = await fetch(`/api/admin/tv/channels/${currentChannelId}`, {
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem(TOKEN_KEY)}`
-            }
-          });
-          const data = await response.json();
-          if (data.code === 200 && data.data.videos && data.data.videos.length > 0) {
-            const maxOrder = Math.max(...data.data.videos.map(v => v.order || 0));
-            defaultOrder = maxOrder + 1;
-          }
-        } catch (error) {
-          console.error('获取频道信息失败:', error);
-        }
+      if (!name) {
+        toast('频道名称不能为空');
+        return;
       }
       
-      // 创建悬浮框
-      const modal = document.createElement('div');
-      modal.className = 'fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4';
-      modal.innerHTML = `
-        <div class="bg-white rounded-xl p-6 w-full max-w-md transform transition-all">
-          <div class="flex items-center justify-between mb-6">
-            <h3 class="text-xl font-bold text-gray-800">${video ? '编辑视频' : '添加视频'}</h3>
-            <button class="text-gray-500 hover:text-gray-700 close-btn">
-              <i class="fa fa-times text-xl"></i>
-            </button>
-          </div>
-          <div class="space-y-4">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div class="space-y-2">
-                <label class="block text-sm font-medium text-slate-700">视频标题</label>
-                <input type="text" id="videoTitleInputModal" class="w-full border rounded px-3 py-2 text-sm" placeholder="请输入视频标题" value="${video ? video.title : ''}">
-              </div>
-              <div class="space-y-2">
-                <label class="block text-sm font-medium text-slate-700">排序</label>
-                <input type="number" id="videoOrderInputModal" class="w-full border rounded px-3 py-2 text-sm" placeholder="请输入排序序号" value="${video ? video.order : defaultOrder}">
-              </div>
-            </div>
-            <div class="space-y-2">
-              <label class="block text-sm font-medium text-slate-700">视频链接</label>
-              <input type="text" id="videoUrlInputModal" class="w-full border rounded px-3 py-2 text-sm" placeholder="请输入视频URL" value="${video ? video.url : ''}">
-            </div>
-            <div class="space-y-2">
-              <label class="block text-sm font-medium text-slate-700">M3U8地址</label>
-              <input type="text" id="videoM3u8InputModal" class="w-full border rounded px-3 py-2 text-sm" placeholder="请输入M3U8地址" value="${video ? video.m3u8 : ''}">
-            </div>
-            <div class="space-y-2">
-              <label class="block text-sm font-medium text-slate-700">视频封面</label>
-              <input type="text" id="videoImageInputModal" class="w-full border rounded px-3 py-2 text-sm" placeholder="请输入视频封面URL" value="${video ? video.image : ''}">
-            </div>
-            <div class="flex justify-end gap-2">
-              <button type="button" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 close-btn">取消</button>
-              <button type="button" class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:opacity-90 save-btn">保存</button>
-            </div>
-          </div>
-        </div>
-      `;
-      document.body.appendChild(modal);
-      
-      // 关闭按钮事件
-      modal.querySelectorAll('.close-btn').forEach(btn => {
-        btn.addEventListener('click', () => modal.remove());
-      });
-      
-      // 保存按钮事件
-      modal.querySelector('.save-btn').addEventListener('click', async () => {
-        const title = document.getElementById('videoTitleInputModal').value.trim();
-        const order = parseInt(document.getElementById('videoOrderInputModal').value) || 1;
-        const url = document.getElementById('videoUrlInputModal').value.trim();
-        const m3u8 = document.getElementById('videoM3u8InputModal').value.trim();
-        const image = document.getElementById('videoImageInputModal').value.trim();
+      try {
+        setLoading(true, "保存频道...");
+        const url = currentChannelId ? `/api/admin/tv/channels/${currentChannelId}` : '/api/admin/tv/channels';
+        const method = currentChannelId ? 'PUT' : 'POST';
         
-        if (!title || (!url && !m3u8)) {
-          toast('视频标题和链接不能为空');
-          return;
-        }
+        const response = await fetch(url, {
+          method,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem(TOKEN_KEY)}`
+          },
+          body: JSON.stringify({ name, order, description })
+        });
         
-        try {
-          setLoading(true, "保存视频...");
-          const apiUrl = currentVideoId ? 
-            `/api/admin/tv/channels/${currentChannelId}/videos/${currentVideoId}` : 
-            `/api/admin/tv/channels/${currentChannelId}/videos`;
-          const method = currentVideoId ? 'PUT' : 'POST';
-          
-          const response = await fetch(apiUrl, {
-            method,
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${localStorage.getItem(TOKEN_KEY)}`
-            },
-            body: JSON.stringify({ title, order, url, m3u8, image })
-          });
-          
-          const data = await response.json();
-          if (data.code === 200) {
-            toast('保存视频成功');
-            modal.remove();
-            // 重新加载视频列表
-            if (currentChannelId) {
-              // 关闭当前视频管理模态框
-              document.querySelectorAll('.video-management-modal').forEach(modal => modal.remove());
-              // 重新打开视频管理模态框
-              manageVideos(currentChannelId);
-            }
-          } else {
-            toast('保存视频失败');
-          }
-        } catch (error) {
-          console.error('保存视频失败:', error);
-          toast('保存视频失败');
-        } finally {
-          setLoading(false);
+        const data = await response.json();
+        if (data.code === 200) {
+          toast('保存频道成功');
+          hideChannelEditForm();
+          loadChannelsData();
+        } else {
+          toast('保存频道失败');
         }
-      });
+      } catch (error) {
+        console.error('保存频道失败:', error);
+        toast('保存频道失败');
+      } finally {
+        setLoading(false);
+      }
     };
     
 
@@ -1355,318 +1924,574 @@
       }
     };
     
-    // 管理视频
-    const manageVideos = async (channelId) => {
-      currentChannelId = channelId;
-      // 加载频道信息
-      try {
-        setLoading(true, "加载频道信息...");
-        const response = await fetch(`/api/admin/tv/channels/${channelId}`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem(TOKEN_KEY)}`
-          }
-        });
-        const data = await response.json();
-        if (data.code === 200) {
-          // 创建悬浮框
-          const modal = document.createElement('div');
-          modal.className = 'fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 video-management-modal';
-          modal.innerHTML = `
-            <div class="bg-white rounded-xl p-6 w-full max-w-4xl transform transition-all">
-              <div class="flex items-center justify-between mb-6">
-                <h3 class="text-xl font-bold text-gray-800">管理频道: ${data.data.name} 的视频</h3>
-                <button class="text-gray-500 hover:text-gray-700 close-btn">
-                  <i class="fa fa-times text-xl"></i>
-                </button>
-              </div>
-              <div class="space-y-4">
-                <div class="flex justify-end mb-2">
-                  <button id="addVideoBtnModal" class="px-3 py-1.5 bg-emerald-600 text-white rounded text-sm">添加视频</button>
-                </div>
-
-                <div class="overflow-auto">
-                  <table class="min-w-full text-sm">
-                    <thead class="text-left text-slate-500">
-                      <tr>
-                        <th class="py-2">排序</th>
-                        <th class="py-2">视频标题</th>
-                        <th class="py-2">链接</th>
-                        <th class="py-2">封面</th>
-                        <th class="py-2">操作</th>
-                      </tr>
-                    </thead>
-                    <tbody id="videosTbodyModal" class="divide-y"></tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          `;
-          document.body.appendChild(modal);
-          
-          // 关闭按钮事件
-          modal.querySelectorAll('.close-btn').forEach(btn => {
-            btn.addEventListener('click', () => modal.remove());
-          });
-          
-          // 添加视频按钮事件
-          modal.querySelector('#addVideoBtnModal').addEventListener('click', () => {
-            currentVideoId = null;
-            showVideoEditForm();
-          });
-          
-          // 渲染视频列表
-          const tbody = modal.querySelector('#videosTbodyModal');
-          if (tbody) {
-            if (data.data.videos && data.data.videos.length > 0) {
-              data.data.videos.sort((a, b) => (a.order || 1) - (b.order || 1)).forEach(video => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                  <td>${video.order || 1}</td>
-                  <td>${video.title}</td>
-                  <td>${video.url || video.m3u8 || '-'}</td>
-                  <td>${video.image ? '有' : '无'}</td>
-                  <td>
-                    <button class="text-blue-600 hover:underline mr-2" onclick="editVideo('${video._id}');">编辑</button>
-                    <button class="text-red-600 hover:underline" onclick="deleteVideo('${video._id}');">删除</button>
-                  </td>
-                `;
-                tbody.appendChild(tr);
-              });
-            } else {
-              tbody.innerHTML = '<tr><td colspan="5" class="py-4 px-4 text-center text-slate-500">暂无视频</td></tr>';
-            }
-          }
-        } else {
-          toast('加载频道信息失败');
-        }
-      } catch (error) {
-        console.error('加载频道信息失败:', error);
-        toast('加载频道信息失败');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    // 渲染视频列表
-    const renderVideosList = (videos) => {
-      const tbody = document.getElementById('channelsTbody');
-      if (!tbody) return;
-      
-      tbody.innerHTML = '';
-      
-      if (videos.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="py-4 px-4 text-center text-slate-500">暂无视频</td></tr>';
+    // 视频管理模态框
+    const createVideoManagementModal = () => {
+      // 检查模态框是否已存在
+      if (document.getElementById('videoManagementModal')) {
         return;
       }
       
-      videos.sort((a, b) => (a.order || 1) - (b.order || 1)).forEach(video => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-                  <td>${video.order || 1}</td>
-                  <td>${video.title}</td>
-                  <td>${video.url || video.m3u8 || '-'}</td>
-                  <td>${video.image ? '有' : '无'}</td>
-                  <td>
-                    <button class="text-blue-600 hover:underline mr-2" onclick="editVideo('${video._id}')">编辑</button>
-                    <button class="text-red-600 hover:underline" onclick="deleteVideo('${video._id}')">删除</button>
-                  </td>
-                `;
-        tbody.appendChild(tr);
-      });
+      const modal = document.createElement('div');
+      modal.id = 'videoManagementModal';
+      modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4';
+      modal.innerHTML = `
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-4xl p-6 space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xl font-semibold" id="videoManagementTitle">视频管理</h3>
+            <button id="closeVideoManagementBtn" class="text-slate-500 hover:text-slate-700">
+              <i class="fa fa-times text-xl"></i>
+            </button>
+          </div>
+          
+          <!-- 视频编辑表单 -->
+          <div id="videoEditForm" class="space-y-4 hidden">
+            <div class="flex items-center justify-between">
+              <h4 class="font-medium" id="videoEditTitle">编辑视频</h4>
+              <button id="cancelVideoEditBtn" class="text-slate-500 hover:text-slate-700">
+                <i class="fa fa-times"></i>
+              </button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="space-y-2">
+                <label class="block text-sm font-medium text-slate-700">视频标题</label>
+                <input id="videoTitleInput" class="w-full border rounded px-3 py-2 text-sm" placeholder="请输入视频标题">
+              </div>
+              <div class="space-y-2">
+                <label class="block text-sm font-medium text-slate-700">排序</label>
+                <input id="videoOrderInput" type="number" class="w-full border rounded px-3 py-2 text-sm" placeholder="请输入排序序号" value="1">
+              </div>
+            </div>
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-slate-700">视频链接</label>
+              <input id="videoUrlInput" type="text" class="w-full border rounded px-3 py-2 text-sm" placeholder="请输入视频URL">
+            </div>
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-slate-700">视频封面</label>
+              <input id="videoImageInput" type="text" class="w-full border rounded px-3 py-2 text-sm" placeholder="请输入视频封面URL">
+            </div>
+            <div class="flex items-center justify-end gap-2">
+              <button id="cancelVideoEditBtn2" class="px-3 py-1.5 rounded border text-slate-600 text-sm">取消</button>
+              <button id="saveVideoBtn" class="px-3 py-1.5 rounded bg-emerald-600 text-white text-sm">保存视频</button>
+            </div>
+          </div>
+          
+          <!-- 视频列表 -->
+          <div class="space-y-4" id="videosListSection">
+            <div class="flex items-center justify-between">
+              <h4 class="font-medium">视频列表</h4>
+              <button id="addVideoBtn" class="px-3 py-1.5 rounded bg-emerald-600 text-white text-sm">
+                <i class="fa fa-plus mr-1"></i>添加视频
+              </button>
+            </div>
+            <div class="overflow-auto max-h-96">
+              <table class="min-w-full text-sm">
+                <thead class="text-left text-slate-500">
+                  <tr>
+                    <th class="py-2">排序</th>
+                    <th class="py-2">标题</th>
+                    <th class="py-2">链接</th>
+                    <th class="py-2">操作</th>
+                  </tr>
+                </thead>
+                <tbody id="videosTbody" class="divide-y"></tbody>
+              </table>
+            </div>
+            <!-- 分页控件 -->
+            <div class="flex items-center justify-between" id="videosPagination">
+              <div class="text-sm text-slate-500" id="videosPaginationInfo">显示 1-10 条，共 0 条</div>
+              <div class="flex items-center gap-1">
+                <button id="videosPrevPage" class="px-3 py-1 rounded border text-slate-600 text-sm" disabled>上一页</button>
+                <button id="videosNextPage" class="px-3 py-1 rounded border text-slate-600 text-sm" disabled>下一页</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      // 查找目标div（具有特定class的div）
+      const targetDiv = document.querySelector('.bg-white.rounded-xl.shadow-xl.w-full.max-w-4xl.p-6.space-y-4');
+      if (targetDiv) {
+        targetDiv.appendChild(modal);
+      } else {
+        document.body.appendChild(modal);
+      }
+      
+      // 绑定事件
+      document.getElementById('closeVideoManagementBtn').addEventListener('click', closeVideoManagementModal);
+      document.getElementById('addVideoBtn').addEventListener('click', showAddVideoForm);
+      document.getElementById('cancelVideoEditBtn').addEventListener('click', hideVideoEditForm);
+      document.getElementById('cancelVideoEditBtn2').addEventListener('click', hideVideoEditForm);
+      document.getElementById('saveVideoBtn').addEventListener('click', saveVideo);
+      document.getElementById('videosPrevPage').addEventListener('click', () => changeVideoPage(currentVideoPage - 1));
+      document.getElementById('videosNextPage').addEventListener('click', () => changeVideoPage(currentVideoPage + 1));
     };
-
-    // 编辑视频
-    const editVideo = async (videoId) => {
+    
+    // 关闭视频管理模态框
+    const closeVideoManagementModal = () => {
+      const modal = document.getElementById('videoManagementModal');
+      if (modal) {
+        modal.remove();
+      }
+    };
+    
+    // 分页相关变量
+    let currentVideoPage = 1;
+    let videosPerPage = 10;
+    let totalVideos = 0;
+    let allVideos = [];
+    
+    // 显示编辑视频表单
+    const showEditVideoForm = (video) => {
+      currentVideoId = video ? video._id : null;
+      document.getElementById('videoTitleInput').value = video ? video.title : '';
+      document.getElementById('videoOrderInput').value = video ? video.order : 1;
+      document.getElementById('videoUrlInput').value = video ? video.url : '';
+      document.getElementById('videoImageInput').value = video ? video.image : '';
+      document.getElementById('videoEditForm').classList.remove('hidden');
+    };
+    
+    // 隐藏视频编辑表单
+    const hideVideoEditForm = () => {
+      document.getElementById('videoEditForm').classList.add('hidden');
+      currentVideoId = null;
+    };
+    
+    // 切换视频页码
+    const changeVideoPage = (page) => {
+      if (page < 1 || page > Math.ceil(totalVideos / videosPerPage)) {
+        return;
+      }
+      currentVideoPage = page;
+      renderVideosList(allVideos);
+    };
+    
+    // 加载视频列表
+    const loadVideos = async (channelId) => {
       try {
-        setLoading(true, "加载视频数据...");
-        const response = await fetch(`/api/admin/tv/channels/${currentChannelId}`, {
+        // 显示骨架屏
+        const skeleton = document.getElementById('videosSkeleton');
+        const content = document.getElementById('videosContent');
+        if (skeleton && content) {
+          skeleton.classList.remove('hidden');
+          content.classList.add('hidden');
+        }
+        
+        const response = await fetch(`/api/admin/tv/channels/${channelId}/videos`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem(TOKEN_KEY)}`
           }
         });
         const data = await response.json();
         if (data.code === 200) {
-          const video = data.data.videos.find(v => v._id === videoId);
-          if (video) {
-            currentVideoId = videoId;
-            showVideoEditForm(video);
-          } else {
-            toast('视频不存在');
-          }
+          allVideos = data.data || [];
+          totalVideos = allVideos.length;
+          currentVideoPage = 1;
+          renderVideosList(allVideos);
         } else {
-          toast('加载视频数据失败');
+          toast('加载视频列表失败');
         }
       } catch (error) {
-        console.error('加载视频数据失败:', error);
-        toast('加载视频数据失败');
+        console.error('加载视频列表失败:', error);
+        toast('加载视频列表失败');
+      } finally {
+        // 隐藏骨架屏，显示实际内容
+        setTimeout(() => {
+          const skeleton = document.getElementById('videosSkeleton');
+          const content = document.getElementById('videosContent');
+          if (skeleton && content) {
+            skeleton.classList.add('hidden');
+            content.classList.remove('hidden');
+          }
+        }, 300);
+      }
+    };
+    
+    // 渲染视频列表
+    const renderVideosList = (videos) => {
+      const tbody = document.getElementById('videosTbody');
+      if (!tbody) return;
+      
+      // 计算分页数据
+      const startIndex = (currentVideoPage - 1) * videosPerPage;
+      const endIndex = startIndex + videosPerPage;
+      const paginatedVideos = videos.slice(startIndex, endIndex);
+      
+      // 更新分页信息
+      const paginationInfo = document.getElementById('videosPaginationInfo');
+      if (paginationInfo) {
+        paginationInfo.textContent = `显示 ${startIndex + 1}-${Math.min(endIndex, totalVideos)} 条，共 ${totalVideos} 条`;
+      }
+      
+      // 更新分页按钮状态
+      const prevBtn = document.getElementById('videosPrevPage');
+      const nextBtn = document.getElementById('videosNextPage');
+      if (prevBtn) {
+        prevBtn.disabled = currentVideoPage === 1;
+      }
+      if (nextBtn) {
+        nextBtn.disabled = endIndex >= totalVideos;
+      }
+      
+      // 渲染视频列表
+      tbody.innerHTML = '';
+      if (paginatedVideos.length === 0) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td class="py-3 text-center text-slate-500" colspan="4">暂无视频</td>';
+        tbody.appendChild(tr);
+      } else {
+        paginatedVideos.forEach(video => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${video.order || 1}</td>
+            <td>${video.title}</td>
+            <td class="max-w-xs truncate">${video.url}</td>
+            <td>
+              <button class="text-blue-600 hover:underline mr-2 edit-video-btn" data-video-id="${video._id}">编辑</button>
+              <button class="text-red-600 hover:underline delete-video-btn" data-video-id="${video._id}">删除</button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+        
+        // 绑定编辑按钮事件
+        document.querySelectorAll('.edit-video-btn').forEach(btn => {
+          btn.addEventListener('click', function() {
+            const videoId = this.getAttribute('data-video-id');
+            const video = videos.find(v => v._id === videoId);
+            if (video) {
+              showEditVideoForm(video);
+            }
+          });
+        });
+        
+        // 绑定删除按钮事件
+        document.querySelectorAll('.delete-video-btn').forEach(btn => {
+          btn.addEventListener('click', function() {
+            const videoId = this.getAttribute('data-video-id');
+            deleteVideo(videoId);
+          });
+        });
+      }
+    };
+    
+    // 删除视频
+    const deleteVideo = async (videoId) => {
+      if (!confirm('确定要删除这个视频吗？')) {
+        return;
+      }
+      
+      try {
+        setLoading(true, "删除视频...");
+        const response = await fetch(`/api/admin/tv/channels/${currentChannelId}/videos/${videoId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem(TOKEN_KEY)}`
+          }
+        });
+        const data = await response.json();
+        if (data.code === 200) {
+          toast('删除视频成功');
+          loadVideos(currentChannelId);
+        } else {
+          toast('删除视频失败');
+        }
+      } catch (error) {
+        console.error('删除视频失败:', error);
+        toast('删除视频失败');
       } finally {
         setLoading(false);
       }
     };
-
-
     
-    // 删除视频
-    const deleteVideo = async (videoId) => {
+    // 保存视频
+    const saveVideo = async () => {
+      const title = document.getElementById('videoTitleInput').value.trim();
+      const order = parseInt(document.getElementById('videoOrderInput').value) || 1;
+      const url = document.getElementById('videoUrlInput').value.trim();
+      const image = document.getElementById('videoImageInput').value.trim();
+      
+      if (!title || !url) {
+        toast('视频标题和链接不能为空');
+        return;
+      }
+      
       try {
-        // 先获取频道信息以找到视频
-        const channelResponse = await fetch(`/api/admin/tv/channels/${currentChannelId}`, {
+        setLoading(true, "保存视频...");
+        const apiUrl = currentVideoId ? 
+          `/api/admin/tv/channels/${currentChannelId}/videos/${currentVideoId}` : 
+          `/api/admin/tv/channels/${currentChannelId}/videos`;
+        const method = currentVideoId ? 'PUT' : 'POST';
+        
+        const response = await fetch(apiUrl, {
+          method,
           headers: {
+            'Content-Type': 'application/json',
             'Authorization': `Bearer ${localStorage.getItem(TOKEN_KEY)}`
-          }
-        });
-        const channelData = await channelResponse.json();
-        const video = channelData.code === 200 && channelData.data.videos ? 
-          channelData.data.videos.find(v => v._id === videoId) : null;
-        const videoTitle = video ? video.title : '此视频';
-        
-        // 创建悬浮删除框
-        const modal = document.createElement('div');
-        modal.className = 'fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4';
-        modal.innerHTML = `
-          <div class="bg-white rounded-xl p-6 w-full max-w-md transform transition-all">
-            <div class="flex items-center justify-between mb-6">
-              <h3 class="text-xl font-bold text-gray-800">确认删除</h3>
-              <button class="text-gray-500 hover:text-gray-700 close-btn">
-                <i class="fa fa-times text-xl"></i>
-              </button>
-            </div>
-            <div class="space-y-4">
-              <p class="text-slate-600">确定要删除视频 "${videoTitle}" 吗？此操作不可恢复。</p>
-              <div class="flex justify-end gap-2">
-                <button type="button" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 close-btn">取消</button>
-                <button type="button" class="px-4 py-2 bg-rose-600 text-white rounded-lg hover:opacity-90 delete-btn">删除</button>
-              </div>
-            </div>
-          </div>
-        `;
-        document.body.appendChild(modal);
-        
-        // 关闭按钮事件
-        modal.querySelectorAll('.close-btn').forEach(btn => {
-          btn.addEventListener('click', () => modal.remove());
+          },
+          body: JSON.stringify({ title, order, url, image })
         });
         
-        // 删除按钮事件
-        modal.querySelector('.delete-btn').addEventListener('click', async () => {
-          try {
-            setLoading(true, "删除视频...");
-            const response = await fetch(`/api/admin/tv/channels/${currentChannelId}/videos/${videoId}`, {
-              method: 'DELETE',
-              headers: {
-                'Authorization': `Bearer ${localStorage.getItem(TOKEN_KEY)}`
-              }
-            });
-            const data = await response.json();
-            if (data.code === 200) {
-              toast('删除视频成功');
-              modal.remove();
-              // 关闭当前视频管理模态框
-              document.querySelectorAll('.video-management-modal').forEach(modal => modal.remove());
-              // 重新加载视频列表
-              manageVideos(currentChannelId);
-            } else {
-              toast('删除视频失败');
-              modal.remove();
-            }
-          } catch (error) {
-            console.error('删除视频失败:', error);
-            toast('删除视频失败');
-            modal.remove();
-          } finally {
-            setLoading(false);
-          }
-        });
+        const data = await response.json();
+        if (data.code === 200) {
+          toast('保存视频成功');
+          hideVideoEditForm();
+          loadVideos(currentChannelId);
+        } else {
+          toast('保存视频失败');
+        }
       } catch (error) {
-        console.error('获取视频信息失败:', error);
-        toast('获取视频信息失败');
+        console.error('保存视频失败:', error);
+        toast('保存视频失败');
+      } finally {
+        setLoading(false);
       }
     };
     
+
+    
     // 删除频道
     const deleteChannel = async (id) => {
+      if (!confirm('确定要删除这个频道吗？')) {
+        return;
+      }
+      
       try {
-        // 先获取频道信息
-        const channelResponse = await fetch(`/api/admin/tv/channels/${id}`, {
+        setLoading(true, "删除频道...");
+        const response = await fetch(`/api/admin/tv/channels/${id}`, {
+          method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${localStorage.getItem(TOKEN_KEY)}`
           }
         });
-        const channelData = await channelResponse.json();
-        const channelName = channelData.code === 200 ? channelData.data.name : '此频道';
-        
-        // 创建悬浮删除框
-        const modal = document.createElement('div');
-        modal.className = 'fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4';
-        modal.innerHTML = `
-          <div class="bg-white rounded-xl p-6 w-full max-w-md transform transition-all">
-            <div class="flex items-center justify-between mb-6">
-              <h3 class="text-xl font-bold text-gray-800">确认删除</h3>
-              <button class="text-gray-500 hover:text-gray-700 close-btn">
-                <i class="fa fa-times text-xl"></i>
-              </button>
-            </div>
-            <div class="space-y-4">
-              <p class="text-slate-600">确定要删除频道 "${channelName}" 吗？此操作不可恢复。</p>
-              <div class="flex justify-end gap-2">
-                <button type="button" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 close-btn">取消</button>
-                <button type="button" class="px-4 py-2 bg-rose-600 text-white rounded-lg hover:opacity-90 delete-btn">删除</button>
-              </div>
-            </div>
-          </div>
-        `;
-        document.body.appendChild(modal);
-        
-        // 关闭按钮事件
-        modal.querySelectorAll('.close-btn').forEach(btn => {
-          btn.addEventListener('click', () => modal.remove());
-        });
-        
-        // 删除按钮事件
-        modal.querySelector('.delete-btn').addEventListener('click', async () => {
-          try {
-            setLoading(true, "删除频道...");
-            const response = await fetch(`/api/admin/tv/channels/${id}`, {
-              method: 'DELETE',
-              headers: {
-                'Authorization': `Bearer ${localStorage.getItem(TOKEN_KEY)}`
-              }
-            });
-            const data = await response.json();
-            if (data.code === 200) {
-              toast('删除频道成功');
-              modal.remove();
-              loadChannelsData();
-            } else {
-              toast('删除频道失败');
-              modal.remove();
-            }
-          } catch (error) {
-            console.error('删除频道失败:', error);
-            toast('删除频道失败');
-            modal.remove();
-          } finally {
-            setLoading(false);
-          }
-        });
+        const data = await response.json();
+        if (data.code === 200) {
+          toast('删除频道成功');
+          loadChannelsData();
+        } else {
+          toast('删除频道失败');
+        }
       } catch (error) {
-        console.error('获取频道信息失败:', error);
-        toast('获取频道信息失败');
+        console.error('删除频道失败:', error);
+        toast('删除频道失败');
+      } finally {
+        setLoading(false);
       }
+    };
+    
+    // 切换到视频管理并选择频道
+    const switchToVideoManagement = async (channelId) => {
+      currentChannelId = channelId;
+      
+      // 切换到视频管理tab
+      const tvTabVideos = document.getElementById('tvTabVideos');
+      if (tvTabVideos) {
+        tvTabVideos.click();
+      }
+      
+      // 选择对应的频道
+      setTimeout(async () => {
+        const videoChannelSelect = document.getElementById('videoChannelSelect');
+        if (videoChannelSelect) {
+          videoChannelSelect.value = channelId;
+          updateChannelDisplay(channelId);
+          await loadVideos(channelId);
+          // 确保显示频道名称而不是选择框
+          videoChannelSelect.classList.add('hidden');
+          document.getElementById('currentChannelDisplay').classList.remove('hidden');
+        }
+      }, 100);
     };
     
     // 初始化电视管理
     const initTvManagement = () => {
       const addChannelBtn = document.getElementById('addChannelBtn');
       const loadChannelsBtn = document.getElementById('loadChannelsBtn');
+      const cancelChannelBtn = document.getElementById('cancelChannelBtn');
+      const saveChannelBtn = document.getElementById('saveChannelBtn');
+      const cancelVideoBtn = document.getElementById('cancelVideoBtn');
+      const saveVideoBtn = document.getElementById('saveVideoBtn');
+      const addVideoBtn = document.getElementById('addVideoBtn');
+      const videoChannelSelect = document.getElementById('videoChannelSelect');
+      const tvTabChannels = document.getElementById('tvTabChannels');
+      const tvTabVideos = document.getElementById('tvTabVideos');
+      const channelsSection = document.getElementById('channelsSection');
+      const videosSection = document.getElementById('videosSection');
+      
+      // Tab切换功能
+      if (tvTabChannels) {
+        tvTabChannels.addEventListener('click', () => {
+          tvTabChannels.classList.add('bg-white', 'shadow', 'text-slate-800');
+          tvTabChannels.classList.remove('text-slate-600');
+          tvTabVideos.classList.remove('bg-white', 'shadow', 'text-slate-800');
+          tvTabVideos.classList.add('text-slate-600');
+          channelsSection.classList.remove('hidden');
+          videosSection.classList.add('hidden');
+          loadChannelsData();
+        });
+      }
+      
+      if (tvTabVideos) {
+        tvTabVideos.addEventListener('click', () => {
+          tvTabVideos.classList.add('bg-white', 'shadow', 'text-slate-800');
+          tvTabVideos.classList.remove('text-slate-600');
+          tvTabChannels.classList.remove('bg-white', 'shadow', 'text-slate-800');
+          tvTabChannels.classList.add('text-slate-600');
+          channelsSection.classList.add('hidden');
+          videosSection.classList.remove('hidden');
+          loadChannelsForVideoSelect();
+          if (videoChannelSelect.value) {
+            loadVideos(videoChannelSelect.value);
+          }
+        });
+      }
+      
+      // 频道选择变化
+      if (videoChannelSelect) {
+        videoChannelSelect.addEventListener('change', (e) => {
+          currentChannelId = e.target.value;
+          updateChannelDisplay(e.target.value);
+          if (e.target.value) {
+            loadVideos(e.target.value);
+          }
+          // 选择后隐藏选择框，显示频道名称
+          videoChannelSelect.classList.add('hidden');
+          document.getElementById('currentChannelDisplay').classList.remove('hidden');
+        });
+      }
+      
+      // 点击频道显示区域时显示选择框
+      const currentChannelDisplay = document.getElementById('currentChannelDisplay');
+      if (currentChannelDisplay) {
+        currentChannelDisplay.addEventListener('click', () => {
+          const select = document.getElementById('videoChannelSelect');
+          if (select) {
+            select.classList.remove('hidden');
+            currentChannelDisplay.classList.add('hidden');
+          }
+        });
+      }
+      
+      // 刷新按钮事件
+      const refreshVideosBtn = document.getElementById('refreshVideosBtn');
+      if (refreshVideosBtn) {
+        refreshVideosBtn.addEventListener('click', () => {
+          if (currentChannelId) {
+            loadVideos(currentChannelId);
+          } else {
+            toast('请先选择频道');
+          }
+        });
+      }
       
       if (addChannelBtn) {
         addChannelBtn.addEventListener('click', () => showChannelEditForm());
       }
       
+      if (addVideoBtn) {
+        addVideoBtn.addEventListener('click', () => {
+          if (!videoChannelSelect.value) {
+            toast('请先选择频道');
+            return;
+          }
+          currentChannelId = videoChannelSelect.value;
+          showVideoEditForm();
+        });
+      }
+      
       if (loadChannelsBtn) {
         loadChannelsBtn.addEventListener('click', loadChannelsData);
         loadChannelsBtn.classList.remove('hidden');
+      }
+      
+      if (cancelChannelBtn) {
+        cancelChannelBtn.addEventListener('click', hideChannelEditForm);
+      }
+      
+      if (saveChannelBtn) {
+        saveChannelBtn.addEventListener('click', saveChannel);
+      }
+      
+      if (cancelVideoBtn) {
+        cancelVideoBtn.addEventListener('click', hideVideoEditForm);
+      }
+      
+      if (saveVideoBtn) {
+        saveVideoBtn.addEventListener('click', saveVideo);
+      }
+      
+      // 从分享链接添加视频
+      const addFromShareBtn = document.getElementById('addFromShareBtn');
+      if (addFromShareBtn) {
+        addFromShareBtn.addEventListener('click', async () => {
+          const shareUrlInput = document.getElementById('shareUrlInput');
+          const shareUrl = shareUrlInput.value.trim();
+          
+          if (!shareUrl) {
+            toast('请输入分享链接');
+            return;
+          }
+          
+          if (!videoChannelSelect.value) {
+            toast('请先选择频道');
+            return;
+          }
+          
+          try {
+            setLoading(true, "处理分享链接...");
+            
+            // 从分享链接中提取分享ID
+            const shareId = extractShareIdFromUrl(shareUrl);
+            if (!shareId) {
+              toast('无效的分享链接');
+              return;
+            }
+            
+            // 获取分享信息
+            const shareResponse = await fetch(`/api/share/${shareId}`, {
+              headers: authHeaders()
+            });
+            
+            const shareData = await shareResponse.json();
+            if (shareData.code !== 200) {
+              toast(shareData.message || '获取分享信息失败');
+              return;
+            }
+            
+            const videoData = shareData.data;
+            if (!videoData || !videoData.url) {
+              toast('分享信息不完整');
+              return;
+            }
+            
+            // 显示视频编辑表单并传递视频数据
+            currentChannelId = videoChannelSelect.value;
+            showVideoEditForm({
+              title: videoData.title || '未命名视频',
+              url: (videoData.url || '').replace(/`/g, '').trim(),
+              image: (videoData.pic || '').replace(/`/g, '').trim(),
+              order: 1
+            });
+            
+            toast('已从分享链接提取视频信息');
+          } catch (error) {
+            console.error('从分享添加视频失败:', error);
+            toast('从分享添加视频失败');
+          } finally {
+            setLoading(false);
+          }
+        });
+      }
+    };
+    
+    // 从分享链接中提取分享ID
+    const extractShareIdFromUrl = (url) => {
+      try {
+        // 从URL中提取sid参数
+        const urlParams = new URLSearchParams(new URL(url).search);
+        const sid = urlParams.get('sid');
+        return sid;
+      } catch (error) {
+        console.error('解析分享链接失败:', error);
+        return null;
       }
     };
 
@@ -1698,8 +2523,6 @@
     // 加载导航设置
     const loadNavigationSettings = async () => {
       try {
-        setLoading(true, "加载设置...");
-        
         const res = await fetch('/api/user/navigation-settings', {
           method: 'GET',
           headers: { 'Content-Type': 'application/json', ...authHeaders() }
@@ -1715,15 +2538,26 @@
               categories: []
             };
             // 渲染导航设置
-            document.getElementById('navigationSiteTitle').value = navigationSettings.siteTitle || 'SmartNav';
-            document.getElementById('navigationSiteDescription').value = navigationSettings.siteDescription || '让上网更高效';
-            document.getElementById('navigationCopyright').value = navigationSettings.copyright || '© 2024 SmartNav - 智能网站导航';
+            const siteTitleInput = document.getElementById('navigationSiteTitle');
+            if (siteTitleInput) {
+              siteTitleInput.value = navigationSettings.siteTitle || 'SmartNav';
+            }
+            const siteDescriptionInput = document.getElementById('navigationSiteDescription');
+            if (siteDescriptionInput) {
+              siteDescriptionInput.value = navigationSettings.siteDescription || '让上网更高效';
+            }
+            const copyrightInput = document.getElementById('navigationCopyright');
+            if (copyrightInput) {
+              copyrightInput.value = navigationSettings.copyright || '© 2024 SmartNav - 智能网站导航';
+            }
             
             // 设置主题单选按钮
             const themeRadios = document.querySelectorAll('input[name="navigationTheme"]');
-            themeRadios.forEach(radio => {
-              radio.checked = radio.value === navigationSettings.theme;
-            });
+            if (themeRadios.length > 0) {
+              themeRadios.forEach(radio => {
+                radio.checked = radio.value === navigationSettings.theme;
+              });
+            }
             
             // 渲染分类和网站
             if (typeof renderNavigationCategories === 'function') {
@@ -1741,8 +2575,6 @@
       } catch (error) {
         console.error('加载导航设置失败:', error);
         toast('加载导航设置失败');
-      } finally {
-        setLoading(false);
       }
     };
 
@@ -2085,87 +2917,70 @@
       const categoriesList = document.getElementById('navigationCategoriesList');
       if (!categoriesList) return;
       
-      categoriesList.innerHTML = '';
-      
       if (navigationSettings.categories.length === 0) {
         categoriesList.innerHTML = '<div class="text-center text-slate-500 py-4">暂无分类</div>';
         return;
       }
       
-      navigationSettings.categories.forEach(category => {
-        const categoryElement = document.createElement('div');
-        categoryElement.className = 'bg-white border rounded-lg p-4';
-        categoryElement.innerHTML = `
-          <div class="flex items-center justify-between mb-2">
-            <h4 class="font-medium text-gray-800">${category.category}</h4>
-            <div class="flex items-center gap-2">
-              <button class="text-blue-600 hover:underline text-sm" onclick="editNavigationCategory('${encodeURIComponent(category.category)}')">编辑</button>
-              <button class="text-red-600 hover:underline text-sm" onclick="deleteNavigationCategory('${encodeURIComponent(category.category)}')">删除</button>
+      categoriesList.innerHTML = navigationSettings.categories.map(category => {
+        const categoryEncoded = encodeURIComponent(category.category);
+        return `
+          <div class="bg-white border rounded-lg p-4">
+            <div class="flex items-center justify-between mb-3">
+              <h4 class="font-semibold">${category.category}</h4>
+              <div class="flex items-center gap-2">
+                <button class="px-2 py-1 rounded text-xs bg-blue-600 text-white" onclick="editNavigationCategory('${categoryEncoded}')">编辑</button>
+                <button class="px-2 py-1 rounded text-xs bg-rose-600 text-white" onclick="deleteNavigationCategory('${categoryEncoded}')">删除</button>
+              </div>
             </div>
+            <div class="text-sm text-slate-500">网站数量: ${category.links.length}</div>
           </div>
-          <div class="text-sm text-slate-500">包含 ${category.links.length} 个网站</div>
         `;
-        categoriesList.appendChild(categoryElement);
-      });
+      }).join('');
     };
 
-    // 渲染导航网站
+    // 渲染导航站点
     const renderNavigationSites = () => {
       const sitesList = document.getElementById('navigationSitesList');
       if (!sitesList) return;
       
-      sitesList.innerHTML = '';
-      
       if (navigationSettings.categories.length === 0) {
-        sitesList.innerHTML = '<div class="text-center text-slate-500 py-4">暂无分类</div>';
+        sitesList.innerHTML = '<div class="text-center text-slate-500 py-4">暂无网站</div>';
         return;
       }
       
-      navigationSettings.categories.forEach(category => {
-        if (category.links.length === 0) return;
+      sitesList.innerHTML = navigationSettings.categories.map(category => {
+        if (category.links.length === 0) return '';
         
-        const categorySection = document.createElement('div');
-        categorySection.className = 'space-y-2';
-        categorySection.innerHTML = `
-          <h4 class="font-medium text-gray-800">${category.category}</h4>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-            ${category.links.map(link => `
-              <div class="bg-white border rounded-lg p-3 flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                  <i class="fas ${link.icon || 'fa-link'} text-slate-500"></i>
-                  <div>
-                    <div class="font-medium">${link.name}</div>
-                    <div class="text-xs text-slate-500">${link.url}</div>
+        return `
+          <div class="bg-white border rounded-lg p-4">
+            <h4 class="font-semibold mb-3">${category.category}</h4>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              ${category.links.map(link => {
+                const categoryEncoded = encodeURIComponent(category.category);
+                const urlEncoded = encodeURIComponent(link.url);
+                const nameEncoded = encodeURIComponent(link.name);
+                const iconEncoded = encodeURIComponent(link.icon);
+                return `
+                  <div class="flex items-center justify-between p-2 border rounded">
+                    <div class="flex items-center gap-3">
+                      <i class="fa ${link.icon || 'fa-link'} text-slate-500"></i>
+                      <div>
+                        <div class="font-medium">${link.name}</div>
+                        <div class="text-xs text-slate-500 truncate">${link.url}</div>
+                      </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <button class="px-2 py-1 rounded text-xs bg-blue-600 text-white" onclick="editNavigationSite('${categoryEncoded}', '${urlEncoded}', '${nameEncoded}', '${iconEncoded}')">编辑</button>
+                      <button class="px-2 py-1 rounded text-xs bg-rose-600 text-white" onclick="deleteNavigationSite('${categoryEncoded}', '${urlEncoded}')">删除</button>
+                    </div>
                   </div>
-                </div>
-                <div class="flex items-center gap-2">
-                  <button class="text-blue-600 hover:underline text-sm" onclick="editNavigationSite('${encodeURIComponent(category.category)}', '${encodeURIComponent(link.url)}', '${encodeURIComponent(link.name)}', '${encodeURIComponent(link.icon || 'fa-link')}')">编辑</button>
-                  <button class="text-red-600 hover:underline text-sm" onclick="deleteNavigationSite('${encodeURIComponent(category.category)}', '${encodeURIComponent(link.url)}')">删除</button>
-                </div>
-              </div>
-            `).join('')}
+                `;
+              }).join('')}
+            </div>
           </div>
         `;
-        sitesList.appendChild(categorySection);
-      });
-    };
-
-    // 渲染导航设置
-    const renderNavigationSettings = () => {
-      // 渲染基本设置
-      document.getElementById('navigationSiteTitle').value = navigationSettings.siteTitle || 'SmartNav';
-      document.getElementById('navigationSiteDescription').value = navigationSettings.siteDescription || '让上网更高效';
-      document.getElementById('navigationCopyright').value = navigationSettings.copyright || '© 2024 SmartNav - 智能网站导航';
-      
-      // 设置主题单选按钮
-      const themeRadios = document.querySelectorAll('input[name="navigationTheme"]');
-      themeRadios.forEach(radio => {
-        radio.checked = radio.value === navigationSettings.theme;
-      });
-      
-      // 渲染分类和网站
-      renderNavigationCategories();
-      renderNavigationSites();
+      }).join('');
     };
 
     // 保存导航设置
@@ -2174,11 +2989,16 @@
         setLoading(true, "保存设置...");
         
         // 收集表单数据
+        const siteTitleInput = document.getElementById('navigationSiteTitle');
+        const siteDescriptionInput = document.getElementById('navigationSiteDescription');
+        const copyrightInput = document.getElementById('navigationCopyright');
+        const checkedThemeRadio = document.querySelector('input[name="navigationTheme"]:checked');
+        
         const settings = {
-          siteTitle: document.getElementById('navigationSiteTitle').value,
-          siteDescription: document.getElementById('navigationSiteDescription').value,
-          theme: document.querySelector('input[name="navigationTheme"]:checked')?.value || 'light',
-          copyright: document.getElementById('navigationCopyright').value,
+          siteTitle: siteTitleInput ? siteTitleInput.value : 'SmartNav',
+          siteDescription: siteDescriptionInput ? siteDescriptionInput.value : '让上网更高效',
+          theme: checkedThemeRadio ? checkedThemeRadio.value : 'light',
+          copyright: copyrightInput ? copyrightInput.value : '© 2024 SmartNav - 智能网站导航',
           categories: navigationSettings.categories || []
         };
         
@@ -2197,7 +3017,8 @@
               theme: 'light',
               categories: []
             };
-            renderNavigationSettings();
+            renderNavigationCategories();
+            renderNavigationSites();
             toast('导航设置保存成功');
           } else {
             toast(data.message || '保存失败');
@@ -2735,7 +3556,6 @@
     // 加载密码重置设置
     const loadPasswordResetSettings = async () => {
       try {
-        setLoading(true, "加载设置...");
         const res = await fetch("/api/user/password-reset-settings", {
           headers: authHeaders()
         });
@@ -2747,10 +3567,11 @@
       } catch (error) {
         console.error("加载密码重置设置失败:", error);
       } finally {
-        setLoading(false);
         // 添加保存按钮事件监听器
         const saveBtn = document.getElementById("savePasswordResetSettingsBtn");
         if (saveBtn) {
+          // 先移除可能存在的事件监听器，避免重复添加
+          saveBtn.removeEventListener("click", savePasswordResetSettings);
           saveBtn.addEventListener("click", savePasswordResetSettings);
         }
       }
@@ -2761,19 +3582,26 @@
       try {
         setLoading(true, "保存设置...");
         // 收集表单数据
+        const checkedResetMethod = document.querySelector('input[name="resetMethod"]:checked');
+        const securityQuestions = [];
+        for (let i = 0; i < 5; i++) {
+          const input = document.getElementById(`securityQuestion${i + 1}`);
+          if (input) {
+            securityQuestions.push(input.value.trim());
+          }
+        }
+        const emailFromInput = document.getElementById("emailFrom");
+        const emailPassInput = document.getElementById("emailPass");
+        const emailSubjectInput = document.getElementById("emailSubject");
+        const emailTemplateInput = document.getElementById("emailTemplate");
+        
         const formData = {
-          resetMethod: document.querySelector('input[name="resetMethod"]:checked')?.value || "securityQuestion",
-          securityQuestions: [
-            document.getElementById("securityQuestion1").value.trim(),
-            document.getElementById("securityQuestion2").value.trim(),
-            document.getElementById("securityQuestion3").value.trim(),
-            document.getElementById("securityQuestion4").value.trim(),
-            document.getElementById("securityQuestion5").value.trim()
-          ].filter(q => q),
-          emailFrom: document.getElementById("emailFrom").value.trim(),
-          emailPass: document.getElementById("emailPass").value.trim(),
-          emailSubject: document.getElementById("emailSubject").value.trim(),
-          emailTemplate: document.getElementById("emailTemplate").value.trim()
+          resetMethod: checkedResetMethod ? checkedResetMethod.value : "securityQuestion",
+          securityQuestions: securityQuestions.filter(q => q),
+          emailFrom: emailFromInput ? emailFromInput.value.trim() : "",
+          emailPass: emailPassInput ? emailPassInput.value.trim() : "",
+          emailSubject: emailSubjectInput ? emailSubjectInput.value.trim() : "密码重置请求",
+          emailTemplate: emailTemplateInput ? emailTemplateInput.value.trim() : "您请求重置您的账户密码。请点击以下链接完成重置：\n\n{resetLink}\n\n此链接将在24小时后失效。\n\n如果您没有请求密码重置，请忽略此邮件。"
         };
         const res = await fetch("/api/user/password-reset-settings", {
           method: "PUT",
@@ -2798,9 +3626,18 @@
     // 渲染密码重置设置
     const renderPasswordResetSettings = () => {
       // 设置重置方式
-      document.getElementById("resetMethodSecurityQuestion").checked = passwordResetSettings.resetMethod === "securityQuestion";
-      document.getElementById("resetMethodEmail").checked = passwordResetSettings.resetMethod === "email";
-      document.getElementById("resetMethodBoth").checked = passwordResetSettings.resetMethod === "both";
+      const resetMethodSecurityQuestion = document.getElementById("resetMethodSecurityQuestion");
+      if (resetMethodSecurityQuestion) {
+        resetMethodSecurityQuestion.checked = passwordResetSettings.resetMethod === "securityQuestion";
+      }
+      const resetMethodEmail = document.getElementById("resetMethodEmail");
+      if (resetMethodEmail) {
+        resetMethodEmail.checked = passwordResetSettings.resetMethod === "email";
+      }
+      const resetMethodBoth = document.getElementById("resetMethodBoth");
+      if (resetMethodBoth) {
+        resetMethodBoth.checked = passwordResetSettings.resetMethod === "both";
+      }
       
       // 设置安全问题
       for (let i = 0; i < 5; i++) {
@@ -2811,10 +3648,22 @@
       }
       
       // 设置邮箱信息
-      document.getElementById("emailFrom").value = passwordResetSettings.emailFrom || "";
-      document.getElementById("emailPass").value = passwordResetSettings.emailPass || "";
-      document.getElementById("emailSubject").value = passwordResetSettings.emailSubject || "密码重置请求";
-      document.getElementById("emailTemplate").value = passwordResetSettings.emailTemplate || "您请求重置您的账户密码。请点击以下链接完成重置：\n\n{resetLink}\n\n此链接将在24小时后失效。\n\n如果您没有请求密码重置，请忽略此邮件。";
+      const emailFromInput = document.getElementById("emailFrom");
+      if (emailFromInput) {
+        emailFromInput.value = passwordResetSettings.emailFrom || "";
+      }
+      const emailPassInput = document.getElementById("emailPass");
+      if (emailPassInput) {
+        emailPassInput.value = passwordResetSettings.emailPass || "";
+      }
+      const emailSubjectInput = document.getElementById("emailSubject");
+      if (emailSubjectInput) {
+        emailSubjectInput.value = passwordResetSettings.emailSubject || "密码重置请求";
+      }
+      const emailTemplateInput = document.getElementById("emailTemplate");
+      if (emailTemplateInput) {
+        emailTemplateInput.value = passwordResetSettings.emailTemplate || "您请求重置您的账户密码。请点击以下链接完成重置：\n\n{resetLink}\n\n此链接将在24小时后失效。\n\n如果您没有请求密码重置，请忽略此邮件。";
+      }
     };
 
     // Skeleton screen functions
@@ -2980,6 +3829,218 @@
         </tr>
       `).join('');
     };
+    
+    // 显示电视管理骨架屏
+    const showTvSkeleton = () => {
+      const tbody = document.getElementById('channelsTbody');
+      if (!tbody) return;
+      tbody.innerHTML = Array(5).fill('').map(() => `
+        <tr class="animate-pulse">
+          <td class="py-2"><div class="h-4 bg-slate-200 rounded w-16"></div></td>
+          <td><div class="h-4 bg-slate-200 rounded w-64"></div></td>
+          <td><div class="h-4 bg-slate-200 rounded w-96"></div></td>
+          <td><div class="h-4 bg-slate-200 rounded w-16"></div></td>
+          <td><div class="h-4 bg-slate-200 rounded w-64"></div></td>
+        </tr>
+      `).join('');
+    };
+    
+    // 显示分享墙管理骨架屏
+    const showShareWallSkeleton = () => {
+      const grid = document.getElementById('shareWallGrid');
+      if (!grid) return;
+      grid.innerHTML = `
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+          ${Array(8).fill('').map(() => `
+            <div class="video-card" style="position: relative; overflow: hidden; border-radius: 12px; background: rgba(30, 41, 59, 0.8); transition: all 0.3s ease;">
+              <div class="thumb-wrapper" style="position: relative; aspect-ratio: 3/4; overflow: hidden;">
+                <div class="h-full w-full bg-slate-200 animate-pulse"></div>
+              </div>
+              <div class="info" style="padding: 12px;">
+                <div class="h-4 bg-slate-200 rounded animate-pulse mb-4"></div>
+                <div class="space-y-2">
+                  <div class="h-3 bg-slate-200 rounded animate-pulse"></div>
+                  <div class="h-3 bg-slate-200 rounded animate-pulse w-3/4"></div>
+                  <div class="h-3 bg-slate-200 rounded animate-pulse w-1/2"></div>
+                </div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    };
+    
+    // 显示密码重置设置骨架屏
+    const showPasswordResetSkeleton = () => {
+      const container = document.querySelector('[data-module="passwordReset"]');
+      if (!container) return;
+      const content = container.querySelector('.space-y-4');
+      if (!content) return;
+      content.innerHTML = `
+        <div class="space-y-4 animate-pulse">
+          <div class="space-y-2">
+            <div class="h-4 bg-slate-200 rounded w-64"></div>
+            <div class="space-y-2">
+              <div class="flex items-center gap-2">
+                <div class="h-4 w-4 bg-slate-200 rounded"></div>
+                <div class="h-3 bg-slate-200 rounded w-32"></div>
+              </div>
+              <div class="flex items-center gap-2">
+                <div class="h-4 w-4 bg-slate-200 rounded"></div>
+                <div class="h-3 bg-slate-200 rounded w-32"></div>
+              </div>
+              <div class="flex items-center gap-2">
+                <div class="h-4 w-4 bg-slate-200 rounded"></div>
+                <div class="h-3 bg-slate-200 rounded w-32"></div>
+              </div>
+            </div>
+          </div>
+          <div class="space-y-2">
+            <div class="h-4 bg-slate-200 rounded w-64"></div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <div class="h-10 bg-slate-200 rounded"></div>
+              <div class="h-10 bg-slate-200 rounded"></div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <div class="h-10 bg-slate-200 rounded"></div>
+              <div class="h-10 bg-slate-200 rounded"></div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <div class="h-10 bg-slate-200 rounded"></div>
+              <div class="flex items-end">
+                <div class="h-10 bg-slate-200 rounded w-32"></div>
+              </div>
+            </div>
+          </div>
+          <div class="space-y-2">
+            <div class="h-4 bg-slate-200 rounded w-64"></div>
+            <div class="h-10 bg-slate-200 rounded"></div>
+            <div class="h-10 bg-slate-200 rounded"></div>
+            <div class="h-20 bg-slate-200 rounded"></div>
+          </div>
+          <div class="flex items-center justify-end gap-2">
+            <div class="h-10 bg-slate-200 rounded w-32"></div>
+          </div>
+        </div>
+      `;
+    };
+    
+    // 显示导航设置骨架屏
+    const showNavigationSkeleton = () => {
+      const container = document.querySelector('[data-module="navigation"]');
+      if (!container) return;
+      const content = container.querySelector('.space-y-6');
+      if (!content) return;
+      content.innerHTML = `
+        <div class="space-y-4 animate-pulse">
+          <div class="space-y-4">
+            <div class="h-4 bg-slate-200 rounded w-64"></div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="space-y-2">
+                <div class="h-3 bg-slate-200 rounded w-32"></div>
+                <div class="h-10 bg-slate-200 rounded"></div>
+              </div>
+              <div class="space-y-2">
+                <div class="h-3 bg-slate-200 rounded w-32"></div>
+                <div class="h-10 bg-slate-200 rounded"></div>
+              </div>
+              <div class="md:col-span-2 space-y-2">
+                <div class="h-3 bg-slate-200 rounded w-32"></div>
+                <div class="h-10 bg-slate-200 rounded"></div>
+              </div>
+            </div>
+          </div>
+          <div class="space-y-4">
+            <div class="h-4 bg-slate-200 rounded w-64"></div>
+            <div class="flex items-center space-x-4">
+              <div class="flex items-center gap-2">
+                <div class="h-4 w-4 bg-slate-200 rounded"></div>
+                <div class="h-3 bg-slate-200 rounded w-32"></div>
+              </div>
+              <div class="flex items-center gap-2">
+                <div class="h-4 w-4 bg-slate-200 rounded"></div>
+                <div class="h-3 bg-slate-200 rounded w-32"></div>
+              </div>
+              <div class="flex items-center gap-2">
+                <div class="h-4 w-4 bg-slate-200 rounded"></div>
+                <div class="h-3 bg-slate-200 rounded w-32"></div>
+              </div>
+            </div>
+          </div>
+          <div class="space-y-4">
+            <div class="flex items-center justify-between">
+              <div class="h-4 bg-slate-200 rounded w-64"></div>
+              <div class="h-10 bg-slate-200 rounded w-32"></div>
+            </div>
+            <div class="space-y-3">
+              ${Array(3).fill('').map(() => `
+                <div class="h-20 bg-slate-200 rounded"></div>
+              `).join('')}
+            </div>
+          </div>
+          <div class="space-y-4">
+            <div class="flex items-center justify-between">
+              <div class="h-4 bg-slate-200 rounded w-64"></div>
+              <div class="h-10 bg-slate-200 rounded w-32"></div>
+            </div>
+            <div class="space-y-3">
+              ${Array(3).fill('').map(() => `
+                <div class="h-20 bg-slate-200 rounded"></div>
+              `).join('')}
+            </div>
+          </div>
+          <div class="flex items-center justify-end gap-2">
+            <div class="h-10 bg-slate-200 rounded w-32"></div>
+          </div>
+        </div>
+      `;
+    };
+    
+    // 显示搜索关键字骨架屏
+    const showSearchKeywordsSkeleton = () => {
+      const container = document.querySelector('[data-module="searchKeywords"]');
+      if (!container) return;
+      const chartContainer = container.querySelector('.space-y-4');
+      if (!chartContainer) return;
+      chartContainer.innerHTML = `
+        <div class="space-y-4 animate-pulse">
+          <div class="h-4 bg-slate-200 rounded w-64"></div>
+          <div class="bg-slate-50 rounded-lg p-4 relative">
+            <div class="absolute top-4 left-4 bg-white/80 backdrop-blur-sm rounded-lg shadow p-3 max-w-[200px] z-10">
+              <div class="h-3 bg-slate-200 rounded w-40 mb-2"></div>
+              <div class="space-y-2">
+                ${Array(5).fill('').map(() => `
+                  <div class="h-3 bg-slate-200 rounded w-32"></div>
+                `).join('')}
+              </div>
+            </div>
+            <div class="h-52 bg-slate-200 rounded"></div>
+          </div>
+          <div class="overflow-auto">
+            <table class="min-w-full text-sm">
+              <thead class="text-left text-slate-500">
+                <tr>
+                  <th class="py-2"><div class="h-4 bg-slate-200 rounded w-32"></div></th>
+                  <th><div class="h-4 bg-slate-200 rounded w-32"></div></th>
+                  <th><div class="h-4 bg-slate-200 rounded w-32"></div></th>
+                  <th><div class="h-4 bg-slate-200 rounded w-32"></div></th>
+                </tr>
+              </thead>
+              <tbody class="divide-y">
+                ${Array(5).fill('').map(() => `
+                  <tr>
+                    <td class="py-2"><div class="h-4 bg-slate-200 rounded w-40"></div></td>
+                    <td><div class="h-4 bg-slate-200 rounded w-32"></div></td>
+                    <td><div class="h-4 bg-slate-200 rounded w-48"></div></td>
+                    <td><div class="h-4 bg-slate-200 rounded w-64"></div></td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    };
 
     const moduleLoaded = {
       profile: true,
@@ -2995,6 +4056,8 @@
       articles: false,
       navigation: false,
       searchKeywords: false,
+      tv: false,
+      shareWall: false,
     };
 
     const sideNav = document.getElementById("sideNav");
@@ -3120,6 +4183,14 @@
             loadSearchKeywords(1, newPageSize, loadSearchKeywordsBtn);
           });
         }
+      } else if (name === "tv" && !moduleLoaded.tv) {
+        moduleLoaded.tv = true;
+        showTvSkeleton();
+        await loadChannelsData();
+      } else if (name === "shareWall" && !moduleLoaded.shareWall) {
+        moduleLoaded.shareWall = true;
+        showShareWallSkeleton();
+        await loadShareWall();
       }
     };
 
@@ -3905,6 +4976,10 @@
     // 初始化Markdown编辑器
     const initMarkdownEditor = () => {
       if (markdownEditor) return;
+      if (typeof EasyMDE === 'undefined') {
+        console.warn('EasyMDE is not loaded yet');
+        return;
+      }
       const textarea = document.getElementById('announcementContentInput');
       if (!textarea) return;
       // 确保textarea没有内联样式干扰
@@ -4278,6 +5353,10 @@
     // 初始化文章Markdown编辑器
     const initArticleEditor = () => {
       if (articleEditor) return;
+      if (typeof EasyMDE === 'undefined') {
+        console.warn('EasyMDE is not loaded yet');
+        return;
+      }
       const textarea = document.getElementById('articleContentInput');
       if (!textarea) return;
       // 确保textarea没有内联样式干扰
@@ -4772,6 +5851,7 @@ const removeArticleTag = (index) => {
     window.deleteNavigationSite = deleteNavigationSite;
     window.editNavigationCategory = editNavigationCategory;
     window.editNavigationSite = editNavigationSite;
+    window.manageVideos = switchToVideoManagement;
 
     // 为标签输入框添加回车键事件监听器
     document.addEventListener('DOMContentLoaded', () => {
@@ -7791,9 +8871,6 @@ const removeArticleTag = (index) => {
         }
       });
     };
-
-
-
     (async () => {
       await refreshAuthUI();
       initButtonOrder();

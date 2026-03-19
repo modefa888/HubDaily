@@ -697,6 +697,7 @@
       <div class="flex flex-wrap items-center justify-between gap-3">
         <h2 class="font-semibold">电视管理（管理员）</h2>
         <div class="flex flex-wrap items-center gap-2">
+          <a href="/tv" class="px-3 py-1.5 rounded bg-purple-600 text-white text-sm">看电视</a>
           <button id="loadChannelsBtn" class="hidden px-3 py-1.5 rounded bg-blue-600 text-white text-sm">刷新</button>
         </div>
       </div>
@@ -707,12 +708,10 @@
         <button id="tvTabVideos" type="button" class="flex-1 px-2 py-1 rounded-md text-slate-600">视频管理</button>
       </div>
       
-      <div id="tvMeta" class="text-sm text-slate-500"></div>
-      
       <!-- 频道管理区域 -->
       <div id="channelsSection">
         <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
-          <div></div>
+          <div id="tvMeta" class="text-sm text-slate-500"></div>
           <button id="addChannelBtn" class="px-3 py-1.5 rounded bg-emerald-600 text-white text-sm">新增频道</button>
         </div>
         
@@ -801,6 +800,10 @@
           <div class="space-y-2">
             <label class="block text-sm font-medium text-slate-700">视频封面</label>
             <input id="videoImageInput" type="text" class="w-full border rounded px-3 py-2 text-sm" placeholder="请输入视频封面URL">
+            <!-- 图片预览 -->
+            <div class="mt-2">
+              <img id="videoImagePreview" src="" alt="视频封面预览" class="max-w-xs max-h-32 object-cover rounded border hidden">
+            </div>
           </div>
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div class="flex flex-wrap items-center gap-2">
@@ -1836,7 +1839,13 @@
     const showChannelEditForm = (channel = null) => {
       currentChannelId = channel ? channel._id : null;
       document.getElementById('channelNameInput').value = channel ? channel.name : '';
-      document.getElementById('channelOrderInput').value = channel ? channel.order : 1;
+      if (channel) {
+        document.getElementById('channelOrderInput').value = channel.order;
+      } else {
+        // 计算新频道的排序号（现有最大排序号+1）
+        const maxOrder = channelsData.reduce((max, c) => Math.max(max, c.order || 1), 0);
+        document.getElementById('channelOrderInput').value = maxOrder + 1;
+      }
       document.getElementById('channelDescriptionInput').value = channel ? channel.description : '';
       document.getElementById('channelEditForm').classList.remove('hidden');
       document.getElementById('videoEditForm').classList.add('hidden');
@@ -1854,7 +1863,20 @@
       document.getElementById('videoTitleInput').value = video ? video.title : '';
       document.getElementById('videoOrderInput').value = video ? video.order : 1;
       document.getElementById('videoUrlInput').value = video ? video.url : '';
-      document.getElementById('videoImageInput').value = video ? video.image : '';
+      const videoImageInput = document.getElementById('videoImageInput');
+      const videoImagePreview = document.getElementById('videoImagePreview');
+      if (videoImageInput && videoImagePreview) {
+        videoImageInput.value = video ? video.image : '';
+        // 更新预览图片
+        const imageUrl = video ? video.image : '';
+        if (imageUrl) {
+          videoImagePreview.src = imageUrl;
+          videoImagePreview.classList.remove('hidden');
+        } else {
+          videoImagePreview.src = '';
+          videoImagePreview.classList.add('hidden');
+        }
+      }
       document.getElementById('videoEditForm').classList.remove('hidden');
     };
     
@@ -2325,7 +2347,14 @@
           tvTabVideos.classList.add('text-slate-600');
           channelsSection.classList.remove('hidden');
           videosSection.classList.add('hidden');
-          loadChannelsData();
+          // 只有在频道数据未加载时才加载
+          if (!channelsLoaded) {
+            loadChannelsData();
+          } else {
+            // 数据已加载，直接渲染
+            renderChannelsList(channelsData);
+            document.getElementById('tvMeta').textContent = `共 ${channelsData.length} 个频道`;
+          }
         });
       }
       
@@ -2337,9 +2366,38 @@
           tvTabChannels.classList.add('text-slate-600');
           channelsSection.classList.add('hidden');
           videosSection.classList.remove('hidden');
-          loadChannelsForVideoSelect();
+          // 只有在频道数据未加载时才加载
+          if (!channelsLoaded) {
+            loadChannelsForVideoSelect();
+          } else {
+            // 数据已加载，只需更新选择框
+            const select = document.getElementById('videoChannelSelect');
+            const channelDisplay = document.getElementById('currentChannelDisplay');
+            if (select && channelDisplay) {
+              // 保存当前选择的频道ID
+              const currentSelectedValue = select.value;
+              select.innerHTML = '<option value="">选择频道</option>';
+              channelsData.forEach(channel => {
+                const option = document.createElement('option');
+                option.value = channel._id;
+                option.textContent = channel.name;
+                select.appendChild(option);
+              });
+              // 恢复之前选择的频道
+              if (currentSelectedValue) {
+                select.value = currentSelectedValue;
+                updateChannelDisplay(currentSelectedValue);
+              }
+            }
+          }
           if (videoChannelSelect.value) {
-            loadVideos(videoChannelSelect.value);
+            // 同步currentChannelId
+            currentChannelId = videoChannelSelect.value;
+            // 显示视频列表内容
+            document.getElementById('videosContent').classList.remove('hidden');
+          } else {
+            // 隐藏视频列表内容
+            document.getElementById('videosContent').classList.add('hidden');
           }
         });
       }
@@ -2347,10 +2405,16 @@
       // 频道选择变化
       if (videoChannelSelect) {
         videoChannelSelect.addEventListener('change', (e) => {
-          currentChannelId = e.target.value;
-          updateChannelDisplay(e.target.value);
-          if (e.target.value) {
-            loadVideos(e.target.value);
+          const channelId = e.target.value;
+          currentChannelId = channelId;
+          updateChannelDisplay(channelId);
+          if (channelId) {
+            loadVideos(channelId);
+            // 显示视频列表内容
+            document.getElementById('videosContent').classList.remove('hidden');
+          } else {
+            // 隐藏视频列表内容
+            document.getElementById('videosContent').classList.add('hidden');
           }
           // 选择后隐藏选择框，显示频道名称
           videoChannelSelect.classList.add('hidden');
@@ -2366,6 +2430,8 @@
           if (select) {
             select.classList.remove('hidden');
             currentChannelDisplay.classList.add('hidden');
+            // 隐藏视频列表内容
+            document.getElementById('videosContent').classList.add('hidden');
           }
         });
       }
@@ -2383,7 +2449,13 @@
       }
       
       if (addChannelBtn) {
-        addChannelBtn.addEventListener('click', () => showChannelEditForm());
+        addChannelBtn.addEventListener('click', async () => {
+          // 确保频道数据已加载
+          if (!channelsLoaded) {
+            await loadChannelsData();
+          }
+          showChannelEditForm();
+        });
       }
       
       if (addVideoBtn) {
@@ -2416,6 +2488,22 @@
       
       if (saveVideoBtn) {
         saveVideoBtn.addEventListener('click', saveVideo);
+      }
+      
+      // 视频封面预览
+      const videoImageInput = document.getElementById('videoImageInput');
+      const videoImagePreview = document.getElementById('videoImagePreview');
+      if (videoImageInput && videoImagePreview) {
+        videoImageInput.addEventListener('input', function() {
+          const url = this.value.trim();
+          if (url) {
+            videoImagePreview.src = url;
+            videoImagePreview.classList.remove('hidden');
+          } else {
+            videoImagePreview.src = '';
+            videoImagePreview.classList.add('hidden');
+          }
+        });
       }
       
       // 从分享链接添加视频
