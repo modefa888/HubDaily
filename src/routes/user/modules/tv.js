@@ -432,4 +432,278 @@ router.get("/tv/channels", async (ctx) => {
   }
 });
 
+// TV分享相关接口
+
+// 创建TV分享（管理员）
+router.post("/admin/tv/shares", authMiddleware, requireAdmin, async (ctx) => {
+    try {
+      const db = await getDb();
+      if (!db) {
+        ctx.body = {
+          code: 500,
+          message: "数据库连接失败"
+        };
+        return;
+      }
+      const { channelIds, name, isFixed = false, tvId } = ctx.request.body;
+      
+      if (!channelIds || !Array.isArray(channelIds) || channelIds.length === 0) {
+        ctx.body = {
+          code: 400,
+          message: "请至少选择一个频道"
+        };
+        return;
+      }
+      
+      // 生成唯一的分享ID
+      const shareId = tvId || 'tv_' + Math.random().toString(36).substr(2, 9);
+      
+      // 验证频道是否存在
+      const channels = await db.collection("tv_channels").find({ _id: { $in: channelIds.map(id => new ObjectId(id)) } }).toArray();
+      if (channels.length !== channelIds.length) {
+        ctx.body = {
+          code: 400,
+          message: "部分频道不存在"
+        };
+        return;
+      }
+      
+      // 如果是固定分享，先将其他固定分享设置为非固定
+      if (isFixed) {
+        await db.collection("tv_shares").updateMany({ isFixed: true }, { $set: { isFixed: false } });
+      }
+      
+      const newShare = {
+        _id: shareId,
+        name: name || `分享_${new Date().toLocaleString()}`,
+        channelIds,
+        channels: channels.map(channel => ({
+          _id: channel._id,
+          name: channel.name,
+          order: channel.order
+        })),
+        isFixed,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      
+      const result = await db.collection("tv_shares").insertOne(newShare);
+      
+      ctx.body = {
+        code: 200,
+        message: "创建TV分享成功",
+        data: newShare
+      };
+    } catch (error) {
+      console.error("创建TV分享失败:", error);
+      ctx.body = {
+        code: 500,
+        message: "创建TV分享失败"
+      };
+    }
+  });
+
+// 获取TV分享列表（管理员）
+router.get("/admin/tv/shares", authMiddleware, requireAdmin, async (ctx) => {
+  try {
+    const db = await getDb();
+    if (!db) {
+      ctx.body = {
+        code: 500,
+        message: "数据库连接失败"
+      };
+      return;
+    }
+    const shares = await db.collection("tv_shares").find({}).sort({ createdAt: -1 }).toArray();
+    ctx.body = {
+      code: 200,
+      message: "获取TV分享列表成功",
+      data: shares
+    };
+  } catch (error) {
+    console.error("获取TV分享列表失败:", error);
+    ctx.body = {
+      code: 500,
+      message: "获取TV分享列表失败"
+    };
+  }
+});
+
+// 获取单个TV分享（公开接口）
+router.get("/tv/shares/:id", async (ctx) => {
+  try {
+    const db = await getDb();
+    if (!db) {
+      ctx.body = {
+        code: 500,
+        message: "数据库连接失败"
+      };
+      return;
+    }
+    const { id } = ctx.params;
+    const share = await db.collection("tv_shares").findOne({ _id: id });
+    if (!share) {
+      ctx.body = {
+        code: 404,
+        message: "TV分享不存在"
+      };
+      return;
+    }
+    ctx.body = {
+      code: 200,
+      message: "获取TV分享成功",
+      data: share
+    };
+  } catch (error) {
+    console.error("获取TV分享失败:", error);
+    ctx.body = {
+      code: 500,
+      message: "获取TV分享失败"
+    };
+  }
+});
+
+// 获取TV分享列表（公开接口）
+router.get("/tv/shares", async (ctx) => {
+  try {
+    const db = await getDb();
+    if (!db) {
+      ctx.body = {
+        code: 500,
+        message: "数据库连接失败"
+      };
+      return;
+    }
+    const shares = await db.collection("tv_shares").find({}).sort({ createdAt: -1 }).toArray();
+    ctx.body = {
+      code: 200,
+      message: "获取TV分享列表成功",
+      data: shares
+    };
+  } catch (error) {
+    console.error("获取TV分享列表失败:", error);
+    ctx.body = {
+      code: 500,
+      message: "获取TV分享列表失败"
+    };
+  }
+});
+
+// 更新TV分享（管理员）
+router.put("/admin/tv/shares/:id", authMiddleware, requireAdmin, async (ctx) => {
+    try {
+      const db = await getDb();
+      if (!db) {
+        ctx.body = {
+          code: 500,
+          message: "数据库连接失败"
+        };
+        return;
+      }
+      const { id } = ctx.params;
+      const { channelIds, name, isFixed } = ctx.request.body;
+      
+      const updateData = {
+        updatedAt: new Date()
+      };
+      
+      if (name !== undefined) updateData.name = name;
+      if (isFixed !== undefined) updateData.isFixed = isFixed;
+      
+      if (channelIds && Array.isArray(channelIds)) {
+        // 验证频道是否存在
+        const channels = await db.collection("tv_channels").find({ _id: { $in: channelIds.map(id => new ObjectId(id)) } }).toArray();
+        if (channels.length !== channelIds.length) {
+          ctx.body = {
+            code: 400,
+            message: "部分频道不存在"
+          };
+          return;
+        }
+        updateData.channelIds = channelIds;
+        updateData.channels = channels.map(channel => ({
+          _id: channel._id,
+          name: channel.name,
+          order: channel.order
+        }));
+      }
+      
+      // 如果是固定分享，先将其他固定分享设置为非固定
+      if (isFixed) {
+        await db.collection("tv_shares").updateMany({ isFixed: true, _id: { $ne: id } }, { $set: { isFixed: false } });
+      }
+      
+      const result = await db.collection("tv_shares").updateOne(
+        { _id: id },
+        { $set: updateData }
+      );
+      
+      if (result.matchedCount === 0) {
+        ctx.body = {
+          code: 404,
+          message: "TV分享不存在"
+        };
+        return;
+      }
+      
+      ctx.body = {
+        code: 200,
+        message: "更新TV分享成功"
+      };
+    } catch (error) {
+      console.error("更新TV分享失败:", error);
+      ctx.body = {
+        code: 500,
+        message: "更新TV分享失败"
+      };
+    }
+  });
+
+// 删除TV分享（管理员）
+router.delete("/admin/tv/shares/:id", authMiddleware, requireAdmin, async (ctx) => {
+    try {
+      const db = await getDb();
+      if (!db) {
+        ctx.body = {
+          code: 500,
+          message: "数据库连接失败"
+        };
+        return;
+      }
+      const { id } = ctx.params;
+      
+      // 尝试直接删除
+      let result = await db.collection("tv_shares").deleteOne({ _id: id });
+      
+      // 如果没有找到，尝试使用ObjectId格式
+      if (result.deletedCount === 0) {
+        try {
+          const objectId = new ObjectId(id);
+          result = await db.collection("tv_shares").deleteOne({ _id: objectId });
+        } catch (e) {
+          // 不是ObjectId格式，继续返回404
+        }
+      }
+      
+      if (result.deletedCount === 0) {
+        ctx.body = {
+          code: 404,
+          message: "TV分享不存在"
+        };
+        return;
+      }
+      
+      ctx.body = {
+        code: 200,
+        message: "删除TV分享成功"
+      };
+    } catch (error) {
+      console.error("删除TV分享失败:", error);
+      ctx.body = {
+        code: 500,
+        message: "删除TV分享失败"
+      };
+    }
+  });
+
 module.exports = { router };

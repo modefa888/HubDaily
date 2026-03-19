@@ -16,7 +16,7 @@ const http = require("http");
 
 // 配置信息
 let domain = process.env.ALLOWED_DOMAIN || "*";
-let port = process.env.PORT || 6688;
+let port = process.env.PORT || 8800;
 
 // 解析请求体
 app.use(bodyParser());

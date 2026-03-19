@@ -213,17 +213,99 @@
                 loadingText.textContent = '加载频道列表...';
                 await loadChannels();
                 if (channels.length > 0) {
-                    // 加载最近的播放历史
-                    const history = loadRecentPlaybackHistory();
-                    if (history && history.channelIndex >= 0 && history.channelIndex < channels.length) {
-                        // 有历史记录，恢复到上次的频道和视频
-                        currentChannelIndex = history.channelIndex;
-                        currentVideoIndex = history.videoIndex || 0;
-                        currentVideoTime = history.currentTime || 0;
-                        await switchChannel(currentChannelIndex);
+                    // 检查URL中是否有tvID参数
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const tvID = urlParams.get('tvID');
+                    
+                    if (tvID) {
+                        // 检查是否是TV分享ID（以tv_开头）
+                        if (tvID.startsWith('tv_')) {
+                            // 从后端API加载分享信息
+                            try {
+                                const response = await fetch(`/api/tv/shares/${tvID}`);
+                                const data = await response.json();
+                                
+                                if (data.code === 200 && data.data && data.data.channelIds && data.data.channelIds.length > 0) {
+                                    const share = data.data;
+                                    // 过滤出分享中包含的频道
+                                    const sharedChannels = channels.filter(channel => share.channelIds.includes(channel._id));
+                                    if (sharedChannels.length > 0) {
+                                        // 使用分享的频道列表
+                                        channels = sharedChannels;
+                                        renderChannelList();
+                                        // 从第一个频道开始
+                                        currentChannelIndex = 0;
+                                        currentVideoIndex = 0;
+                                        currentVideoTime = 0;
+                                        await switchChannel(currentChannelIndex);
+                                    } else {
+                                        // 没有找到对应的频道，使用历史记录或默认频道
+                                        await loadDefaultChannels();
+                                    }
+                                } else {
+                                    // 没有找到分享记录，使用历史记录或默认频道
+                                    await loadDefaultChannels();
+                                }
+                            } catch (error) {
+                                console.error('加载TV分享失败:', error);
+                                // 加载失败，使用历史记录或默认频道
+                                await loadDefaultChannels();
+                            }
+                        } else {
+                            // 查找tvID对应的频道
+                            const channelIndex = channels.findIndex(channel => channel._id === tvID);
+                            if (channelIndex !== -1) {
+                                // 找到对应的频道，切换到该频道
+                                currentChannelIndex = channelIndex;
+                                currentVideoIndex = 0;
+                                currentVideoTime = 0;
+                                await switchChannel(currentChannelIndex);
+                            } else {
+                                // 没有找到对应的频道，使用历史记录或默认频道
+                                await loadDefaultChannels();
+                            }
+                        }
                     } else {
-                        // 没有历史记录，从第一个频道开始
-                        await switchChannel(0);
+                        // 没有tvID参数，检查是否存在固定的TV分享
+                        try {
+                            const response = await fetch('/api/tv/shares');
+                            const data = await response.json();
+                            
+                            if (data.code === 200 && data.data && data.data.length > 0) {
+                                // 查找固定的分享
+                                const fixedShare = data.data.find(share => share.isFixed);
+                                if (fixedShare && fixedShare.channelIds && fixedShare.channelIds.length > 0) {
+                                    // 过滤出固定分享中包含的频道
+                                    const fixedChannels = channels.filter(channel => fixedShare.channelIds.includes(channel._id));
+                                    if (fixedChannels.length > 0) {
+                                        // 使用固定分享的频道列表
+                                        channels = fixedChannels;
+                                        renderChannelList();
+                                        // 从第一个频道开始
+                                        currentChannelIndex = 0;
+                                        currentVideoIndex = 0;
+                                        currentVideoTime = 0;
+                                        await switchChannel(currentChannelIndex);
+                                        return;
+                                    }
+                                }
+                            }
+                        } catch (error) {
+                            console.error('加载固定TV分享失败:', error);
+                        }
+                        
+                        // 没有固定分享或加载失败，使用历史记录或默认频道
+                        const history = loadRecentPlaybackHistory();
+                        if (history && history.channelIndex >= 0 && history.channelIndex < channels.length) {
+                            // 有历史记录，恢复到上次的频道和视频
+                            currentChannelIndex = history.channelIndex;
+                            currentVideoIndex = history.videoIndex || 0;
+                            currentVideoTime = history.currentTime || 0;
+                            await switchChannel(currentChannelIndex);
+                        } else {
+                            // 没有历史记录，从第一个频道开始
+                            await switchChannel(0);
+                        }
                     }
                 } else {
                     loadingText.textContent = '暂无频道，请在后台添加';
@@ -237,6 +319,21 @@
                 setTimeout(() => {
                     loadingOverlay.style.display = 'none';
                 }, 2000);
+            }
+        }
+        
+        // 加载默认频道（历史记录或默认）
+        async function loadDefaultChannels() {
+            const history = loadRecentPlaybackHistory();
+            if (history && history.channelIndex >= 0 && history.channelIndex < channels.length) {
+                // 有历史记录，恢复到上次的频道和视频
+                currentChannelIndex = history.channelIndex;
+                currentVideoIndex = history.videoIndex || 0;
+                currentVideoTime = history.currentTime || 0;
+                await switchChannel(currentChannelIndex);
+            } else {
+                // 没有历史记录，从第一个频道开始
+                await switchChannel(0);
             }
         }
         

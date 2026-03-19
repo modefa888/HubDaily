@@ -74,6 +74,7 @@
       <div class="flex items-center bg-slate-100 rounded-lg p-1 text-xs">
         <button id="tvTabChannels" type="button" class="flex-1 px-2 py-1 rounded-md bg-white shadow text-slate-800">频道管理</button>
         <button id="tvTabVideos" type="button" class="flex-1 px-2 py-1 rounded-md text-slate-600">视频管理</button>
+        <button id="tvTabShares" type="button" class="flex-1 px-2 py-1 rounded-md text-slate-600">TV分享管理</button>
       </div>
       
       <!-- 频道管理区域 -->
@@ -109,8 +110,47 @@
           </div>
         </div>
         
+        <!-- 频道列表骨架屏 -->
+        <div id="channelsSkeleton" class="overflow-auto hidden">
+          <table class="min-w-full text-sm">
+            <thead class="text-left text-slate-500">
+              <tr>
+                <th class="py-2">排序</th>
+                <th class="py-2">频道名称</th>
+                <th class="py-2">描述</th>
+                <th class="py-2">视频数量</th>
+                <th class="py-2">操作</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y">
+              <!-- 骨架屏项 -->
+              <tr>
+                <td class="py-3"><div class="h-4 bg-slate-200 rounded w-12"></div></td>
+                <td class="py-3"><div class="h-4 bg-slate-200 rounded w-32"></div></td>
+                <td class="py-3"><div class="h-4 bg-slate-200 rounded w-64"></div></td>
+                <td class="py-3"><div class="h-4 bg-slate-200 rounded w-16"></div></td>
+                <td class="py-3"><div class="h-4 bg-slate-200 rounded w-48"></div></td>
+              </tr>
+              <tr>
+                <td class="py-3"><div class="h-4 bg-slate-200 rounded w-12"></div></td>
+                <td class="py-3"><div class="h-4 bg-slate-200 rounded w-32"></div></td>
+                <td class="py-3"><div class="h-4 bg-slate-200 rounded w-64"></div></td>
+                <td class="py-3"><div class="h-4 bg-slate-200 rounded w-16"></div></td>
+                <td class="py-3"><div class="h-4 bg-slate-200 rounded w-48"></div></td>
+              </tr>
+              <tr>
+                <td class="py-3"><div class="h-4 bg-slate-200 rounded w-12"></div></td>
+                <td class="py-3"><div class="h-4 bg-slate-200 rounded w-32"></div></td>
+                <td class="py-3"><div class="h-4 bg-slate-200 rounded w-64"></div></td>
+                <td class="py-3"><div class="h-4 bg-slate-200 rounded w-16"></div></td>
+                <td class="py-3"><div class="h-4 bg-slate-200 rounded w-48"></div></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        
         <!-- 频道列表 -->
-        <div class="overflow-auto">
+        <div id="channelsList" class="overflow-auto">
           <table class="min-w-full text-sm">
             <thead class="text-left text-slate-500">
               <tr>
@@ -251,6 +291,161 @@
           </div>
         </div>
       </div>
+      
+      <!-- TV分享管理区域 -->
+      <div id="sharesSection" class="hidden">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <div class="flex items-center gap-2">
+            <h3 class="font-medium">选择频道进行分享</h3>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="addShareChannelBtn" class="px-3 py-1.5 rounded bg-purple-600 text-white text-sm">
+              <i class="fa fa-plus mr-1"></i>添加分享频道
+            </button>
+            <button id="refreshSharesBtn" class="px-3 py-1.5 rounded bg-blue-600 text-white text-sm">
+              <i class="fa fa-refresh mr-1"></i>刷新
+            </button>
+          </div>
+        </div>
+        
+        <!-- 频道选择区域 -->
+        <div id="channelSelectionSection" class="border rounded-lg p-4 mb-4 hidden">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <h4 class="text-sm font-medium">选择要分享的频道</h4>
+            <div class="flex items-center gap-2">
+              <button id="cancelChannelSelectionBtn" class="px-3 py-1 rounded border text-slate-600 text-xs">
+                <i class="fa fa-times mr-1"></i>取消
+              </button>
+            </div>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3" id="channelSelectionGrid">
+            <!-- 频道选择项将通过JavaScript动态生成 -->
+          </div>
+          <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-slate-700">分享名称</label>
+              <input id="shareNameInput" class="w-full border rounded px-3 py-2 text-sm" placeholder="请输入分享名称">
+            </div>
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-slate-700">TV ID (可选)</label>
+              <input id="shareTvIdInput" class="w-full border rounded px-3 py-2 text-sm" placeholder="留空自动生成">
+            </div>
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-slate-700">固定分享</label>
+              <div class="flex items-center">
+                <input type="checkbox" id="shareIsFixedInput" class="mr-2">
+                <label for="shareIsFixedInput" class="text-sm">作为默认TV页面</label>
+              </div>
+            </div>
+          </div>
+          <div class="mt-4 flex justify-end gap-2">
+            <button id="saveShareBtn" class="px-3 py-1.5 rounded bg-emerald-600 text-white text-sm">
+              <i class="fa fa-check mr-1"></i>保存分享
+            </button>
+          </div>
+        </div>
+        
+        <!-- 编辑分享表单 -->
+        <div id="shareEditForm" class="border rounded-lg p-4 mb-4 hidden">
+          <h4 class="text-sm font-medium mb-3">编辑分享</h4>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-slate-700">分享名称</label>
+              <input id="editShareNameInput" class="w-full border rounded px-3 py-2 text-sm" placeholder="请输入分享名称">
+            </div>
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-slate-700">TV ID</label>
+              <input id="editShareTvIdInput" class="w-full border rounded px-3 py-2 text-sm" placeholder="TV ID" disabled>
+            </div>
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-slate-700">固定分享</label>
+              <div class="flex items-center">
+                <input type="checkbox" id="editShareIsFixedInput" class="mr-2">
+                <label for="editShareIsFixedInput" class="text-sm">作为默认TV页面</label>
+              </div>
+            </div>
+          </div>
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-slate-700 mb-2">选择要分享的频道</label>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3" id="editChannelSelectionGrid">
+              <!-- 频道选择项将通过JavaScript动态生成 -->
+            </div>
+          </div>
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div class="flex flex-wrap items-center gap-2">
+              <button id="cancelEditShareBtn" class="px-3 py-1.5 rounded border text-slate-600 text-sm">取消</button>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <button id="saveEditShareBtn" class="px-3 py-1.5 rounded bg-emerald-600 text-white text-sm">
+                <i class="fa fa-spinner fa-spin mr-1"></i>保存修改
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 分享列表骨架屏 -->
+        <div id="sharesSkeleton" class="space-y-4 hidden">
+          <h4 class="text-sm font-medium">分享列表</h4>
+          <div class="overflow-auto max-h-96">
+            <table class="min-w-full text-sm">
+              <thead class="text-left text-slate-500">
+                <tr>
+                  <th class="py-2">分享ID</th>
+                  <th class="py-2">包含频道</th>
+                  <th class="py-2">操作</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y">
+                <!-- 骨架屏项 -->
+                <tr>
+                  <td class="py-3"><div class="h-4 bg-slate-200 rounded w-48"></div></td>
+                  <td class="py-3"><div class="h-4 bg-slate-200 rounded w-32"></div></td>
+                  <td class="py-3"><div class="h-4 bg-slate-200 rounded w-48"></div></td>
+                </tr>
+                <tr>
+                  <td class="py-3"><div class="h-4 bg-slate-200 rounded w-48"></div></td>
+                  <td class="py-3"><div class="h-4 bg-slate-200 rounded w-32"></div></td>
+                  <td class="py-3"><div class="h-4 bg-slate-200 rounded w-48"></div></td>
+                </tr>
+                <tr>
+                  <td class="py-3"><div class="h-4 bg-slate-200 rounded w-48"></div></td>
+                  <td class="py-3"><div class="h-4 bg-slate-200 rounded w-32"></div></td>
+                  <td class="py-3"><div class="h-4 bg-slate-200 rounded w-48"></div></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        
+        <!-- 分享列表 -->
+        <div id="sharesList" class="space-y-4">
+          <h4 class="text-sm font-medium">分享列表</h4>
+          <div class="overflow-auto max-h-96">
+            <table class="min-w-full text-sm">
+              <thead class="text-left text-slate-500">
+                <tr>
+                  <th class="py-2">分享ID</th>
+                  <th class="py-2">包含频道</th>
+                  <th class="py-2">操作</th>
+                </tr>
+              </thead>
+              <tbody id="sharesTbody" class="divide-y"></tbody>
+            </table>
+          </div>
+        </div>
+        
+        <!-- 删除确认模态框 -->
+        <div id="deleteConfirmModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+          <div class="bg-white rounded-lg p-6 max-w-md w-full">
+            <h4 class="text-lg font-medium mb-4">确认删除</h4>
+            <p class="mb-6">确定要删除这个分享吗？此操作不可撤销。</p>
+            <div class="flex justify-end gap-3">
+              <button id="cancelDeleteBtn" class="px-4 py-2 rounded border text-slate-600">取消</button>
+              <button id="confirmDeleteBtn" class="px-4 py-2 rounded bg-red-600 text-white">确认删除</button>
+            </div>
+          </div>
+        </div>
+      </div>
     </section>
 
         </div>
@@ -260,13 +455,7 @@
 
   <div id="toast" class="fixed top-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-sm px-4 py-2 rounded hidden z-[70]"></div>
 
-  <!-- 加载遮罩 -->
-  <div id="loadingOverlay" class="fixed inset-0 z-[60] hidden flex items-center justify-center bg-black/50">
-    <div class="flex items-center space-x-3 bg-white px-5 py-3 rounded-full shadow-lg">
-      <div class="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-      <span id="loadingText" class="text-sm text-slate-700">处理中...</span>
-    </div>
-  </div>
+
 
 
 
@@ -280,15 +469,8 @@
     };
 
     const setLoading = (isLoading, text = "处理中...") => {
-      const overlay = document.getElementById("loadingOverlay");
-      const label = document.getElementById("loadingText");
-      if (!overlay || !label) return;
-      label.textContent = text;
-      if (isLoading) {
-        overlay.classList.remove("hidden");
-      } else {
-        overlay.classList.add("hidden");
-      }
+      // 不再使用加载遮面，改为使用骨架屏
+      // 骨架屏的显示和隐藏已经在各个加载函数中处理
     };
 
     const getToken = () => localStorage.getItem(TOKEN_KEY) || "";
@@ -300,10 +482,15 @@
     let currentVideoId = null;
     let channelsData = []; // 缓存频道数据
     let channelsLoaded = false; // 标记频道数据是否已加载
+    let sharesLoaded = false; // 标记分享数据是否已加载
     
     // 加载频道列表
     const loadChannelsData = async () => {
       try {
+        // 显示骨架屏
+        document.getElementById('channelsSkeleton').classList.remove('hidden');
+        document.getElementById('channelsList').classList.add('hidden');
+        
         if (!channelsLoaded) {
           const response = await fetch('/api/admin/tv/channels', {
             headers: {
@@ -320,9 +507,16 @@
         }
         renderChannelsList(channelsData);
         document.getElementById('tvMeta').textContent = `共 ${channelsData.length} 个频道`;
+        
+        // 隐藏骨架屏，显示实际数据
+        document.getElementById('channelsSkeleton').classList.add('hidden');
+        document.getElementById('channelsList').classList.remove('hidden');
       } catch (error) {
         console.error('加载频道数据失败:', error);
         toast('加载频道数据失败');
+        // 隐藏骨架屏，显示实际数据
+        document.getElementById('channelsSkeleton').classList.add('hidden');
+        document.getElementById('channelsList').classList.remove('hidden');
       }
     };
     
@@ -395,6 +589,7 @@
           <td>
             <button class="text-blue-600 hover:underline mr-2" onclick="editChannel('${channel._id}')">编辑</button>
             <button class="text-green-600 hover:underline mr-2" onclick="switchToVideoManagement('${channel._id}')">管理视频</button>
+            <button class="text-purple-600 hover:underline mr-2" onclick="shareChannel('${channel._id}')">分享</button>
             <button class="text-red-600 hover:underline" onclick="deleteChannel('${channel._id}')">删除</button>
           </td>
         `;
@@ -476,6 +671,7 @@
         if (data.code === 200) {
           toast('保存频道成功');
           hideChannelEditForm();
+          channelsLoaded = false; // 强制重新加载数据
           loadChannelsData();
         } else {
           toast('保存频道失败');
@@ -760,6 +956,7 @@
         const data = await response.json();
         if (data.code === 200) {
           toast('删除频道成功');
+          channelsLoaded = false; // 强制重新加载数据
           loadChannelsData();
         } else {
           toast('删除频道失败');
@@ -821,8 +1018,10 @@
       const videoChannelSelect = document.getElementById('videoChannelSelect');
       const tvTabChannels = document.getElementById('tvTabChannels');
       const tvTabVideos = document.getElementById('tvTabVideos');
+      const tvTabShares = document.getElementById('tvTabShares');
       const channelsSection = document.getElementById('channelsSection');
       const videosSection = document.getElementById('videosSection');
+      const sharesSection = document.getElementById('sharesSection');
       
       // Tab切换功能
       if (tvTabChannels) {
@@ -831,8 +1030,11 @@
           tvTabChannels.classList.remove('text-slate-600');
           tvTabVideos.classList.remove('bg-white', 'shadow', 'text-slate-800');
           tvTabVideos.classList.add('text-slate-600');
+          tvTabShares.classList.remove('bg-white', 'shadow', 'text-slate-800');
+          tvTabShares.classList.add('text-slate-600');
           channelsSection.classList.remove('hidden');
           videosSection.classList.add('hidden');
+          sharesSection.classList.add('hidden');
           // 只有在频道数据未加载时才加载
           if (!channelsLoaded) {
             loadChannelsData();
@@ -850,8 +1052,11 @@
           tvTabVideos.classList.remove('text-slate-600');
           tvTabChannels.classList.remove('bg-white', 'shadow', 'text-slate-800');
           tvTabChannels.classList.add('text-slate-600');
+          tvTabShares.classList.remove('bg-white', 'shadow', 'text-slate-800');
+          tvTabShares.classList.add('text-slate-600');
           channelsSection.classList.add('hidden');
           videosSection.classList.remove('hidden');
+          sharesSection.classList.add('hidden');
           // 只有在频道数据未加载时才加载
           if (!channelsLoaded) {
             loadChannelsForVideoSelect();
@@ -879,6 +1084,38 @@
           if (videoChannelSelect.value) {
             // 同步currentChannelId
             currentChannelId = videoChannelSelect.value;
+          }
+        });
+      }
+      
+      // TV分享管理Tab
+      if (tvTabShares) {
+        tvTabShares.addEventListener('click', () => {
+          tvTabShares.classList.add('bg-white', 'shadow', 'text-slate-800');
+          tvTabShares.classList.remove('text-slate-600');
+          tvTabChannels.classList.remove('bg-white', 'shadow', 'text-slate-800');
+          tvTabChannels.classList.add('text-slate-600');
+          tvTabVideos.classList.remove('bg-white', 'shadow', 'text-slate-800');
+          tvTabVideos.classList.add('text-slate-600');
+          channelsSection.classList.add('hidden');
+          videosSection.classList.add('hidden');
+          sharesSection.classList.remove('hidden');
+          // 隐藏频道选择区域
+          document.getElementById('channelSelectionSection').classList.add('hidden');
+          // 加载频道数据并渲染频道选择项
+          if (!channelsLoaded) {
+            loadChannelsData().then(() => {
+              renderChannelSelection();
+              loadSharesList();
+            });
+          } else {
+            // 渲染频道选择项
+            renderChannelSelection();
+            if (!sharesLoaded) {
+              // 只有在第一次加载或需要刷新时才加载分享列表
+              loadSharesList();
+              sharesLoaded = true;
+            }
           }
         });
       }
@@ -1073,6 +1310,426 @@
       }
     };
     
+    // 分享频道
+    const shareChannel = (channelId) => {
+      // 生成分享链接
+      const shareUrl = `${window.location.origin}/tv?tvID=${channelId}`;
+      
+      // 复制到剪贴板
+      navigator.clipboard.writeText(shareUrl).then(() => {
+        toast('分享链接已复制到剪贴板');
+      }).catch(err => {
+        console.error('复制失败:', err);
+        toast('复制失败，请手动复制链接');
+      });
+    };
+    
+    // 渲染频道选择项
+    const renderChannelSelection = () => {
+      const grid = document.getElementById('channelSelectionGrid');
+      if (!grid) return;
+      
+      grid.innerHTML = '';
+      channelsData.forEach(channel => {
+        const item = document.createElement('div');
+        item.className = 'flex items-center gap-2';
+        item.innerHTML = `
+          <input type="checkbox" id="channel_${channel._id}" class="channel-checkbox" value="${channel._id}">
+          <label for="channel_${channel._id}" class="text-sm">${channel.name}</label>
+        `;
+        grid.appendChild(item);
+      });
+    };
+    
+    // 生成TV分享
+    const generateTVShare = async () => {
+      // 获取选中的频道
+      const checkboxes = document.querySelectorAll('.channel-checkbox:checked');
+      const selectedChannelIds = Array.from(checkboxes).map(cb => cb.value);
+      
+      if (selectedChannelIds.length === 0) {
+        toast('请至少选择一个频道');
+        return;
+      }
+      
+      // 获取分享名称、TV ID和是否固定
+      const shareName = document.getElementById('shareNameInput').value.trim();
+      const shareTvId = document.getElementById('shareTvIdInput').value.trim();
+      const shareIsFixed = document.getElementById('shareIsFixedInput').checked;
+      
+      try {
+        setLoading(true, '生成分享链接...');
+        
+        // 检查是否存在固定分享
+        if (shareIsFixed) {
+          const sharesResponse = await fetch('/api/admin/tv/shares', {
+            headers: {
+              'Authorization': `Bearer ${getToken()}`
+            }
+          });
+          const sharesData = await sharesResponse.json();
+          
+          if (sharesData.code === 200 && sharesData.data) {
+            const hasFixedShare = sharesData.data.some(s => s.isFixed);
+            if (hasFixedShare) {
+              toast('已存在固定分享，无法创建新的固定分享');
+              setLoading(false);
+              return;
+            }
+          }
+        }
+        
+        // 调用后端接口创建TV分享
+        const response = await fetch('/api/admin/tv/shares', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem(TOKEN_KEY)}`
+          },
+          body: JSON.stringify({
+            channelIds: selectedChannelIds,
+            name: shareName,
+            tvId: shareTvId,
+            isFixed: shareIsFixed
+          })
+        });
+        
+        const data = await response.json();
+        if (data.code === 200) {
+          // 生成分享链接
+          const shareUrl = `${window.location.origin}/tv?tvID=${data.data._id}`;
+          
+          // 复制到剪贴板
+          await navigator.clipboard.writeText(shareUrl);
+          toast('分享链接已生成并复制到剪贴板');
+          
+          // 隐藏频道选择区域
+          document.getElementById('channelSelectionSection').classList.add('hidden');
+          
+          // 刷新分享列表
+          loadSharesList();
+        } else {
+          toast(data.message || '生成分享失败');
+        }
+      } catch (error) {
+        console.error('生成分享失败:', error);
+        toast('生成分享失败，请重试');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    // 加载分享列表
+    const loadSharesList = async () => {
+      try {
+        // 显示骨架屏
+        document.getElementById('sharesSkeleton').classList.remove('hidden');
+        document.getElementById('sharesList').classList.add('hidden');
+        
+        // 调用后端接口获取分享列表
+        const response = await fetch('/api/admin/tv/shares', {
+          headers: {
+            'Authorization': `Bearer ${getToken()}`
+          }
+        });
+        
+        const data = await response.json();
+        if (data && data.code === 200) {
+          renderSharesList(data.data);
+          sharesLoaded = true; // 标记分享数据已加载
+        } else {
+          toast(data?.message || '加载分享列表失败');
+          renderSharesList([]);
+        }
+      } catch (error) {
+        console.error('加载分享列表失败:', error);
+        toast('加载分享列表失败');
+        renderSharesList([]);
+      } finally {
+        // 隐藏骨架屏，显示实际数据
+        document.getElementById('sharesSkeleton').classList.add('hidden');
+        document.getElementById('sharesList').classList.remove('hidden');
+      }
+    };
+    
+    // 渲染分享列表
+    const renderSharesList = (shares) => {
+      const tbody = document.getElementById('sharesTbody');
+      if (!tbody) return;
+      
+      tbody.innerHTML = '';
+      
+      // 检查是否存在固定分享
+      const hasFixedShare = shares && shares.some(share => share.isFixed);
+      
+      // 禁用或启用固定分享复选框
+      const shareIsFixedInput = document.getElementById('shareIsFixedInput');
+      if (shareIsFixedInput) {
+        if (hasFixedShare) {
+          shareIsFixedInput.disabled = true;
+          shareIsFixedInput.checked = false;
+        } else {
+          shareIsFixedInput.disabled = false;
+        }
+      }
+      
+      if (!shares || shares.length === 0) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td class="py-3 text-center text-slate-500" colspan="3">暂无分享记录</td>';
+        tbody.appendChild(tr);
+      } else {
+        shares.forEach(share => {
+          const tr = document.createElement('tr');
+          const channelNames = share.channels && Array.isArray(share.channels) ? share.channels.map(c => c.name).join(', ') : '无频道';
+          const shareUrl = `${window.location.origin}/tv?tvID=${share._id || share.id}`;
+          const fixedBadge = share.isFixed ? '<span class="ml-2 px-2 py-0.5 bg-yellow-100 text-yellow-800 text-xs rounded">固定</span>' : '';
+          const shareId = share._id || share.id;
+          
+          tr.innerHTML = `
+            <td>${shareId}${fixedBadge}</td>
+            <td>${channelNames}</td>
+            <td>
+              <button class="text-blue-600 hover:underline mr-2 copy-share-btn" data-url="${shareUrl}">复制链接</button>
+              <button class="text-green-600 hover:underline mr-2 edit-share-btn" data-id="${shareId}">编辑</button>
+              <button class="text-red-600 hover:underline delete-share-btn" data-id="${shareId}">删除</button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+        
+        // 绑定复制链接按钮事件
+        document.querySelectorAll('.copy-share-btn').forEach(btn => {
+          btn.addEventListener('click', function() {
+            const url = this.getAttribute('data-url');
+            navigator.clipboard.writeText(url).then(() => {
+              toast('链接已复制到剪贴板');
+            }).catch(err => {
+              console.error('复制失败:', err);
+              toast('复制失败，请手动复制链接');
+            });
+          });
+        });
+        
+        // 绑定删除分享按钮事件
+        document.querySelectorAll('.delete-share-btn').forEach(btn => {
+          btn.addEventListener('click', function() {
+            const shareId = this.getAttribute('data-id');
+            // 显示删除确认模态框
+            document.getElementById('deleteConfirmModal').classList.remove('hidden');
+            // 存储当前要删除的分享ID
+            window.currentDeleteShareId = shareId;
+          });
+        });
+        
+        // 绑定编辑分享按钮事件
+        document.querySelectorAll('.edit-share-btn').forEach(btn => {
+          btn.addEventListener('click', function() {
+            const shareId = this.getAttribute('data-id');
+            editShare(shareId);
+          });
+        });
+      }
+    };
+    
+    // 渲染编辑分享表单中的频道选择项
+    const renderEditChannelSelection = (selectedChannelIds = []) => {
+      const channelSelectionGrid = document.getElementById('editChannelSelectionGrid');
+      if (!channelSelectionGrid) return;
+      
+      channelSelectionGrid.innerHTML = '';
+      
+      if (!channelsData || channelsData.length === 0) {
+        channelSelectionGrid.innerHTML = '<div class="col-span-full text-center text-slate-500">暂无频道数据</div>';
+        return;
+      }
+      
+      channelsData.forEach(channel => {
+        const channelItem = document.createElement('div');
+        channelItem.className = 'flex items-center gap-2';
+        
+        const isSelected = selectedChannelIds.some(id => id === channel._id || id === channel.id);
+        
+        channelItem.innerHTML = `
+          <input type="checkbox" id="edit_channel_${channel._id || channel.id}" class="edit-channel-checkbox" value="${channel._id || channel.id}" ${isSelected ? 'checked' : ''}>
+          <label for="edit_channel_${channel._id || channel.id}" class="text-sm">${channel.name}</label>
+        `;
+        
+        channelSelectionGrid.appendChild(channelItem);
+      });
+    };
+    
+    // 编辑分享
+    const editShare = async (shareId) => {
+      try {
+        setLoading(true, '加载分享数据...');
+        
+        // 确保频道数据已加载
+        if (!channelsLoaded) {
+          await loadChannelsData();
+        }
+        
+        // 调用后端接口获取分享详情
+        const response = await fetch(`/api/tv/shares/${shareId}`);
+        const data = await response.json();
+        
+        if (data.code === 200 && data.data) {
+          const share = data.data;
+          
+          // 填充编辑表单
+          document.getElementById('editShareNameInput').value = share.name;
+          document.getElementById('editShareTvIdInput').value = share._id || share.id;
+          document.getElementById('editShareIsFixedInput').checked = share.isFixed || false;
+          
+          // 检查是否存在其他固定分享
+          const sharesResponse = await fetch('/api/admin/tv/shares', {
+            headers: {
+              'Authorization': `Bearer ${getToken()}`
+            }
+          });
+          const sharesData = await sharesResponse.json();
+          
+          if (sharesData.code === 200 && sharesData.data) {
+            const hasOtherFixedShare = sharesData.data.some(s => s.isFixed && (s._id || s.id) !== shareId);
+            
+            // 禁用或启用固定分享复选框
+            const editShareIsFixedInput = document.getElementById('editShareIsFixedInput');
+            if (editShareIsFixedInput) {
+              if (hasOtherFixedShare && !share.isFixed) {
+                editShareIsFixedInput.disabled = true;
+                editShareIsFixedInput.checked = false;
+              } else {
+                editShareIsFixedInput.disabled = false;
+              }
+            }
+          }
+          
+          // 渲染频道选择项
+          const selectedChannelIds = share.channelIds || (share.channels && share.channels.map(c => c._id || c.id)) || [];
+          renderEditChannelSelection(selectedChannelIds);
+          
+          // 显示编辑表单
+          document.getElementById('shareEditForm').classList.remove('hidden');
+          
+          // 保存当前编辑的分享ID
+          window.currentEditShareId = shareId;
+        } else {
+          toast(data.message || '加载分享数据失败');
+        }
+      } catch (error) {
+        console.error('加载分享数据失败:', error);
+        toast('加载分享数据失败，请重试');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    // 保存分享修改
+    const saveShareEdit = async () => {
+      const shareId = window.currentEditShareId;
+      if (!shareId) {
+        toast('请先选择要编辑的分享');
+        return;
+      }
+      
+      // 获取选中的频道
+      const checkboxes = document.querySelectorAll('.edit-channel-checkbox:checked');
+      const selectedChannelIds = Array.from(checkboxes).map(cb => cb.value);
+      
+      if (selectedChannelIds.length === 0) {
+        toast('请至少选择一个频道');
+        return;
+      }
+      
+      // 获取编辑表单数据
+      const shareName = document.getElementById('editShareNameInput').value.trim();
+      const shareIsFixed = document.getElementById('editShareIsFixedInput').checked;
+      
+      try {
+        setLoading(true, '保存修改...');
+        
+        // 检查是否存在其他固定分享
+        if (shareIsFixed) {
+          const sharesResponse = await fetch('/api/admin/tv/shares', {
+            headers: {
+              'Authorization': `Bearer ${getToken()}`
+            }
+          });
+          const sharesData = await sharesResponse.json();
+          
+          if (sharesData.code === 200 && sharesData.data) {
+            const hasOtherFixedShare = sharesData.data.some(s => s.isFixed && (s._id || s.id) !== shareId);
+            if (hasOtherFixedShare) {
+              toast('已存在固定分享，无法设置新的固定分享');
+              setLoading(false);
+              return;
+            }
+          }
+        }
+        
+        // 调用后端接口更新分享
+        const response = await fetch(`/api/admin/tv/shares/${shareId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem(TOKEN_KEY)}`
+          },
+          body: JSON.stringify({
+            channelIds: selectedChannelIds,
+            name: shareName,
+            isFixed: shareIsFixed
+          })
+        });
+        
+        const data = await response.json();
+        if (data.code === 200) {
+          toast('保存修改成功');
+          hideShareEditForm();
+          loadSharesList();
+        } else {
+          toast(data.message || '保存修改失败');
+        }
+      } catch (error) {
+        console.error('保存修改失败:', error);
+        toast('保存修改失败，请重试');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    // 隐藏编辑表单
+    const hideShareEditForm = () => {
+      document.getElementById('shareEditForm').classList.add('hidden');
+      window.currentEditShareId = null;
+    };
+    
+    // 删除分享
+    const deleteShare = async (shareId) => {
+      try {
+        setLoading(true, '删除分享...');
+        
+        // 调用后端接口删除分享
+        const response = await fetch(`/api/admin/tv/shares/${shareId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem(TOKEN_KEY)}`
+          }
+        });
+        
+        const data = await response.json();
+        if (data.code === 200) {
+          toast('分享已删除');
+          loadSharesList();
+        } else {
+          toast(data.message || '删除分享失败');
+        }
+      } catch (error) {
+        console.error('删除分享失败:', error);
+        toast('删除分享失败，请重试');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
     // 退出登录
     const logout = () => {
       clearToken();
@@ -1090,7 +1747,79 @@
       if (logoutBtn) {
         logoutBtn.addEventListener('click', logout);
       }
+      
+      // 绑定TV分享管理相关按钮事件
+      const generateShareBtn = document.getElementById('generateShareBtn');
+      if (generateShareBtn) {
+        generateShareBtn.addEventListener('click', generateTVShare);
+      }
+      
+      const refreshSharesBtn = document.getElementById('refreshSharesBtn');
+      if (refreshSharesBtn) {
+        refreshSharesBtn.addEventListener('click', () => {
+          sharesLoaded = false; // 重置分享数据加载状态
+          loadSharesList(); // 重新加载分享列表
+        });
+      }
+      
+      // 绑定编辑分享表单按钮事件
+      const saveEditShareBtn = document.getElementById('saveEditShareBtn');
+      if (saveEditShareBtn) {
+        saveEditShareBtn.addEventListener('click', saveShareEdit);
+      }
+      
+      const cancelEditShareBtn = document.getElementById('cancelEditShareBtn');
+      if (cancelEditShareBtn) {
+        cancelEditShareBtn.addEventListener('click', hideShareEditForm);
+      }
+      
+      // 绑定添加分享频道按钮事件
+      const addShareChannelBtn = document.getElementById('addShareChannelBtn');
+      if (addShareChannelBtn) {
+        addShareChannelBtn.addEventListener('click', () => {
+          document.getElementById('channelSelectionSection').classList.remove('hidden');
+        });
+      }
+      
+      // 绑定保存分享按钮事件
+      const saveShareBtn = document.getElementById('saveShareBtn');
+      if (saveShareBtn) {
+        saveShareBtn.addEventListener('click', generateTVShare);
+      }
+      
+      // 绑定取消频道选择按钮事件
+      const cancelChannelSelectionBtn = document.getElementById('cancelChannelSelectionBtn');
+      if (cancelChannelSelectionBtn) {
+        cancelChannelSelectionBtn.addEventListener('click', () => {
+          document.getElementById('channelSelectionSection').classList.add('hidden');
+        });
+      }
+      
+      // 绑定删除确认模态框按钮事件
+      const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
+      if (cancelDeleteBtn) {
+        cancelDeleteBtn.addEventListener('click', () => {
+          document.getElementById('deleteConfirmModal').classList.add('hidden');
+        });
+      }
+      
+      const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+      if (confirmDeleteBtn) {
+        confirmDeleteBtn.addEventListener('click', () => {
+          const shareId = window.currentDeleteShareId;
+          if (shareId) {
+            deleteShare(shareId);
+          }
+          document.getElementById('deleteConfirmModal').classList.add('hidden');
+        });
+      }
     });
+    
+    // 全局函数，用于HTML中的onclick调用
+    window.editChannel = editChannel;
+    window.switchToVideoManagement = switchToVideoManagement;
+    window.deleteChannel = deleteChannel;
+    window.shareChannel = shareChannel;
   </script>
 </body>
 </html>
