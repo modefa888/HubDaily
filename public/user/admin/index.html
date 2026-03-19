@@ -771,9 +771,15 @@
               <i class="fa fa-plus mr-1"></i>添加视频
             </button>
           </div>
-          <button id="refreshVideosBtn" class="px-3 py-1.5 rounded bg-blue-600 text-white text-sm">
-            <i class="fa fa-refresh mr-1"></i>刷新
-          </button>
+          <div class="flex items-center gap-2">
+            <input id="shareUrlInput" class="border rounded px-3 py-1.5 text-sm" placeholder="输入分享链接">
+            <button id="addFromShareBtn" class="px-3 py-1.5 rounded bg-purple-600 text-white text-sm">
+              <i class="fa fa-link mr-1"></i>从分享添加
+            </button>
+            <button id="refreshVideosBtn" class="px-3 py-1.5 rounded bg-blue-600 text-white text-sm">
+              <i class="fa fa-refresh mr-1"></i>刷新
+            </button>
+          </div>
         </div>
         
         <!-- 视频编辑表单 -->
@@ -2410,6 +2416,82 @@
       
       if (saveVideoBtn) {
         saveVideoBtn.addEventListener('click', saveVideo);
+      }
+      
+      // 从分享链接添加视频
+      const addFromShareBtn = document.getElementById('addFromShareBtn');
+      if (addFromShareBtn) {
+        addFromShareBtn.addEventListener('click', async () => {
+          const shareUrlInput = document.getElementById('shareUrlInput');
+          const shareUrl = shareUrlInput.value.trim();
+          
+          if (!shareUrl) {
+            toast('请输入分享链接');
+            return;
+          }
+          
+          if (!videoChannelSelect.value) {
+            toast('请先选择频道');
+            return;
+          }
+          
+          try {
+            setLoading(true, "处理分享链接...");
+            
+            // 从分享链接中提取分享ID
+            const shareId = extractShareIdFromUrl(shareUrl);
+            if (!shareId) {
+              toast('无效的分享链接');
+              return;
+            }
+            
+            // 获取分享信息
+            const shareResponse = await fetch(`/api/share/${shareId}`, {
+              headers: authHeaders()
+            });
+            
+            const shareData = await shareResponse.json();
+            if (shareData.code !== 200) {
+              toast(shareData.message || '获取分享信息失败');
+              return;
+            }
+            
+            const videoData = shareData.data;
+            if (!videoData || !videoData.url) {
+              toast('分享信息不完整');
+              return;
+            }
+            
+            // 显示视频编辑表单并传递视频数据
+            currentChannelId = videoChannelSelect.value;
+            showVideoEditForm({
+              title: videoData.title || '未命名视频',
+              url: (videoData.url || '').replace(/`/g, '').trim(),
+              image: (videoData.pic || '').replace(/`/g, '').trim(),
+              order: 1
+            });
+            
+            toast('已从分享链接提取视频信息');
+          } catch (error) {
+            console.error('从分享添加视频失败:', error);
+            toast('从分享添加视频失败');
+          } finally {
+            setLoading(false);
+          }
+        });
+      }
+    };
+    
+    // 从分享链接中提取分享ID
+    const extractShareIdFromUrl = (url) => {
+      try {
+        // 从URL中提取sid参数
+        const urlParams = new URLSearchParams(new URL(url).search);
+        const sid = urlParams.get('sid');
+        return sid;
+      } catch (error) {
+        console.error('解析分享链接失败:', error);
+        return null;
       }
     };
 

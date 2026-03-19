@@ -304,14 +304,18 @@
                 videoItem.className = `text-xs mb-1 cursor-pointer opacity-70 hover:opacity-100`;
                 videoItem.textContent = `${video.order}. ${video.title}`;
                 videoItem.onclick = () => {
-                    currentChannelIndex = channelIndex;
-                    currentVideoIndex = index;
-                    currentVideoTime = 0; // 重置播放时间，确保新视频从开始播放
-                    playCurrentVideo();
-                    // 返回到频道列表
-                    document.getElementById('channelList').classList.remove('hidden');
-                    document.getElementById('videoList').classList.add('hidden');
-                };
+                currentChannelIndex = channelIndex;
+                currentVideoIndex = index;
+                currentVideoTime = 0; // 重置播放时间，确保新视频从开始播放
+                // 更新当前频道名称
+                currentChannelName.textContent = channels[channelIndex].name;
+                // 重新渲染频道列表，更新选中状态
+                renderChannelList();
+                playCurrentVideo();
+                // 隐藏频道列表和视频列表，进入全屏模式
+                document.getElementById('channelList').classList.add('hidden');
+                document.getElementById('videoList').classList.add('hidden');
+            };
                 videoListContainer.appendChild(videoItem);
             });
         }
@@ -356,10 +360,11 @@
                 // 更新频道信息
                 currentChannelName.textContent = channels[index].name;
                 
-                // 播放当前频道的视频
-                await playCurrentVideo();
                 // 重新渲染频道列表，更新选中状态
                 renderChannelList();
+                
+                // 播放当前频道的视频
+                await playCurrentVideo();
                 // 确保频道列表显示，视频列表隐藏
                 document.getElementById('channelList').classList.remove('hidden');
                 document.getElementById('videoList').classList.add('hidden');
@@ -384,6 +389,7 @@
             }
             
             const video = channel.videos[currentVideoIndex];
+            currentChannelName.textContent = channel.name;
             currentVideoTitle.textContent = video.title;
             loadingText.textContent = `加载视频: ${video.title}...`;
             
@@ -422,6 +428,18 @@
                 isPlaying = true;
                 // 保存播放历史
                 savePlaybackHistory();
+                
+                // 5秒后自动隐藏频道列表
+                setTimeout(() => {
+                    const channelList = document.getElementById('channelList');
+                    const videoList = document.getElementById('videoList');
+                    if (!channelList.classList.contains('hidden')) {
+                        channelList.classList.add('hidden');
+                    }
+                    if (!videoList.classList.contains('hidden')) {
+                        videoList.classList.add('hidden');
+                    }
+                }, 5000);
             });
             
             // 监听暂停事件
@@ -543,6 +561,21 @@
             return null;
         }
         
+        // 点击屏幕显示/隐藏频道列表
+        function toggleChannelList() {
+            const channelList = document.getElementById('channelList');
+            const videoList = document.getElementById('videoList');
+            
+            if (channelList.classList.contains('hidden') && videoList.classList.contains('hidden')) {
+                // 显示频道列表
+                channelList.classList.remove('hidden');
+            } else {
+                // 隐藏频道列表和视频列表
+                channelList.classList.add('hidden');
+                videoList.classList.add('hidden');
+            }
+        }
+        
         // 页面加载完成后初始化
         window.addEventListener('load', () => {
             // 初始化年龄验证事件
@@ -555,6 +588,30 @@
             } else {
                 // 未验证过，显示验证框
                 ageVerificationModal.style.display = 'flex';
+            }
+            
+            // 添加屏幕点击事件
+            const tvScreen = document.querySelector('.tv-screen');
+            if (tvScreen) {
+                tvScreen.addEventListener('click', (e) => {
+                    // 点击屏幕背景或播放器时切换频道列表
+                    if (e.target === tvScreen || e.target === document.getElementById('dplayer')) {
+                        toggleChannelList();
+                    }
+                });
+            }
+            
+            // 添加tv-info点击事件，确保点击频道信息区域也能显示频道列表
+            const tvInfo = document.querySelector('.tv-info');
+            if (tvInfo) {
+                tvInfo.addEventListener('click', (e) => {
+                    // 点击tv-info时显示频道列表，但只有在视频列表也隐藏时才显示
+                    const channelList = document.getElementById('channelList');
+                    const videoList = document.getElementById('videoList');
+                    if (channelList.classList.contains('hidden') && videoList.classList.contains('hidden')) {
+                        channelList.classList.remove('hidden');
+                    }
+                });
             }
         });
     </script>
