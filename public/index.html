@@ -241,14 +241,14 @@
           margin: 0 16px;
         }
         .power,
-        .icp {
-          font-size: 14px;
-          text-align: center;
-          padding: 0 20px;
-        }
+      .icp {
+        font-size: 14px;
+        text-align: center;
+        padding: 0 20px;
       }
-      
-      @media (max-width: 480px) {
+    }
+    
+    @media (max-width: 480px) {
         .ico {
           font-size: 4.5rem;
           margin: 1.5rem 1rem;
@@ -274,10 +274,38 @@
         .app-card span {
           font-size: 16px;
         }
-      }
-    </style>
+    }
+    
+    /* 加载条样式 */
+    .loading-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 3px;
+      background-color: rgba(0, 0, 0, 0.1);
+      z-index: 9999;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    
+    .loading-bar.active {
+      opacity: 1;
+    }
+    
+    .loading-progress {
+      height: 100%;
+      background-color: #3b82f6;
+      width: 0%;
+      transition: width 0.1s ease;
+    }
+  </style>
   </head>
   <body>
+    <!-- 加载条 -->
+    <div id="loadingBar" class="loading-bar">
+      <div id="loadingProgress" class="loading-progress"></div>
+    </div>
     <main>
       <div class="ico"><i class="fa-solid fa-code"></i></div>
       <div class="title">DailyHot API</div>
@@ -358,6 +386,47 @@
             break;
         }
       };
+      
+      // 加载条功能
+      const loadingBar = document.getElementById('loadingBar');
+      const loadingProgress = document.getElementById('loadingProgress');
+      let loadingInterval;
+      
+      // 开始加载动画
+      const startLoading = () => {
+        loadingBar.classList.add('active');
+        loadingProgress.style.width = '0%';
+        let progress = 0;
+        loadingInterval = setInterval(() => {
+          progress += Math.random() * 10;
+          if (progress > 90) progress = 90;
+          loadingProgress.style.width = progress + '%';
+        }, 100);
+      };
+      
+      // 结束加载动画
+      const endLoading = () => {
+        clearInterval(loadingInterval);
+        loadingProgress.style.width = '100%';
+        setTimeout(() => {
+          loadingBar.classList.remove('active');
+        }, 300);
+      };
+      
+      // 监听所有链接点击
+      document.querySelectorAll('a, button').forEach(element => {
+        element.addEventListener('click', (e) => {
+          // 排除社交媒体链接和邮件链接
+          if (element.href && (element.href.includes('#') || element.href.includes('mailto:'))) {
+            return;
+          }
+          // 开始加载动画
+          startLoading();
+        });
+      });
+      
+      // 页面加载完成后结束动画
+      window.addEventListener('load', endLoading);
     </script>
     <script src="/assets/page-permission.js"></script>
     <script src="/assets/announcement.js"></script>

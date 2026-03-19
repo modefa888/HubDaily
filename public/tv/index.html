@@ -105,6 +105,24 @@
     </style>
 </head>
 <body>
+    <!-- 未成年提示框 -->
+    <div id="ageVerificationModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80">
+        <div class="bg-white rounded-lg p-6 max-w-md w-full text-center">
+            <div class="text-4xl mb-4 text-red-600">
+                <i class="fa fa-exclamation-triangle"></i>
+            </div>
+            <h2 class="text-xl font-bold mb-2 text-gray-800">年龄验证</h2>
+            <p class="text-gray-600 mb-6">本内容仅适合18岁以上成年人观看。请确认您已年满18周岁。</p>
+            <div class="flex space-x-4 justify-center">
+                <button id="ageVerifyYes" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
+                    我已年满18岁
+                </button>
+                <button id="ageVerifyNo" class="px-6 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition">
+                    未满18岁
+                </button>
+            </div>
+        </div>
+    </div>
     <div class="tv-container">
         <div class="tv-screen">
             <!-- 播放器容器 -->
@@ -145,8 +163,10 @@
         let channels = [];
         let currentChannelIndex = 0;
         let currentVideoIndex = 0;
+        let currentVideoTime = 0;
         let isPlaying = false;
         let isLoading = true;
+        const PLAYBACK_HISTORY_KEY = 'tvPlaybackHistory';
         
         // DOM元素
         const loadingOverlay = document.getElementById('loadingOverlay');
@@ -155,13 +175,56 @@
         const currentChannelName = document.getElementById('currentChannelName');
         const currentVideoTitle = document.getElementById('currentVideoTitle');
         
+        // 年龄验证
+        const ageVerificationModal = document.getElementById('ageVerificationModal');
+        const ageVerifyYes = document.getElementById('ageVerifyYes');
+        const ageVerifyNo = document.getElementById('ageVerifyNo');
+        
+        // 检查年龄验证状态
+        function checkAgeVerification() {
+            const isVerified = localStorage.getItem('tvAgeVerified');
+            return isVerified === 'true';
+        }
+        
+        // 处理年龄验证通过
+        function handleAgeVerifyYes() {
+            localStorage.setItem('tvAgeVerified', 'true');
+            ageVerificationModal.style.display = 'none';
+            init();
+        }
+        
+        // 处理年龄验证未通过
+        function handleAgeVerifyNo() {
+            // 可以跳转到其他页面或显示提示
+            alert('抱歉，本内容仅适合18岁以上成年人观看');
+            // 可以选择跳转到首页
+            window.location.href = '/';
+        }
+        
+        // 初始化年龄验证事件
+        function initAgeVerification() {
+            ageVerifyYes.addEventListener('click', handleAgeVerifyYes);
+            ageVerifyNo.addEventListener('click', handleAgeVerifyNo);
+        }
+        
         // 初始化
         async function init() {
             try {
                 loadingText.textContent = '加载频道列表...';
                 await loadChannels();
                 if (channels.length > 0) {
-                    await switchChannel(0);
+                    // 加载最近的播放历史
+                    const history = loadRecentPlaybackHistory();
+                    if (history && history.channelIndex >= 0 && history.channelIndex < channels.length) {
+                        // 有历史记录，恢复到上次的频道和视频
+                        currentChannelIndex = history.channelIndex;
+                        currentVideoIndex = history.videoIndex || 0;
+                        currentVideoTime = history.currentTime || 0;
+                        await switchChannel(currentChannelIndex);
+                    } else {
+                        // 没有历史记录，从第一个频道开始
+                        await switchChannel(0);
+                    }
                 } else {
                     loadingText.textContent = '暂无频道，请在后台添加';
                     setTimeout(() => {
@@ -243,6 +306,7 @@
                 videoItem.onclick = () => {
                     currentChannelIndex = channelIndex;
                     currentVideoIndex = index;
+                    currentVideoTime = 0; // 重置播放时间，确保新视频从开始播放
                     playCurrentVideo();
                     // 返回到频道列表
                     document.getElementById('channelList').classList.remove('hidden');
@@ -268,8 +332,11 @@
             }
             
             currentChannelIndex = index;
-            currentVideoIndex = 0;
-            currentVideoTime = 0;
+            // 只有在不是恢复历史记录时才重置视频索引和时间
+            // 如果是从历史记录恢复，currentVideoIndex和currentVideoTime已经被设置
+            if (currentVideoTime === 0) {
+                currentVideoIndex = 0;
+            }
             isLoading = true;
             loadingOverlay.style.display = 'flex';
             loadingText.textContent = `切换到 ${channels[index].name}...`;
@@ -322,6 +389,14 @@
             
             // 创建新播放器
             const videoUrl = (video.m3u8 || video.url).replace(/[`]/g, '').trim();
+            
+            // 加载当前视频的播放历史
+            if (currentVideoTime === 0) {
+                const videoHistory = loadPlaybackHistory(videoUrl);
+                if (videoHistory) {
+                    currentVideoTime = videoHistory.currentTime || 0;
+                }
+            }
             const playerOptions = {
                 container: document.getElementById('dplayer'),
                 video: {
@@ -345,17 +420,42 @@
             // 监听播放事件
             dplayer.on('play', () => {
                 isPlaying = true;
+                // 保存播放历史
+                savePlaybackHistory();
             });
             
             // 监听暂停事件
             dplayer.on('pause', () => {
                 isPlaying = false;
+                // 保存播放历史
+                savePlaybackHistory();
+            });
+            
+            // 监听播放时间更新事件
+            dplayer.on('timeupdate', () => {
+                // 每10秒保存一次播放历史
+                if (Math.floor(dplayer.video.currentTime) % 10 === 0) {
+                    savePlaybackHistory();
+                }
+            });
+            
+            // 监听视频结束事件
+            dplayer.on('ended', () => {
+                // 保存播放历史
+                savePlaybackHistory();
             });
             
             // 监听错误事件
             dplayer.on('error', (error) => {
                 console.error('播放器错误:', error);
             });
+            
+            // 恢复上次的播放位置
+            if (currentVideoTime > 0) {
+                setTimeout(() => {
+                    dplayer.seek(currentVideoTime);
+                }, 1000);
+            }
             
             // 隐藏加载覆盖层
             setTimeout(() => {
@@ -364,8 +464,99 @@
             }, 1000);
         }
         
-        // 初始化
-        init();
+        // 保存播放历史
+        function savePlaybackHistory() {
+            if (!dplayer || !channels.length) return;
+            
+            const currentChannel = channels[currentChannelIndex];
+            if (!currentChannel || !currentChannel.videos || !currentChannel.videos.length) return;
+            
+            const currentVideo = currentChannel.videos[currentVideoIndex];
+            if (!currentVideo) return;
+            
+            // 获取视频URL作为唯一标识
+            const videoUrl = (currentVideo.m3u8 || currentVideo.url).replace(/[`]/g, '').trim();
+            if (!videoUrl) return;
+            
+            // 从localStorage加载所有播放历史
+            let allHistory = {};
+            try {
+                const historyStr = localStorage.getItem(PLAYBACK_HISTORY_KEY);
+                if (historyStr) {
+                    allHistory = JSON.parse(historyStr);
+                }
+            } catch (error) {
+                console.error('加载播放历史失败:', error);
+            }
+            
+            // 保存当前视频的播放历史
+            allHistory[videoUrl] = {
+                channelIndex: currentChannelIndex,
+                videoIndex: currentVideoIndex,
+                currentTime: dplayer.video.currentTime,
+                channelId: currentChannel.id || currentChannel.name,
+                videoId: currentVideo.id || currentVideo.title,
+                timestamp: Date.now()
+            };
+            
+            localStorage.setItem(PLAYBACK_HISTORY_KEY, JSON.stringify(allHistory));
+        }
+        
+        // 加载播放历史
+        function loadPlaybackHistory(videoUrl) {
+            try {
+                const historyStr = localStorage.getItem(PLAYBACK_HISTORY_KEY);
+                if (historyStr) {
+                    const allHistory = JSON.parse(historyStr);
+                    if (videoUrl && allHistory[videoUrl]) {
+                        return allHistory[videoUrl];
+                    }
+                }
+            } catch (error) {
+                console.error('加载播放历史失败:', error);
+            }
+            return null;
+        }
+        
+        // 加载最近的播放历史
+        function loadRecentPlaybackHistory() {
+            try {
+                const historyStr = localStorage.getItem(PLAYBACK_HISTORY_KEY);
+                if (historyStr) {
+                    const allHistory = JSON.parse(historyStr);
+                    let recentHistory = null;
+                    let recentTimestamp = 0;
+                    
+                    // 找到最近的播放历史
+                    for (const [url, history] of Object.entries(allHistory)) {
+                        if (history.timestamp > recentTimestamp) {
+                            recentTimestamp = history.timestamp;
+                            recentHistory = history;
+                        }
+                    }
+                    
+                    return recentHistory;
+                }
+            } catch (error) {
+                console.error('加载最近播放历史失败:', error);
+            }
+            return null;
+        }
+        
+        // 页面加载完成后初始化
+        window.addEventListener('load', () => {
+            // 初始化年龄验证事件
+            initAgeVerification();
+            
+            // 检查年龄验证状态
+            if (checkAgeVerification()) {
+                // 已经验证过，直接初始化
+                init();
+            } else {
+                // 未验证过，显示验证框
+                ageVerificationModal.style.display = 'flex';
+            }
+        });
     </script>
 </body>
 </html>
