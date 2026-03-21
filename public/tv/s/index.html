@@ -589,7 +589,6 @@
           <td>
             <button class="text-blue-600 hover:underline mr-2" onclick="editChannel('${channel._id}')">编辑</button>
             <button class="text-green-600 hover:underline mr-2" onclick="switchToVideoManagement('${channel._id}')">管理视频</button>
-            <button class="text-purple-600 hover:underline mr-2" onclick="shareChannel('${channel._id}')">分享</button>
             <button class="text-red-600 hover:underline" onclick="deleteChannel('${channel._id}')">删除</button>
           </td>
         `;
@@ -1310,19 +1309,7 @@
       }
     };
     
-    // 分享频道
-    const shareChannel = (channelId) => {
-      // 生成分享链接
-      const shareUrl = `${window.location.origin}/tv?tvID=${channelId}`;
-      
-      // 复制到剪贴板
-      navigator.clipboard.writeText(shareUrl).then(() => {
-        toast('分享链接已复制到剪贴板');
-      }).catch(err => {
-        console.error('复制失败:', err);
-        toast('复制失败，请手动复制链接');
-      });
-    };
+
     
     // 渲染频道选择项
     const renderChannelSelection = () => {
@@ -1819,7 +1806,7 @@
     window.editChannel = editChannel;
     window.switchToVideoManagement = switchToVideoManagement;
     window.deleteChannel = deleteChannel;
-    window.shareChannel = shareChannel;
+
   </script>
 </body>
 </html>
