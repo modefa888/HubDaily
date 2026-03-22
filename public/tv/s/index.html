@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>电视管理</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://unpkg.com/tailwindcss@3.3.0/dist/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         html {
@@ -181,7 +181,7 @@
           <div class="flex items-center gap-2">
             <input id="shareUrlInput" class="border rounded px-3 py-1.5 text-sm" placeholder="输入分享链接">
             <button id="addFromShareBtn" class="px-3 py-1.5 rounded bg-purple-600 text-white text-sm">
-              <i class="fa fa-link mr-1"></i>从分享添加
+              <i class="fa fa-spinner fa-spin mr-1"></i>从分享添加
             </button>
             <button id="refreshVideosBtn" class="px-3 py-1.5 rounded bg-blue-600 text-white text-sm">
               <i class="fa fa-refresh mr-1"></i>刷新
@@ -219,6 +219,30 @@
             </div>
             <div class="flex flex-wrap items-center gap-2">
               <button id="saveVideoBtn" class="px-3 py-1.5 rounded bg-emerald-600 text-white text-sm">保存视频</button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 分享链接处理模态框 -->
+        <div id="shareUrlModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+          <div class="bg-white rounded-lg p-6 max-w-md w-full">
+            <h4 class="text-lg font-medium mb-4">从分享链接添加视频</h4>
+            <div class="space-y-4">
+              <div class="space-y-2">
+                <label class="block text-sm font-medium text-slate-700">分享链接</label>
+                <input id="modalShareUrlInput" class="w-full border rounded px-3 py-2 text-sm" placeholder="请输入分享链接">
+              </div>
+              <div class="space-y-2">
+                <label class="block text-sm font-medium text-slate-700">选择频道</label>
+                <select id="modalChannelSelect" class="w-full border rounded px-3 py-2 text-sm">
+                  <option value="">请选择频道</option>
+                  <!-- 频道选项将通过JavaScript动态生成 -->
+                </select>
+              </div>
+            </div>
+            <div class="mt-6 flex justify-end gap-3">
+              <button id="cancelShareUrlBtn" class="px-4 py-2 rounded border text-slate-600">取消</button>
+              <button id="confirmShareUrlBtn" class="px-4 py-2 rounded bg-emerald-600 text-white">确认保存</button>
             </div>
           </div>
         </div>
@@ -622,7 +646,7 @@
     const showVideoEditForm = (video = null) => {
       currentVideoId = video ? video._id : null;
       document.getElementById('videoTitleInput').value = video ? video.title : '';
-      document.getElementById('videoOrderInput').value = video ? video.order : 1;
+      document.getElementById('videoOrderInput').value = video ? video.order : (allVideos.length + 1);
       document.getElementById('videoUrlInput').value = video ? video.url : '';
       const videoImageInput = document.getElementById('videoImageInput');
       const videoImagePreview = document.getElementById('videoImagePreview');
@@ -716,7 +740,7 @@
     const showEditVideoForm = (video) => {
       currentVideoId = video ? video._id : null;
       document.getElementById('videoTitleInput').value = video ? video.title : '';
-      document.getElementById('videoOrderInput').value = video ? video.order : 1;
+      document.getElementById('videoOrderInput').value = video ? video.order : (allVideos.length + 1);
       document.getElementById('videoUrlInput').value = video ? video.url : '';
       document.getElementById('videoImageInput').value = video ? video.image : '';
       document.getElementById('videoEditForm').classList.remove('hidden');
@@ -1217,18 +1241,59 @@
       
       // 从分享链接添加视频
       const addFromShareBtn = document.getElementById('addFromShareBtn');
+      // 从分享添加按钮点击事件
       if (addFromShareBtn) {
         addFromShareBtn.addEventListener('click', async () => {
-          const shareUrlInput = document.getElementById('shareUrlInput');
-          const shareUrl = shareUrlInput.value.trim();
+          // 确保频道数据已加载
+          if (!channelsLoaded) {
+            await loadChannelsData();
+          }
+          
+          // 显示分享链接处理模态框
+          document.getElementById('shareUrlModal').classList.remove('hidden');
+          
+          // 填充频道选择下拉框
+          const modalChannelSelect = document.getElementById('modalChannelSelect');
+          if (modalChannelSelect) {
+            // 清空现有选项
+            modalChannelSelect.innerHTML = '<option value="">请选择频道</option>';
+            
+            // 添加频道选项
+            channelsData.forEach(channel => {
+              const option = document.createElement('option');
+              option.value = channel._id;
+              option.textContent = channel.name;
+              modalChannelSelect.appendChild(option);
+            });
+          }
+        });
+      }
+      
+      // 取消按钮点击事件
+      const cancelShareUrlBtn = document.getElementById('cancelShareUrlBtn');
+      if (cancelShareUrlBtn) {
+        cancelShareUrlBtn.addEventListener('click', () => {
+          document.getElementById('shareUrlModal').classList.add('hidden');
+        });
+      }
+      
+      // 确认保存按钮点击事件
+      const confirmShareUrlBtn = document.getElementById('confirmShareUrlBtn');
+      if (confirmShareUrlBtn) {
+        confirmShareUrlBtn.addEventListener('click', async () => {
+          const modalShareUrlInput = document.getElementById('modalShareUrlInput');
+          const modalChannelSelect = document.getElementById('modalChannelSelect');
+          
+          const shareUrl = modalShareUrlInput.value.trim();
+          const channelId = modalChannelSelect.value;
           
           if (!shareUrl) {
             toast('请输入分享链接');
             return;
           }
           
-          if (!videoChannelSelect.value) {
-            toast('请先选择频道');
+          if (!channelId) {
+            toast('请选择频道');
             return;
           }
           
@@ -1259,13 +1324,16 @@
               return;
             }
             
+            // 隐藏模态框
+            document.getElementById('shareUrlModal').classList.add('hidden');
+            
             // 显示视频编辑表单并传递视频数据
-            currentChannelId = videoChannelSelect.value;
+            currentChannelId = channelId;
             showVideoEditForm({
               title: videoData.title || '未命名视频',
               url: (videoData.url || '').replace(/`/g, '').trim(),
               image: (videoData.pic || '').replace(/`/g, '').trim(),
-              order: 1
+              order: allVideos.length + 1
             });
             
             toast('已从分享链接提取视频信息');
@@ -1276,6 +1344,64 @@
             setLoading(false);
           }
         });
+      }
+      
+      // 检查URL参数中是否有sid参数
+      const urlParams = new URLSearchParams(window.location.search);
+      const sid = urlParams.get('sid');
+      if (sid) {
+        // 确保频道数据已加载
+        if (!channelsLoaded) {
+          loadChannelsData().then(() => {
+            // 显示分享链接处理模态框
+            document.getElementById('shareUrlModal').classList.remove('hidden');
+            
+            // 填充频道选择下拉框
+            const modalChannelSelect = document.getElementById('modalChannelSelect');
+            if (modalChannelSelect) {
+              // 清空现有选项
+              modalChannelSelect.innerHTML = '<option value="">请选择频道</option>';
+              
+              // 添加频道选项
+              channelsData.forEach(channel => {
+                const option = document.createElement('option');
+                option.value = channel._id;
+                option.textContent = channel.name;
+                modalChannelSelect.appendChild(option);
+              });
+            }
+            
+            // 填充分享链接
+            const modalShareUrlInput = document.getElementById('modalShareUrlInput');
+            if (modalShareUrlInput) {
+              modalShareUrlInput.value = sid;
+            }
+          });
+        } else {
+          // 显示分享链接处理模态框
+          document.getElementById('shareUrlModal').classList.remove('hidden');
+          
+          // 填充频道选择下拉框
+          const modalChannelSelect = document.getElementById('modalChannelSelect');
+          if (modalChannelSelect) {
+            // 清空现有选项
+            modalChannelSelect.innerHTML = '<option value="">请选择频道</option>';
+            
+            // 添加频道选项
+            channelsData.forEach(channel => {
+              const option = document.createElement('option');
+              option.value = channel._id;
+              option.textContent = channel.name;
+              modalChannelSelect.appendChild(option);
+            });
+          }
+          
+          // 填充分享链接
+          const modalShareUrlInput = document.getElementById('modalShareUrlInput');
+          if (modalShareUrlInput) {
+            modalShareUrlInput.value = sid;
+          }
+        }
       }
     };
 

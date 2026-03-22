@@ -88,8 +88,8 @@ app.use(views(__dirname + "/../public", {
 
 // 设置404页面的路由处理程序
 app.use(async (ctx) => {
-  // 检查是否是API请求或特殊路径
-  if (ctx.path.startsWith('/api') || ctx.path.includes('@vite/client')) {
+  // 检查是否是API请求
+  if (ctx.path.startsWith('/api')) {
     ctx.status = 404;
     ctx.body = {
       code: 404,
