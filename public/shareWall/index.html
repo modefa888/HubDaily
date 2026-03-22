@@ -269,8 +269,14 @@
                 const data = await response.json();
 
                 if (data.code === 200 && data.data && data.data.length > 0) {
-                    originalVideos = data.data;
-                    filteredVideos = data.data;
+                    // 按 createdAt 降序排序，最新的在前
+                    const sortedData = data.data.sort((a, b) => {
+                        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+                        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                        return dateB - dateA;
+                    });
+                    originalVideos = sortedData;
+                    filteredVideos = sortedData;
                     currentPage = 1;
                     renderVideosWithPagination();
                     renderPagination();
@@ -460,7 +466,8 @@
         function renderVideos(videos) {
             const grid = document.getElementById('videoGrid');
             grid.innerHTML = videos.map(video => {
-                const shareUrl = `/video/share?sid=${encodeURIComponent(video.shareId)}`;
+                const shareId = video.shareId || video.id;
+                const shareUrl = `/video/share?sid=${encodeURIComponent(shareId)}`;
                 const expireLabel = getExpireLabel(video.expiresAt);
                 return `
                     <div class="video-card" onclick="window.location.href='${shareUrl}'">

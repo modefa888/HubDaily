@@ -793,6 +793,17 @@
                 </button>
             </div>
             <div class="flex flex-col items-center">
+                <div id="shareVideoInfo" class="w-full mb-4 hidden">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-20 h-28 rounded-lg overflow-hidden bg-gray-100">
+                            <img id="shareVideoPic" src="" alt="视频封面" class="w-full h-full object-cover">
+                        </div>
+                        <div class="flex-1">
+                            <h4 id="shareVideoTitle" class="text-sm font-medium text-gray-800 line-clamp-2"></h4>
+                            <div id="shareVideoMeta" class="text-xs text-gray-500 mt-1"></div>
+                        </div>
+                    </div>
+                </div>
                 <div class="w-full mt-2">
                     <label class="block text-xs text-gray-500 mb-2">分享链接有效时间</label>
                     <select id="shareExpireSelect" class="input-primary w-full text-sm">
@@ -1014,6 +1025,11 @@
         let currentVideoRawUrl = '';
         let currentEpisodeList = [];
         let currentEpisodeIndex = 0;
+        let currentVideoDesc = '';
+        let currentVideoClass = '';
+        let currentVideoActor = '';
+        let currentVideoYear = '';
+        let currentVideoRemarks = '';
         let lastVisitAtStart = null;
         let aggregateNoMore = new Set();
         let renderedVideos = [];
@@ -2338,7 +2354,7 @@
                         ` : ''}
                         <div class="flex justify-between items-center">
                             <button 
-                                onclick="openVideoPlayer('${video.vod_play_url}', '${video.vod_name}', '${video.vod_pic}', '${sourceLabel}', '${category}')"
+                                onclick="openVideoPlayer('${video.vod_play_url}', '${video.vod_name}', '${video.vod_pic}', '${sourceLabel}', '${category}', 0, '${cleanText(video.vod_content)}', '${classText}', '${actorText}', '${video.vod_year || ''}', '${video.vod_remarks || ''}')"
                                 class="${buttonClass}"
                             >
                                 <i class="fa fa-play mr-1"></i> 播放
@@ -2424,7 +2440,7 @@
                 showToast('暂无可播放视频');
                 return;
             }
-            openVideoPlayer(target.url, target.title, target.pic, target.source || '');
+            openVideoPlayer(target.url, target.title, target.pic, target.source || '', '', null, target.desc || '', target.class || '', target.actor || '', target.year || '', target.remarks || '');
         }
         
         // 初始化图片懒加载
@@ -2950,7 +2966,12 @@
                         item.url || '',
                         item.source || '',
                         item.category || '',
-                        currentEpisodeIndex
+                        currentEpisodeIndex,
+                        item.desc || '',
+                        item.class || '',
+                        item.actor || '',
+                        item.year || '',
+                        item.remarks || ''
                     );
                 });
             }
@@ -2982,7 +3003,12 @@
                         item.url || '',
                         item.source || '',
                         item.category || '',
-                        idx
+                        idx,
+                        item.desc || '',
+                        item.class || '',
+                        item.actor || '',
+                        item.year || '',
+                        item.remarks || ''
                     );
                 });
             }
@@ -3117,7 +3143,7 @@
             return cleaned.endsWith('.m3u8');
         }
 
-        function openVideoPlayer(videoUrl, videoTitle, imageUrl = '', sourceLabel = '', category = '', preferredEpisodeIndex = null) {
+        function openVideoPlayer(videoUrl, videoTitle, imageUrl = '', sourceLabel = '', category = '', preferredEpisodeIndex = null, videoDesc = '', videoClass = '', videoActor = '', videoYear = '', videoRemarks = '') {
             if (!host) {
                 if (!isAggregateSearchEnabled()) {
                     showToast('请先设置API Host');
@@ -3155,6 +3181,11 @@
                 currentVideoTitle = displayTitle || '视频播放';
                 currentVideoPic = imageUrl || '';
                 currentVideoSource = sourceLabel || getHostLabel();
+                currentVideoDesc = videoDesc || '';
+                currentVideoClass = videoClass || '';
+                currentVideoActor = videoActor || '';
+                currentVideoYear = videoYear || '';
+                currentVideoRemarks = videoRemarks || '';
                 const episodePanel = document.getElementById('episodePanel');
                 const episodeList = document.getElementById('episodeList');
                 let activeEpisodeIndex = initialIndex;
@@ -3370,6 +3401,11 @@
             currentVideoTitle = '';
             currentVideoPic = '';
             currentVideoSource = '';
+            currentVideoDesc = '';
+            currentVideoClass = '';
+            currentVideoActor = '';
+            currentVideoYear = '';
+            currentVideoRemarks = '';
             updatePlayerLikeButtons(false);
             const playerTitle = document.getElementById('playerTitle');
             if (playerTitle) {
@@ -3604,7 +3640,7 @@
                         </div>
                         <div class="mt-3 flex space-x-2">
                             <button 
-                                onclick="openVideoPlayer('${item.url}', '${item.title}', '${item.pic || ''}', '${item.source || ''}', '', ${Number.isFinite(item.episodeIndex) ? item.episodeIndex : 'null'})"
+                                onclick="openVideoPlayer('${item.url}', '${item.title}', '${item.pic || ''}', '${item.source || ''}', '', ${Number.isFinite(item.episodeIndex) ? item.episodeIndex : 'null'}, '${item.desc || ''}', '${item.class || ''}', '${item.actor || ''}', '${item.year || ''}', '${item.remarks || ''}')"
                                 class="btn-primary text-xs py-1 px-2 flex-1"
                             >
                                 <i class="fa fa-play mr-1"></i> 播放
@@ -4010,7 +4046,7 @@
                     </div>
                     <div class="mt-3 flex space-x-2">
                         <button 
-                            onclick="openVideoPlayer('${item.url}', '${item.title}', '${item.pic || ''}', '${item.source || ''}')"
+                            onclick="openVideoPlayer('${item.url}', '${item.title}', '${item.pic || ''}', '${item.source || ''}', '', null, '${item.desc || ''}', '${item.class || ''}', '${item.actor || ''}', '${item.year || ''}', '${item.remarks || ''}')"
                             class="btn-primary text-xs py-1 px-2 flex-1"
                         >
                             <i class="fa fa-play mr-1"></i> 播放
@@ -6104,6 +6140,48 @@
                 goToShareWallButton.classList.add('hidden');
             }
             
+            // 显示视频信息（图片和标题）
+            const shareVideoInfo = document.getElementById('shareVideoInfo');
+            const shareVideoPic = document.getElementById('shareVideoPic');
+            const shareVideoTitle = document.getElementById('shareVideoTitle');
+            const shareVideoMeta = document.getElementById('shareVideoMeta');
+            
+            if (currentSharePayload) {
+                // 显示视频信息
+                shareVideoInfo.classList.remove('hidden');
+                
+                // 设置视频封面
+                if (shareVideoPic) {
+                    shareVideoPic.src = currentSharePayload.pic || '/video/loading.gif';
+                    shareVideoPic.onerror = function() {
+                        this.src = '/video/loading.gif';
+                    };
+                }
+                
+                // 设置视频标题
+                if (shareVideoTitle) {
+                    shareVideoTitle.textContent = currentSharePayload.title || '视频播放';
+                }
+                
+                // 设置视频元数据
+                if (shareVideoMeta) {
+                    const metaParts = [];
+                    if (currentSharePayload.source) {
+                        metaParts.push(`来源: ${currentSharePayload.source}`);
+                    }
+                    if (currentSharePayload.year) {
+                        metaParts.push(`年份: ${currentSharePayload.year}`);
+                    }
+                    if (currentSharePayload.actor) {
+                        metaParts.push(`演员: ${currentSharePayload.actor}`);
+                    }
+                    shareVideoMeta.textContent = metaParts.join(' | ');
+                }
+            } else {
+                // 隐藏视频信息
+                shareVideoInfo.classList.add('hidden');
+            }
+            
             setShareCopyLabel(currentShareUrl ? '点击复制地址' : '生成分享链接');
             setShareConfirmState(currentShareUrl ? 'done' : 'ready', isEditMode);
             showToast(isEditMode ? '修改面板已打开' : '分享面板已打开');
@@ -6467,20 +6545,31 @@
             }
             // 保存当前播放时间
             const currentTime = dplayer ? dplayer.video.currentTime : 0;
+            // 保存视频信息到局部变量
+            const videoUrl = currentVideoUrl;
+            const videoTitle = currentVideoTitle;
+            const videoPic = currentVideoPic;
+            const videoSource = currentVideoSource;
+            const videoRawUrl = currentVideoRawUrl || currentVideoUrl;
+            const episodeIndex = currentEpisodeIndex;
+            const videoDesc = currentVideoDesc;
+            const videoClass = currentVideoClass;
+            const videoActor = currentVideoActor;
+            const videoYear = currentVideoYear;
+            const videoRemarks = currentVideoRemarks;
             // 保存当前播放状态
             const currentPlaybackState = {
-                url: currentVideoUrl,
-                title: currentVideoTitle,
-                pic: currentVideoPic,
-                source: currentVideoSource,
+                url: videoUrl,
+                title: videoTitle,
+                pic: videoPic,
+                source: videoSource,
                 currentTime: currentTime
             };
             // 关闭视频播放器
             closeVideoPlayer();
             // 存储播放状态
             sessionStorage.setItem('sharePlaybackState', JSON.stringify(currentPlaybackState));
-            const rawUrl = currentVideoRawUrl || currentVideoUrl;
-            await shareVideo(rawUrl, currentVideoTitle || '视频播放', currentVideoPic || '', currentVideoSource || getHostLabel(), currentEpisodeIndex);
+            await shareVideo(videoRawUrl, videoTitle || '视频播放', videoPic || '', videoSource || getHostLabel(), episodeIndex, videoDesc || '', videoClass || '', videoActor || '', videoYear || '', videoRemarks || '');
         }
 
         // 播放器内喜欢/取消喜欢
@@ -6846,7 +6935,7 @@
                             </div>
                             <div class="flex justify-between items-center">
                                 <button 
-                                    onclick="openVideoPlayer('${item.url}', '${item.title}', '${item.pic || ''}', '${item.source || ''}')"
+                                    onclick="openVideoPlayer('${item.url}', '${item.title}', '${item.pic || ''}', '${item.source || ''}', '', null, '${item.desc || ''}', '${item.class || ''}', '${item.actor || ''}', '${item.year || ''}', '${item.remarks || ''}')"
                                     class="btn-primary text-xs py-1 px-2 flex-1"
                                 >
                                     <i class="fa fa-play mr-1"></i> 播放
