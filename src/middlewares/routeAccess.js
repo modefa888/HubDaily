@@ -489,7 +489,7 @@ module.exports = async (ctx, next) => {
         return;
     }
     const path = ctx.request.path || "";
-    if (/\/[^/]+\.[^/]+$/.test(path)) {
+    if (path.includes('.')) {
         await next();
         // 只统计routers里面的接口
         if (isRoutePath(path)) {

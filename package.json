@@ -50,7 +50,7 @@
     "qrcode": "^1.5.4",
     "socks-proxy-agent": "^8.0.5",
     "svg-captcha": "^1.4.0",
-    "tailwindcss": "^4.2.1",
+
     "ws": "^8.17.1",
     "xmldom": "^0.6.0",
     "xpath": "^0.0.34"
