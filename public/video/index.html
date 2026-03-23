@@ -2147,11 +2147,17 @@
                         const deduped = [];
                         videos.forEach(video => {
                             const category = normalizeCategory(video._sourceCategory || '');
+                            const title = (video.vod_name || '').trim();
+                            
+                            // 筛选：标题必须包含搜索关键字
+                            if (title && !title.toLowerCase().includes(keyword.toLowerCase())) {
+                                return;
+                            }
+                            
                             if (category === 'normal') {
                                 deduped.push(video);
                                 return;
                             }
-                            const title = (video.vod_name || '').trim();
                             if (!title) {
                                 deduped.push(video);
                                 return;
