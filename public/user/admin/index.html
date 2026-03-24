@@ -305,6 +305,7 @@
           <div id="officialMeta" class="text-sm text-slate-500"></div>
           <div class="flex flex-wrap items-center gap-2">
             <button id="officialEnableAllBtn" class="hidden px-3 py-1.5 rounded bg-emerald-600 text-white text-sm">全部启用</button>
+            <button id="officialCheckAllBtn" class="hidden px-3 py-1.5 rounded bg-blue-600 text-white text-sm">全部监测</button>
             <button id="officialDisableAllBtn" class="hidden px-3 py-1.5 rounded bg-slate-600 text-white text-sm">全部停用</button>
             <button id="officialSaveSortBtn" class="hidden px-3 py-1.5 rounded bg-blue-600 text-white text-sm">保存排序</button>
             <button id="loadOfficialApisBtn" class="hidden px-3 py-1.5 rounded bg-indigo-600 text-white text-sm">刷新</button>
@@ -324,6 +325,7 @@
                 <th>类型</th>
                 <th>分类</th>
                 <th>状态</th>
+                <th>监测</th>
                 <th>操作</th>
               </tr>
             </thead>
@@ -355,6 +357,7 @@
                 <th class="py-2">名称</th>
                 <th>URL</th>
                 <th>状态</th>
+                <th>监测</th>
                 <th>操作</th>
               </tr>
             </thead>
@@ -1080,6 +1083,58 @@
   <!-- 分享墙管理脚本 -->
   <script>
     let currentShareId = '';
+    
+    // 检查接口状态
+    const checkApiStatus = async (url, button) => {
+      if (!url) {
+        showToast("接口 URL 不能为空");
+        return;
+      }
+      
+      const originalText = button.textContent;
+      button.textContent = "监测中...";
+      button.disabled = true;
+      
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒超时
+        
+        // 获取认证 token
+        const token = getToken();
+        
+        // 使用项目自带的代理接口进行监测，避免跨域问题
+        const proxyUrl = `http://127.0.0.1:8800/api/proxy?wd=&pg=1&url=${encodeURIComponent(url)}`;
+        const headers = {
+          'Accept': '*/*'
+        };
+        
+        // 添加 token 认证
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+        
+        const res = await fetch(proxyUrl, {
+          method: 'GET',
+          signal: controller.signal,
+          headers: headers
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (res.status === 200) {
+          button.className = "px-2 py-1 rounded text-xs bg-emerald-600 text-white";
+          button.textContent = "正常";
+        } else {
+          button.className = "px-2 py-1 rounded text-xs bg-rose-600 text-white";
+          button.textContent = `异常 (${res.status})`;
+        }
+      } catch (error) {
+        button.className = "px-2 py-1 rounded text-xs bg-rose-600 text-white";
+        button.textContent = "异常";
+      } finally {
+        button.disabled = false;
+      }
+    };
     
     // 加载分享墙列表
     async function loadShareWall() {
@@ -6201,6 +6256,11 @@ const removeArticleTag = (index) => {
                   ${item.enabled ? "已启用" : "已停用"}
                 </button>
               </td>
+              <td>
+                <button class="px-2 py-1 rounded text-xs bg-blue-600 text-white" onclick="checkApiStatus('${item.url || ""}', this)" title="监测接口状态">
+                  监测
+                </button>
+              </td>
               <td class="space-x-2">
                 <button class="text-xs text-slate-400 cursor-not-allowed" data-action="save" data-id="${item.id}" disabled>保存</button>
                 <button class="text-xs text-rose-600" data-action="delete" data-id="${item.id}">删除</button>
@@ -6409,6 +6469,28 @@ const removeArticleTag = (index) => {
       setBtnIconLoading(btn, false);
     };
 
+    const batchCheckOfficial = async () => {
+      const tbody = document.getElementById("officialTbody");
+      if (!tbody) return;
+      const btn = document.getElementById("officialCheckAllBtn");
+      setBtnLoading(btn, true, "监测中...");
+      
+      try {
+        const buttons = tbody.querySelectorAll('button[onclick^="checkApiStatus"]');
+        for (const button of buttons) {
+          // 从 onclick 属性中提取 url 参数
+          const onclick = button.getAttribute('onclick');
+          const match = onclick.match(/checkApiStatus\('([^']+)'/);
+          if (match) {
+            const url = match[1];
+            await checkApiStatus(url, button);
+          }
+        }
+      } finally {
+        setBtnLoading(btn, false, "全部监测");
+      }
+    };
+
     const batchToggleOfficial = async (enabled) => {
       const tbody = document.getElementById("officialTbody");
       if (!tbody) return;
@@ -6478,6 +6560,11 @@ const removeArticleTag = (index) => {
               <td>
                 <button class="px-2 py-1 rounded text-xs ${item.enabled ? "bg-emerald-600 text-white" : "bg-slate-200 text-slate-700"}" data-action="toggle" data-id="${item.id}" data-enabled="${item.enabled ? "1" : "0"}">
                   ${item.enabled ? "已启用" : "已停用"}
+                </button>
+              </td>
+              <td>
+                <button class="px-2 py-1 rounded text-xs bg-blue-600 text-white" onclick="checkApiStatus('${item.url || ""}', this)" title="监测接口状态">
+                  监测
                 </button>
               </td>
               <td class="space-x-2">
@@ -7712,6 +7799,15 @@ const removeArticleTag = (index) => {
     document.getElementById("loadOfficialApisBtn").addEventListener("click", async () => {
       await loadOfficialApis();
     });
+    
+    // 全部监测按钮事件监听器
+    const officialCheckAllBtn = document.getElementById("officialCheckAllBtn");
+    if (officialCheckAllBtn) {
+      officialCheckAllBtn.addEventListener("click", async () => {
+        await batchCheckOfficial();
+      });
+      officialCheckAllBtn.classList.remove("hidden");
+    }
     const officialTabAdminAdult = document.getElementById("officialTabAdminAdult");
     const officialTabAdminNormal = document.getElementById("officialTabAdminNormal");
     if (officialTabAdminAdult) {

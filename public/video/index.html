@@ -3275,7 +3275,7 @@
                     video: {
                         url: initialUrl,
                         type: 'hls',
-                        pic: '',
+                        pic: currentVideoPic || '',
                         thumbnails: '',
                         title: currentVideoTitle || '视频播放'
                     },
@@ -3477,7 +3477,8 @@
                 video: {
                     url: videoUrl,
                     type: 'hls',
-                    title: videoTitle || '视频播放'
+                    title: videoTitle || '视频播放',
+                    pic: imageUrl || ''
                 },
                 autoplay: true,
                 theme: '#3b82f6',
