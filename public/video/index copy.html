@@ -265,7 +265,7 @@
     <!-- 主内容区 -->
     <main class="container mx-auto px-4 pt-20 pb-20">
         <!-- 视频列表 -->
-        <div id="videoList" class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        <div id="videoList" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             <!-- 视频卡片将在这里动态生成 -->
         </div>
         
@@ -2403,11 +2403,6 @@
             
             // 初始化懒加载
             initLazyLoading();
-            
-            // 触发一次滚动事件，确保所有可见的图片都能被加载
-            setTimeout(() => {
-                window.dispatchEvent(new Event('scroll'));
-            }, 100);
         }
 
         function updateLoadedCount(totalCount) {
@@ -2456,35 +2451,28 @@
         
         // 初始化图片懒加载
         function initLazyLoading() {
-            const lazyImages = document.querySelectorAll('img[data-src]');
+            const lazyImages = document.querySelectorAll('.lazy-image');
             
             if ('IntersectionObserver' in window) {
                 const imageObserver = new IntersectionObserver((entries, observer) => {
                     entries.forEach(entry => {
                         if (entry.isIntersecting) {
                             const img = entry.target;
-                            if (img.dataset.src && img.src !== img.dataset.src) {
-                                img.src = img.dataset.src;
-                                img.classList.remove('lazy-image');
-                            }
+                            img.src = img.dataset.src;
+                            img.classList.remove('lazy-image');
                             imageObserver.unobserve(img);
                         }
                     });
                 });
                 
                 lazyImages.forEach(img => {
-                    // 只观察那些还没有加载的图片
-                    if (img.src !== img.dataset.src) {
-                        imageObserver.observe(img);
-                    }
+                    imageObserver.observe(img);
                 });
             } else {
                 // 回退方案
                 lazyImages.forEach(img => {
-                    if (img.dataset.src && img.src !== img.dataset.src) {
-                        img.src = img.dataset.src;
-                        img.classList.remove('lazy-image');
-                    }
+                    img.src = img.dataset.src;
+                    img.classList.remove('lazy-image');
                 });
             }
         }
@@ -2959,10 +2947,6 @@
                 overlay.remove();
                 setModalScrollLock(false);
                 document.removeEventListener('keydown', onKeyDown);
-                // 重新初始化懒加载，确保所有图片都能被正确加载
-                setTimeout(() => {
-                    initLazyLoading();
-                }, 100);
             };
 
             const onKeyDown = (e) => {
@@ -3444,11 +3428,6 @@
                 mobileCloseButton.className = 'md:hidden fixed top-4 right-4 bg-red-600 text-white rounded-full w-12 h-12 flex items-center justify-center z-50 shadow-lg';
                 mobileCloseButton.style.cssText = '';
             }
-            
-            // 重新初始化懒加载，确保所有图片都能被正确加载
-            setTimeout(() => {
-                initLazyLoading();
-            }, 100);
         }
 
         // 打开悬浮播放框
