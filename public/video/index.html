@@ -699,8 +699,8 @@
         id="floatingPlayer" 
         class="fixed bottom-20 right-6 w-64 h-36 glass-effect rounded-lg shadow-lg overflow-hidden hidden z-40"
     >
-        <div class="relative w-full h-full">
-            <div id="floatingPlayerContainer" class="w-full h-full"></div>
+        <div class="relative w-full h-full flex flex-col">
+            <div id="floatingPlayerContainer" class="flex-1 min-h-0"></div>
             <div 
                 id="floatingPlayerClose" 
                 class="absolute top-2 right-2 bg-black/60 text-white rounded-full w-6 h-6 flex items-center justify-center cursor-pointer hover:bg-black/80"
@@ -712,6 +712,16 @@
                 id="floatingPlayerTitle" 
                 class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent text-white text-xs p-2 truncate"
             ></div>
+            <div id="floatingEpisodePanel" class="hidden bg-black/70 px-2 py-2 border-t border-white/10">
+                <div class="flex items-center justify-between text-xs text-white/70 mb-1">
+                    <span>选集播放</span>
+                    <button id="floatingReverseButton" class="text-white/70 hover:text-white text-xs">
+                        <i class="fa fa-sort-amount-desc"></i> 倒序
+                    </button>
+                </div>
+                <div id="floatingEpisodeTabs" class="flex gap-1 mb-1 overflow-x-auto pb-1"></div>
+                <div id="floatingEpisodeList" class="flex flex-wrap gap-1 max-h-20 overflow-y-auto"></div>
+            </div>
         </div>
     </div>
 
@@ -777,7 +787,13 @@
             
             <div id="dplayer" class="w-full flex-1 min-h-0"></div>
             <div id="episodePanel" class="hidden bg-black/70 px-4 py-3 border-t border-white/10">
-                <div class="text-xs text-white/70 mb-2">选集播放</div>
+                <div class="flex items-center justify-between text-xs text-white/70 mb-2">
+                    <span>选集播放</span>
+                    <button id="reverseButton" class="text-white/70 hover:text-white text-xs">
+                        <i class="fa fa-sort-amount-desc"></i> 倒序
+                    </button>
+                </div>
+                <div id="episodeTabs" class="flex gap-2 mb-2 overflow-x-auto pb-1"></div>
                 <div id="episodeList" class="flex flex-wrap gap-2 max-h-28 overflow-y-auto"></div>
             </div>
         </div>
@@ -3225,6 +3241,9 @@
                         btn.classList.toggle('border-white/20', !isActive);
                     });
                 };
+                let currentPage = 1;
+                let totalPages = 1;
+                
                 const renderEpisodePanel = () => {
                     if (!episodePanel || !episodeList) return;
                     if (resolvedCategory !== 'normal' || !hasEpisodeList) {
@@ -3233,13 +3252,62 @@
                         return;
                     }
                     episodePanel.classList.remove('hidden');
-                    episodeList.innerHTML = episodes.map((ep, idx) => `
-                        <button 
-                            type="button"
-                            class="px-3 py-1 rounded-full text-xs border ${idx === activeEpisodeIndex ? 'bg-blue-600 text-white border-blue-600' : 'bg-white/10 text-white border-white/20 hover:bg-white/20'}"
-                            data-episode-index="${idx}"
-                        >${ep.name}</button>
-                    `).join('');
+                    
+                    // 计算总页数（每个 tab 25 集）
+                    totalPages = Math.ceil(episodes.length / 25);
+                    
+                    // 确保当前页在有效范围内
+                    if (currentPage < 1) currentPage = 1;
+                    if (currentPage > totalPages) currentPage = totalPages;
+                    
+                    // 渲染 tabs
+                    const tabsContainer = document.getElementById('episodeTabs');
+                    if (tabsContainer) {
+                        tabsContainer.innerHTML = '';
+                        for (let i = 1; i <= totalPages; i++) {
+                            const startEpisode = (i - 1) * 25 + 1;
+                            const endEpisode = Math.min(i * 25, episodes.length);
+                            const tabButton = document.createElement('button');
+                            tabButton.type = 'button';
+                            tabButton.className = `px-2 py-0.5 rounded ${i === currentPage ? 'bg-blue-600 text-white' : 'bg-white/10 hover:bg-white/20 text-white'} text-xs whitespace-nowrap`;
+                            tabButton.textContent = `${startEpisode}-${endEpisode}集`;
+                            tabButton.dataset.page = i;
+                            tabButton.onclick = () => {
+                                currentPage = parseInt(tabButton.dataset.page);
+                                renderEpisodePanel();
+                            };
+                            tabsContainer.appendChild(tabButton);
+                        }
+                    }
+                    
+                    // 计算当前页的剧集范围
+                    const startIndex = (currentPage - 1) * 25;
+                    const endIndex = Math.min(startIndex + 25, episodes.length);
+                    const pageEpisodes = episodes.slice(startIndex, endIndex);
+                    
+                    // 渲染剧集列表
+                    episodeList.innerHTML = pageEpisodes.map((ep, idx) => {
+                        const actualIndex = startIndex + idx;
+                        return `
+                            <button 
+                                type="button"
+                                class="px-3 py-1 rounded-full text-xs border ${actualIndex === activeEpisodeIndex ? 'bg-blue-600 text-white border-blue-600' : 'bg-white/10 text-white border-white/20 hover:bg-white/20'}"
+                                data-episode-index="${actualIndex}"
+                            >${ep.name}</button>
+                        `;
+                    }).join('');
+                    
+                    // 绑定倒序按钮事件
+                    const reverseButton = document.getElementById('reverseButton');
+                    if (reverseButton) {
+                        reverseButton.onclick = () => {
+                            episodes.reverse();
+                            activeEpisodeIndex = episodes.length - 1 - activeEpisodeIndex;
+                            currentPage = 1;
+                            renderEpisodePanel();
+                        };
+                    }
+                    
                     setActiveEpisodeButton();
                 };
                 const updatePlayerTitle = (title) => {
@@ -3452,6 +3520,104 @@
         }
 
         // 打开悬浮播放框
+        let floatingCurrentEpisodeIndex = 0;
+        let floatingEpisodes = [];
+        let floatingCurrentPage = 1;
+        let floatingTotalPages = 1;
+        let floatingIsReversed = false;
+        
+        function parseFloatingEpisodes(rawUrl) {
+            const text = String(rawUrl || '');
+            if (!text) return [];
+            const parts = text.split('#').map(part => part.trim()).filter(Boolean);
+            return parts.map((part, index) => {
+                const splitIndex = part.indexOf('$');
+                if (splitIndex === -1) {
+                    return { name: `第${index + 1}集`, url: part };
+                }
+                const name = part.slice(0, splitIndex).trim() || `第${index + 1}集`;
+                const url = part.slice(splitIndex + 1).trim();
+                return { name, url };
+            }).filter(item => item.url);
+        }
+        
+        function renderFloatingEpisodes() {
+            const episodePanel = document.getElementById('floatingEpisodePanel');
+            const episodeList = document.getElementById('floatingEpisodeList');
+            const tabsContainer = document.getElementById('floatingEpisodeTabs');
+            
+            if (!episodePanel || !episodeList || !tabsContainer) return;
+            
+            if (floatingEpisodes.length <= 1) {
+                episodePanel.classList.add('hidden');
+                episodeList.innerHTML = '';
+                tabsContainer.innerHTML = '';
+                return;
+            }
+            
+            episodePanel.classList.remove('hidden');
+            
+            // 计算总页数（每个 tab 25 集）
+            floatingTotalPages = Math.ceil(floatingEpisodes.length / 25);
+            
+            // 确保当前页在有效范围内
+            if (floatingCurrentPage < 1) floatingCurrentPage = 1;
+            if (floatingCurrentPage > floatingTotalPages) floatingCurrentPage = floatingTotalPages;
+            
+            // 渲染 tabs
+            tabsContainer.innerHTML = '';
+            for (let i = 1; i <= floatingTotalPages; i++) {
+                const startEpisode = (i - 1) * 25 + 1;
+                const endEpisode = Math.min(i * 25, floatingEpisodes.length);
+                const tabButton = document.createElement('button');
+                tabButton.type = 'button';
+                tabButton.className = `px-2 py-0.5 rounded ${i === floatingCurrentPage ? 'bg-blue-600 text-white' : 'bg-white/10 hover:bg-white/20 text-white'} text-xs whitespace-nowrap`;
+                tabButton.textContent = `${startEpisode}-${endEpisode}集`;
+                tabButton.dataset.page = i;
+                tabButton.onclick = () => {
+                    floatingCurrentPage = parseInt(tabButton.dataset.page);
+                    renderFloatingEpisodes();
+                };
+                tabsContainer.appendChild(tabButton);
+            }
+            
+            // 计算当前页的剧集范围
+            const startIndex = (floatingCurrentPage - 1) * 25;
+            const endIndex = Math.min(startIndex + 25, floatingEpisodes.length);
+            const pageEpisodes = floatingEpisodes.slice(startIndex, endIndex);
+            
+            // 渲染剧集列表
+            episodeList.innerHTML = '';
+            pageEpisodes.forEach((episode, index) => {
+                const actualIndex = startIndex + index;
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = `px-2 py-0.5 rounded-full text-xs ${actualIndex === floatingCurrentEpisodeIndex ? 'bg-blue-600 border-blue-600' : 'bg-white/10 border-white/20 hover:bg-white/20 text-white'} border`;
+                button.textContent = episode.name;
+                button.dataset.episodeIndex = actualIndex;
+                button.onclick = () => {
+                    const selectedIndex = parseInt(button.dataset.episodeIndex);
+                    if (selectedIndex !== floatingCurrentEpisodeIndex) {
+                        floatingCurrentEpisodeIndex = selectedIndex;
+                        if (floatingDplayer) {
+                            floatingDplayer.video.url = floatingEpisodes[selectedIndex].url;
+                            floatingDplayer.load();
+                        }
+                        renderFloatingEpisodes();
+                    }
+                };
+                episodeList.appendChild(button);
+            });
+        }
+        
+        function toggleFloatingEpisodeOrder() {
+            floatingIsReversed = !floatingIsReversed;
+            floatingEpisodes.reverse();
+            floatingCurrentEpisodeIndex = floatingEpisodes.length - 1 - floatingCurrentEpisodeIndex;
+            floatingCurrentPage = 1;
+            renderFloatingEpisodes();
+        }
+        
         function openFloatingPlayer(videoUrl, videoTitle, imageUrl = '', sourceLabel = '') {
             const floatingPlayer = document.getElementById('floatingPlayer');
             const floatingPlayerTitle = document.getElementById('floatingPlayerTitle');
@@ -3467,6 +3633,12 @@
             // 显示悬浮播放框
             floatingPlayer.classList.remove('hidden');
             
+            // 解析剧集
+            floatingEpisodes = parseFloatingEpisodes(videoUrl);
+            floatingCurrentEpisodeIndex = 0;
+            floatingCurrentPage = 1;
+            floatingIsReversed = false;
+            
             // 初始化悬浮播放器
             if (floatingDplayer) {
                 floatingDplayer.destroy();
@@ -3475,7 +3647,7 @@
             floatingDplayer = new DPlayer({
                 container: document.getElementById('floatingPlayerContainer'),
                 video: {
-                    url: videoUrl,
+                    url: floatingEpisodes.length > 0 ? floatingEpisodes[0].url : videoUrl,
                     type: 'hls',
                     title: videoTitle || '视频播放',
                     pic: imageUrl || ''
@@ -3487,6 +3659,15 @@
                 hotkey: true,
                 mutex: true
             });
+            
+            // 渲染剧集列表
+            renderFloatingEpisodes();
+            
+            // 绑定倒序按钮事件
+            const reverseButton = document.getElementById('floatingReverseButton');
+            if (reverseButton) {
+                reverseButton.onclick = toggleFloatingEpisodeOrder;
+            }
             
             // 保存播放历史
             saveToHistory(videoTitle, videoUrl, imageUrl, sourceLabel);
