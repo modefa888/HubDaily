@@ -4,8 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>公共聊天室</title>
-  <link href="../node_modules/tailwindcss/index.css" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
   <style>
     html {
       scrollbar-gutter: stable;
@@ -106,9 +107,15 @@
       display: flex;
       gap: 10px;
       margin-bottom: 14px;
+      align-items: flex-start;
+      width: 100%;
     }
     .msg.self {
       flex-direction: row-reverse;
+      justify-content: flex-start;
+    }
+    .msg.self .msg-bubble {
+      margin-left: auto;
     }
     .avatar {
       width: 36px;
@@ -123,12 +130,16 @@
       flex-shrink: 0;
     }
     .msg-bubble {
-      max-width: 70%;
+      max-width: 50%;
       background: var(--panel-strong);
       border-radius: 8px;
       padding: 12px 16px;
       box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
-      word-wrap: break-word;
+      position: relative;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 10px;
     }
     .msg-bubble > div {
       max-width: 100%;
@@ -148,6 +159,10 @@
       font-size: 14px;
       color: #0f172a;
       white-space: pre-wrap;
+      word-break: break-word;
+      padding-bottom: 4px;
+      flex: 1;
+      min-width: 0;
     }
     .msg-media {
       line-height: 0;
@@ -168,35 +183,51 @@
       display: flex;
       align-items: center;
       gap: 8px;
+      flex-wrap: nowrap;
     }
-    .msg-meta-content {
-      flex: 1;
-    }
-    .msg-actions {
-      position: relative;
-      display: inline-block;
-      vertical-align: middle;
-    }
-    .msg-menu-btn {
-      position: relative;
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      background: transparent;
-      border: none;
+    .msg-time-separator {
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 10px;
-      cursor: pointer;
-      opacity: 0;
-      transition: opacity 0.2s ease;
-      vertical-align: middle;
+      margin: 12px 0;
+      position: relative;
+    }
+    .msg-time-separator::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: rgba(148, 163, 184, 0.3);
+    }
+    .msg-time-text {
+      background: var(--panel-strong);
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 11px;
       color: var(--muted);
+      position: relative;
+      z-index: 1;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
-    .msg-bubble:hover .msg-menu-btn {
-      opacity: 1;
+    .msg-meta-content {
+      flex: 1;
+      white-space: nowrap;
+      overflow: visible;
+      min-width: 0;
     }
+    .msg-actions {
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      z-index: 10;
+    }
+
     .msg-menu {
       position: absolute;
       top: 100%;
@@ -209,6 +240,8 @@
       z-index: 100;
       display: none;
       margin-top: 4px;
+      max-width: 100%;
+      overflow: hidden;
     }
     .msg-menu.show {
       display: block;
@@ -228,6 +261,198 @@
     .msg-menu button:disabled {
       opacity: 0.5;
       cursor: not-allowed;
+    }
+
+    .user-info-panel {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .user-info-content {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+      width: 90%;
+      max-width: 400px;
+      overflow: hidden;
+    }
+
+    .user-info-header {
+      padding: 20px;
+      background: linear-gradient(135deg, #3b82f6, #6366f1);
+      color: white;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      position: relative;
+    }
+
+    .user-info-avatar {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      overflow: hidden;
+      border: 3px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .user-info-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .avatar-placeholder {
+      width: 100%;
+      height: 100%;
+      background: rgba(255, 255, 255, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      font-weight: 600;
+    }
+
+    .user-info-name {
+      flex: 1;
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .user-info-close {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: none;
+      border: none;
+      color: white;
+      font-size: 24px;
+      cursor: pointer;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      transition: background 0.2s ease;
+    }
+
+    .user-info-close:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .user-info-body {
+      padding: 20px;
+    }
+
+    .user-info-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    .user-info-item:last-child {
+      border-bottom: none;
+    }
+
+    .user-info-label {
+      color: #666;
+      font-size: 14px;
+    }
+
+    .user-info-value {
+      color: #333;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .user-info-actions {
+      margin-top: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .user-info-action-btn {
+      width: 100%;
+      padding: 10px 16px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+    .user-info-action-btn:first-child {
+      background-color: #f1f5f9;
+      color: #334155;
+    }
+    .user-info-action-btn:first-child:hover {
+      background-color: #e2e8f0;
+    }
+    .user-info-action-btn:nth-child(2) {
+      background-color: #ef4444;
+      color: white;
+    }
+    .user-info-action-btn:nth-child(2):hover {
+      background-color: #dc2626;
+    }
+    .user-info-action-btn:last-child {
+      background-color: #f8fafc;
+      color: #334155;
+      border: 1px solid #e2e8f0;
+    }
+    .user-info-action-btn:last-child:hover {
+      background-color: #f1f5f9;
+    }
+    .restore-confirm {
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      padding: 12px;
+      min-width: 200px;
+    }
+    .restore-confirm-content {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .restore-confirm-content span {
+      font-size: 14px;
+      color: #334155;
+    }
+    .restore-confirm-buttons {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+    .restore-confirm-btn {
+      padding: 6px 12px;
+      border: none;
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+    .restore-confirm-btn.confirm {
+      background-color: #2563eb;
+      color: white;
+    }
+    .restore-confirm-btn.confirm:hover {
+      background-color: #1d4ed8;
+    }
+    .restore-confirm-btn.cancel {
+      background-color: #f1f5f9;
+      color: #334155;
+    }
+    .restore-confirm-btn.cancel:hover {
+      background-color: #e2e8f0;
     }
     .chat-input {
       padding: 14px 16px;
@@ -471,6 +696,7 @@
     <button class="menu-item" data-action="global-mute"><span id="globalMuteMenuLabel">全局禁言</span></button>
     <button class="menu-item" data-action="global-mute-range">区间禁言</button>
     <button class="menu-item" data-action="rules">规则</button>
+    <button class="menu-item" data-action="chat-settings">聊天设置</button>
     <button class="menu-item" data-action="refresh">刷新</button>
   </div>
 
@@ -484,41 +710,64 @@
   </div>
 
   <div id="rulesPanel" class="popover hidden">
-    <div class="popover-title">发送规则</div>
-    <div class="space-y-2 text-xs">
-      <div class="grid grid-cols-1 gap-2">
-        <label class="flex items-center gap-2">
-          <span>频率(秒)</span>
-          <input id="ruleRateLimit" type="number" min="0" class="input w-32" placeholder="0为不限制">
-        </label>
-        <label class="flex items-center gap-2">
-          <span>长度(字)</span>
-          <input id="ruleMaxLength" type="number" min="0" class="input w-32" placeholder="0为不限制">
-        </label>
+      <div class="popover-title">发送规则</div>
+      <div class="space-y-2 text-xs">
+        <div class="grid grid-cols-1 gap-2">
+          <label class="flex items-center gap-2">
+            <span>频率(秒)</span>
+            <input id="ruleRateLimit" type="number" min="0" class="input w-32" placeholder="0为不限制">
+          </label>
+          <label class="flex items-center gap-2">
+            <span>长度(字)</span>
+            <input id="ruleMaxLength" type="number" min="0" class="input w-32" placeholder="0为不限制">
+          </label>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <label class="flex items-center gap-2">
+            <input id="ruleAllowImage" type="checkbox">
+            <span>允许图片链接</span>
+          </label>
+          <label class="flex items-center gap-2">
+            <input id="ruleAllowLink" type="checkbox">
+            <span>允许链接</span>
+          </label>
+        </div>
+        <div>
+          <div class="text-slate-500 mb-1">敏感词（每行一个）</div>
+          <textarea id="ruleBlocked" rows="3" class="input w-full" placeholder="例：广告\n违规"></textarea>
+        </div>
+        <div>
+          <div class="text-slate-500 mb-1">替换规则（每行 词=>替换）</div>
+          <textarea id="ruleReplace" rows="3" class="input w-full" placeholder="例：坏词=>**"></textarea>
+        </div>
       </div>
-      <div class="grid grid-cols-2 gap-2">
-        <label class="flex items-center gap-2">
-          <input id="ruleAllowImage" type="checkbox">
-          <span>允许图片链接</span>
-        </label>
-        <label class="flex items-center gap-2">
-          <input id="ruleAllowLink" type="checkbox">
-          <span>允许链接</span>
-        </label>
-      </div>
-      <div>
-        <div class="text-slate-500 mb-1">敏感词（每行一个）</div>
-        <textarea id="ruleBlocked" rows="3" class="input w-full" placeholder="例：广告\n违规"></textarea>
-      </div>
-      <div>
-        <div class="text-slate-500 mb-1">替换规则（每行 词=>替换）</div>
-        <textarea id="ruleReplace" rows="3" class="input w-full" placeholder="例：坏词=>**"></textarea>
+      <div class="flex items-center justify-end gap-2 mt-3">
+        <button id="ruleSave" class="btn">保存规则</button>
       </div>
     </div>
-    <div class="flex items-center justify-end gap-2 mt-3">
-      <button id="ruleSave" class="btn">保存规则</button>
+
+    <div id="chatSettingsPanel" class="popover hidden">
+      <div class="popover-title">聊天历史设置</div>
+      <div class="space-y-2 text-xs">
+        <div class="grid grid-cols-1 gap-2">
+          <label class="flex items-center gap-2">
+            <span>保存时间(天)</span>
+            <input id="chatKeepDays" type="number" min="0" class="input w-32" placeholder="0为永久保存">
+          </label>
+          <label class="flex items-center gap-2">
+            <span>每次加载条数</span>
+            <input id="chatMaxHistory" type="number" min="1" max="100" class="input w-32" placeholder="默认30条">
+          </label>
+        </div>
+        <div class="text-[11px] text-slate-500 mt-1">
+          <p>保存时间：0表示永久保存，大于0表示保存指定天数</p>
+          <p>每次加载条数：每次滚动加载时获取的消息数量</p>
+        </div>
+      </div>
+      <div class="flex items-center justify-end gap-2 mt-3">
+        <button id="chatSettingsSave" class="btn">保存设置</button>
+      </div>
     </div>
-  </div>
 
   <div id="adminMuteStatusPanel" class="popover hidden">
     <div class="popover-title text-xs">禁言状态</div>
@@ -587,6 +836,10 @@
     const ruleBlocked = document.getElementById("ruleBlocked");
     const ruleReplace = document.getElementById("ruleReplace");
     const ruleSave = document.getElementById("ruleSave");
+    const chatSettingsPanel = document.getElementById("chatSettingsPanel");
+    const chatKeepDays = document.getElementById("chatKeepDays");
+    const chatMaxHistory = document.getElementById("chatMaxHistory");
+    const chatSettingsSave = document.getElementById("chatSettingsSave");
     const adminMuteStatusPanel = document.getElementById("adminMuteStatusPanel");
     const adminMuteStatusText = document.getElementById("adminMuteStatusText");
     const adminUnmuteBtn = document.getElementById("adminUnmuteBtn");
@@ -635,6 +888,13 @@
       blocked: [],
       replace: [],
     };
+    let currentChatSettings = {
+      keepDays: 0,
+      maxHistory: 30,
+    };
+    let loadingHistory = false;
+    let hasMoreHistory = true;
+    let earliestMessageTime = null;
     let adminMuteJustOpened = false;
 
     const getToken = () => localStorage.getItem(TOKEN_KEY) || "";
@@ -672,6 +932,20 @@
       if (!text) return "匿";
       return text.slice(0, 1);
     };
+
+    const formatMessageTime = (timestamp) => {
+      const date = new Date(timestamp);
+      const now = new Date();
+      const isToday = date.toDateString() === now.toDateString();
+      
+      if (isToday) {
+        // 当天的消息只显示时:分:秒
+        return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      } else {
+        // 其他天的消息显示完整的日期和时间
+        return date.toLocaleString('zh-CN');
+      }
+    };
     const isImageUrl = (text) => {
       const value = String(text || "").trim();
       if (!value) return false;
@@ -684,6 +958,250 @@
       if (!value) return false;
       if (!/^https?:\/\//i.test(value)) return false;
       return /\.m3u8(\?.*)?$/i.test(value);
+    };
+
+    const setModalScrollLock = (locked) => {
+      if (locked) {
+        document.body.classList.add('modal-open');
+        document.body.style.overflow = 'hidden';
+        document.body.style.paddingRight = '17px';
+      } else {
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+      }
+    };
+
+    const openFullScreenPreview = (imageUrl, title, list = [], startIndex = 0) => {
+      const items = Array.isArray(list) && list.length > 0
+        ? list
+        : [{ url: imageUrl, title }];
+      let currentIndex = Math.min(Math.max(Number(startIndex) || 0, 0), items.length - 1);
+      let scale = 1;
+      let translateX = 0;
+      let translateY = 0;
+      let isDragging = false;
+      let dragStartX = 0;
+      let dragStartY = 0;
+      let pinchStartDist = 0;
+      let pinchStartScale = 1;
+      let swipeStartX = 0;
+      let swipeStartY = 0;
+      let lastTapAt = 0;
+
+      const overlay = document.createElement('div');
+      overlay.className = 'fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4';
+      overlay.innerHTML = `
+        <div class="relative max-w-full max-h-[90vh] w-full flex items-center justify-center">
+          <button 
+            class="fixed top-4 right-4 text-white hover:text-gray-300 z-10"
+            data-action="close"
+          >
+            <i class="fa fa-times text-xl"></i>
+          </button>
+          <button 
+            class="fixed top-4 right-16 text-white hover:text-gray-300 z-10"
+            data-action="download"
+          >
+            <i class="fa fa-download text-xl"></i>
+          </button>
+          <button 
+            class="fixed left-4 top-1/2 -translate-y-1/2 text-white/80 hover:text-white bg-white/10 hover:bg-white/20 rounded-full w-10 h-10 flex items-center justify-center ${items.length > 1 ? '' : 'hidden'} z-10"
+            data-action="prev"
+          >
+            <i class="fa fa-angle-left text-2xl"></i>
+          </button>
+          <button 
+            class="fixed right-4 top-1/2 -translate-y-1/2 text-white/80 hover:text-white bg-white/10 hover:bg-white/20 rounded-full w-10 h-10 flex items-center justify-center ${items.length > 1 ? '' : 'hidden'} z-10"
+            data-action="next"
+          >
+            <i class="fa fa-angle-right text-2xl"></i>
+          </button>
+          <div class="relative max-w-full max-h-[90vh] flex flex-col items-center">
+            <img 
+              src="" 
+              alt="" 
+              onerror="this.onerror=null;this.src='/chat/loading.gif';"
+              loading="lazy"
+              class="max-w-full max-h-[80vh] object-contain rounded-lg select-none touch-none"
+            >
+            <div class="preview-meta text-white/80 text-xs mt-2"></div>
+            <p class="preview-caption text-white text-center mt-2"></p>
+          </div>
+        </div>
+      `;
+
+      document.body.appendChild(overlay);
+      setModalScrollLock(true);
+
+      const img = overlay.querySelector('img');
+      const caption = overlay.querySelector('.preview-caption');
+      const meta = overlay.querySelector('.preview-meta');
+      const prevBtn = overlay.querySelector('[data-action="prev"]');
+      const nextBtn = overlay.querySelector('[data-action="next"]');
+      const closeBtn = overlay.querySelector('[data-action="close"]');
+      const downloadBtn = overlay.querySelector('[data-action="download"]');
+
+      const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+      const applyTransform = () => {
+        img.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+      };
+      const resetTransform = () => {
+        scale = 1;
+        translateX = 0;
+        translateY = 0;
+        applyTransform();
+      };
+      const renderImage = () => {
+        const item = items[currentIndex] || items[0];
+        img.src = item.url;
+        img.alt = item.title || '';
+        caption.textContent = item.title || '';
+        if (meta) {
+          meta.textContent = `${currentIndex + 1}/${items.length}`;
+        }
+        resetTransform();
+      };
+      const gotoIndex = (nextIndex) => {
+        if (items.length <= 1) return;
+        currentIndex = (nextIndex + items.length) % items.length;
+        renderImage();
+      };
+
+      const handleClose = () => {
+        overlay.remove();
+        setModalScrollLock(false);
+        document.removeEventListener('keydown', onKeyDown);
+      };
+
+      const onKeyDown = (e) => {
+        if (e.key === 'Escape') handleClose();
+        if (e.key === 'ArrowLeft') gotoIndex(currentIndex - 1);
+        if (e.key === 'ArrowRight') gotoIndex(currentIndex + 1);
+      };
+      document.addEventListener('keydown', onKeyDown);
+
+      if (closeBtn) closeBtn.addEventListener('click', handleClose);
+      if (prevBtn) prevBtn.addEventListener('click', () => gotoIndex(currentIndex - 1));
+      if (nextBtn) nextBtn.addEventListener('click', () => gotoIndex(currentIndex + 1));
+      if (downloadBtn) {
+        downloadBtn.addEventListener('click', () => {
+          const item = items[currentIndex] || items[0];
+          if (!item || !item.url) return;
+          const link = document.createElement('a');
+          link.href = item.url;
+          link.download = item.title || 'image';
+          link.target = '_blank';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        });
+      }
+
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) handleClose();
+      });
+
+      img.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const delta = e.deltaY > 0 ? -0.2 : 0.2;
+        const nextScale = clamp(scale + delta, 1, 4);
+        scale = nextScale;
+        if (scale === 1) {
+          translateX = 0;
+          translateY = 0;
+        }
+        applyTransform();
+      }, { passive: false });
+
+      img.addEventListener('mousedown', (e) => {
+        if (scale <= 1) return;
+        isDragging = true;
+        dragStartX = e.clientX - translateX;
+        dragStartY = e.clientY - translateY;
+      });
+      window.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        translateX = e.clientX - dragStartX;
+        translateY = e.clientY - dragStartY;
+        applyTransform();
+      });
+      window.addEventListener('mouseup', () => {
+        isDragging = false;
+      });
+
+      img.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 2) {
+          pinchStartDist = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+          );
+          pinchStartScale = scale;
+          return;
+        }
+        if (e.touches.length === 1) {
+          swipeStartX = e.touches[0].clientX;
+          swipeStartY = e.touches[0].clientY;
+          if (scale > 1) {
+            isDragging = true;
+            dragStartX = e.touches[0].clientX - translateX;
+            dragStartY = e.touches[0].clientY - translateY;
+          }
+        }
+      }, { passive: false });
+
+      img.addEventListener('touchmove', (e) => {
+        if (e.touches.length === 2) {
+          e.preventDefault();
+          const dist = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+          );
+          const nextScale = clamp(pinchStartScale * (dist / (pinchStartDist || dist)), 1, 4);
+          scale = nextScale;
+          if (scale === 1) {
+            translateX = 0;
+            translateY = 0;
+          }
+          applyTransform();
+          return;
+        }
+        if (e.touches.length === 1 && isDragging) {
+          e.preventDefault();
+          translateX = e.touches[0].clientX - dragStartX;
+          translateY = e.touches[0].clientY - dragStartY;
+          applyTransform();
+        }
+      }, { passive: false });
+
+      img.addEventListener('touchend', (e) => {
+        if (e.touches.length === 0) {
+          isDragging = false;
+          const now = Date.now();
+          if (now - lastTapAt < 280) {
+            if (scale > 1) {
+              resetTransform();
+            } else {
+              scale = 2;
+              applyTransform();
+            }
+            lastTapAt = 0;
+            return;
+          }
+          lastTapAt = now;
+          if (scale <= 1.05 && items.length > 1) {
+            const endX = (e.changedTouches[0] || {}).clientX || swipeStartX;
+            const endY = (e.changedTouches[0] || {}).clientY || swipeStartY;
+            const deltaX = endX - swipeStartX;
+            const deltaY = endY - swipeStartY;
+            if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY)) {
+              gotoIndex(deltaX > 0 ? currentIndex - 1 : currentIndex + 1);
+            }
+          }
+        }
+      });
+
+      renderImage();
     };
 
     const renderMessageHtml = (item) => {
@@ -700,32 +1218,29 @@
       const showM3u8 = !item.deleted && isM3u8Url(message);
       const m3u8Id = showM3u8 ? `m3u8-${item._id || Math.random().toString(36).slice(2)}` : "";
       return `
-        <div class="msg ${isSelf ? "self" : ""}" data-id="${item._id || ""}" data-user-id="${item.userId || ""}">
+        <div class="msg ${isSelf ? "self" : ""}" data-id="${item._id || ""}" data-user-id="${item.userId || ""}" data-timestamp="${item.createdAt}">
           ${avatar
-            ? `<img class="avatar" src="${avatar}" alt="">`
-            : `<div class="avatar">${escapeHtml(getInitial(title))}</div>`
+            ? `<img class="avatar cursor-pointer hover:opacity-90 transition-opacity" src="${avatar}" alt="" onclick="showUserInfo('${escapeHtml(title)}', '${avatar}', '${item.userId || ""}')">`
+            : `<div class="avatar cursor-pointer hover:opacity-90 transition-opacity" onclick="showUserInfo('${escapeHtml(title)}', '', '${item.userId || ""}')">${escapeHtml(getInitial(title))}</div>`
           }
-          <div style="display: flex; flex-direction: column; align-items: ${isSelf ? 'flex-end' : 'flex-start'}; gap: 4px;">
-            <div class="msg-bubble">
-              <div class="msg-meta">
-                <div class="msg-meta-content">${escapeHtml(title)} · ${new Date(item.createdAt).toLocaleString()}</div>
-                ${canManage ? `
-                  <div class="msg-actions">
-                    <button class="msg-menu-btn" onclick="toggleMsgMenu(this)">•••</button>
-                    <div class="msg-menu">
-                      <button data-action="delete" ${item.deleted ? "disabled" : ""}>删除</button>
-                      ${isSelf ? "" : `<button data-action="${muteAction}" data-user-id="${item.userId || ""}">${muteLabel}</button>`}
-                    </div>
-                  </div>` : ""}
-              </div>
+          <div style="display: flex; flex-direction: row; align-items: center; gap: 4px; width: 100%;">
+            <div class="msg-bubble" onclick="toggleMsgMenu(this, event)">
+              ${canManage ? `
+                <div class="msg-actions">
+                  <div class="msg-menu">
+                    <button data-action="delete" ${item.deleted ? "disabled" : ""} onclick="event.stopPropagation(); handleDeleteClick(this)">删除</button>
+                    ${item.deleted && canManage ? `<button data-action="view-deleted" onclick="event.stopPropagation(); viewDeletedMessage('${escapeHtml(item.message || '')}', '${item._id || ''}')">查看被删除消息</button>` : ''}
+                    ${isSelf ? '' : `<button data-action="${muteAction}" data-user-id="${item.userId || ''}" onclick="event.stopPropagation()">${muteLabel}</button>`}
+                  </div>
+                </div>` : ""}
               ${showM3u8
-                ? `<div class="msg-text msg-media">
-                     <video id="${m3u8Id}" class="video-native" controls preload="metadata" src="${escapeHtml(message)}"></video>
-                   </div>`
-                : showImage
-                  ? `<div class="msg-text"><img src="${escapeHtml(message)}" alt="" class="w-1/2 max-w-[240px] h-auto rounded-lg border border-slate-200"></div>`
-                  : `<div class="msg-text">${escapeHtml(message)}</div>`
-              }
+                  ? `<div class="msg-text msg-media">
+                       <video id="${m3u8Id}" class="video-native" controls preload="metadata" src="${escapeHtml(message)}"></video>
+                     </div>`
+                  : showImage
+                    ? `<div class="msg-text"><img src="${escapeHtml(message)}" alt="" class="w-1/2 max-w-[240px] h-auto rounded-lg border border-slate-200 cursor-pointer hover:opacity-90 transition-opacity" onclick="openFullScreenPreview('${escapeHtml(message)}', '${escapeHtml(title)}')"></div>`
+                    : `<div class="msg-text">${escapeHtml(message)}</div>`
+                }
             </div>
             ${item.sending ? `
               <div class="flex items-center gap-1 text-xs text-slate-500" style="margin-${isSelf ? 'right' : 'left'}: 4px;">
@@ -737,13 +1252,43 @@
         </div>
       `;
     };
-    const renderMessages = (list) => {
+    const renderMessages = (list, prepend = false) => {
       if (!Array.isArray(list) || list.length === 0) {
-        chatList.innerHTML = '<div class="text-sm text-slate-500 text-center py-6">暂无消息</div>';
+        if (!prepend && !historyLoaded) {
+          chatList.innerHTML = '<div class="text-sm text-slate-500 text-center py-6">暂无消息</div>';
+        }
         return;
       }
-      chatList.innerHTML = list.map((item) => renderMessageHtml(item)).join("");
-      chatList.scrollTop = chatList.scrollHeight;
+      
+      const html = list.map((item, index) => {
+        let timeDiv = '';
+        if (index === 0 || (list[index-1] && new Date(item.createdAt).getMinutes() !== new Date(list[index-1].createdAt).getMinutes())) {
+          // 如果是第一条消息，或者与前一条消息不是同一分钟，添加时间间隔线
+          timeDiv = `<div class="msg-time-separator"><span class="msg-time-text">${formatMessageTime(item.createdAt)}</span></div>`;
+        }
+        return timeDiv + renderMessageHtml(item);
+      }).join("");
+
+      
+      if (prepend) {
+        // 在顶部添加新消息
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = html;
+        const newMessages = tempDiv.children;
+        for (let i = newMessages.length - 1; i >= 0; i--) {
+          chatList.insertBefore(newMessages[i], chatList.firstChild);
+        }
+        // 保持滚动位置
+        const firstNewMessage = chatList.firstChild;
+        if (firstNewMessage) {
+          chatList.scrollTop = firstNewMessage.offsetHeight;
+        }
+      } else {
+        // 替换所有消息
+        chatList.innerHTML = html;
+        chatList.scrollTop = chatList.scrollHeight;
+      }
+      
       initHlsPlayers(chatList);
     };
 
@@ -782,11 +1327,243 @@
       }
     };
 
+    const setChatSettings = (settings) => {
+      const data = settings || {};
+      currentChatSettings = {
+        keepDays: Number(data.keepDays || 0),
+        maxHistory: Number(data.maxHistory || 30),
+      };
+      if (chatKeepDays) chatKeepDays.value = String(currentChatSettings.keepDays || "");
+      if (chatMaxHistory) chatMaxHistory.value = String(currentChatSettings.maxHistory || "");
+    };
+
+    const loadMoreHistory = () => {
+      if (loadingHistory || !hasMoreHistory || !ws || ws.readyState !== WebSocket.OPEN) return;
+      loadingHistory = true;
+      ws.send(JSON.stringify({ type: "load_history", before: earliestMessageTime }));
+    };
+
+    const showUserInfo = (name, avatar, userId) => {
+      // 创建用户信息弹窗
+      const userInfoPanel = document.createElement('div');
+      userInfoPanel.className = 'user-info-panel';
+      const canManage = currentRole === "admin";
+      const isSelf = currentUserId && String(userId || "") === String(currentUserId);
+      const muteInfo = adminMuteMap.get(String(userId || ""));
+      const isMuted = !!(muteInfo && (!muteInfo.expiresAt || muteInfo.expiresAt > Date.now()));
+      const muteAction = isMuted ? "unmute" : "mute";
+      const muteLabel = isMuted ? "解除禁言" : "禁言";
+      userInfoPanel.innerHTML = `
+        <div class="user-info-content">
+          <div class="user-info-header">
+            <div class="user-info-avatar">
+              ${avatar ? `<img src="${avatar}" alt="${name}">` : `<div class="avatar-placeholder">${getInitial(name)}</div>`}
+            </div>
+            <div class="user-info-name">${name}</div>
+            <button class="user-info-close" onclick="this.closest('.user-info-panel').remove()">×</button>
+          </div>
+          <div class="user-info-body">
+            <div class="user-info-item">
+              <span class="user-info-label">用户ID:</span>
+              <span class="user-info-value">${userId || '未知'}</span>
+            </div>
+            <div class="user-info-item">
+              <span class="user-info-label">状态:</span>
+              <span class="user-info-value">在线</span>
+            </div>
+            <div class="user-info-actions mt-4 space-y-2">
+              <button class="user-info-action-btn" onclick="copyUserId('${userId || ''}')">复制用户ID</button>
+              ${canManage && !isSelf ? `<button class="user-info-action-btn" onclick="toggleUserMute('${userId || ''}')">${muteLabel}</button>` : ''}
+              ${canManage ? `<button class="user-info-action-btn" onclick="deleteUserMessages('${userId || ''}')">删除该用户所有消息</button>` : ''}
+            </div>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(userInfoPanel);
+    };
+    
+    const copyUserId = (userId) => {
+      if (!userId) return;
+      navigator.clipboard.writeText(userId).then(() => {
+        showHint('用户ID已复制到剪贴板');
+      });
+    };
+    
+    const toggleUserMute = (userId) => {
+      if (!userId) return;
+      const muteInfo = adminMuteMap.get(String(userId));
+      const isMuted = !!(muteInfo && (!muteInfo.expiresAt || muteInfo.expiresAt > Date.now()));
+      if (isMuted) {
+        // 解除禁言
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'unmute_user', userId }));
+        }
+      } else {
+        // 禁言用户，默认禁言1小时
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'mute_user', userId, minutes: 60 }));
+        }
+      }
+    };
+    
+    const deleteUserMessages = (userId) => {
+      if (!userId) return;
+      if (confirm('确定要删除该用户的所有消息吗？此操作不可撤销。')) {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'delete_user_messages', userId }));
+          showHint('正在删除该用户的所有消息...');
+        }
+      }
+    };
+    
+    const handleDeleteClick = (button) => {
+      const messageId = button.closest('.msg').dataset.id;
+      if (messageId) {
+        openDeleteConfirm(button, messageId);
+      }
+    };
+    
+    const viewDeletedMessage = (message, messageId) => {
+      // 创建查看被删除消息的弹窗
+      const viewPanel = document.createElement('div');
+      viewPanel.className = 'user-info-panel';
+      viewPanel.innerHTML = `
+        <div class="user-info-content">
+          <div class="user-info-header">
+            <div class="user-info-name">被删除消息</div>
+            <button class="user-info-close" onclick="this.closest('.user-info-panel').remove()">×</button>
+          </div>
+          <div class="user-info-body">
+            <div class="user-info-item">
+              <span class="user-info-label">内容:</span>
+              <span class="user-info-value">${escapeHtml(message || '无内容')}</span>
+            </div>
+            <div class="user-info-actions mt-4 space-y-2">
+              <button class="user-info-action-btn" onclick="showRestoreConfirm(this, '${messageId}')">恢复消息</button>
+            </div>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(viewPanel);
+    };
+    
+    const restoreMessage = (messageId, panel) => {
+      if (!messageId) {
+        showHint('消息ID不存在');
+        return;
+      }
+      if (!ws) {
+        showHint('未连接服务器');
+        return;
+      }
+      if (ws.readyState !== WebSocket.OPEN) {
+        showHint('服务器连接已断开');
+        return;
+      }
+      ws.send(JSON.stringify({ type: 'restore_message', id: messageId }));
+      showHint('正在恢复消息...');
+      if (panel) {
+        panel.remove();
+      }
+    };
+    
+    let restoreConfirmElement = null;
+    
+    const showRestoreConfirm = (button, messageId) => {
+      // 隐藏已有的确认框
+      hideRestoreConfirm();
+      
+      // 创建悬浮确认框
+      restoreConfirmElement = document.createElement('div');
+      restoreConfirmElement.className = 'restore-confirm';
+      
+      // 创建确认按钮
+      const confirmBtn = document.createElement('button');
+      confirmBtn.className = 'restore-confirm-btn confirm';
+      confirmBtn.textContent = '确定';
+      confirmBtn.onclick = () => {
+        restoreMessage(messageId, document.querySelector('.user-info-panel'));
+        hideRestoreConfirm();
+      };
+      
+      // 创建取消按钮
+      const cancelBtn = document.createElement('button');
+      cancelBtn.className = 'restore-confirm-btn cancel';
+      cancelBtn.textContent = '取消';
+      cancelBtn.onclick = hideRestoreConfirm;
+      
+      // 创建按钮容器
+      const buttonsDiv = document.createElement('div');
+      buttonsDiv.className = 'restore-confirm-buttons';
+      buttonsDiv.appendChild(confirmBtn);
+      buttonsDiv.appendChild(cancelBtn);
+      
+      // 创建内容容器
+      const contentDiv = document.createElement('div');
+      contentDiv.className = 'restore-confirm-content';
+      
+      // 创建文本节点
+      const textSpan = document.createElement('span');
+      textSpan.textContent = '确定要恢复这条消息吗？';
+      
+      // 组装元素
+      contentDiv.appendChild(textSpan);
+      contentDiv.appendChild(buttonsDiv);
+      restoreConfirmElement.appendChild(contentDiv);
+      
+      // 设置位置
+      const rect = button.getBoundingClientRect();
+      restoreConfirmElement.style.position = 'fixed';
+      restoreConfirmElement.style.top = `${rect.bottom + 8}px`;
+      restoreConfirmElement.style.left = `${rect.left}px`;
+      restoreConfirmElement.style.zIndex = '1000';
+      
+      // 添加到文档
+      document.body.appendChild(restoreConfirmElement);
+    };
+    
+    const hideRestoreConfirm = () => {
+      if (restoreConfirmElement && restoreConfirmElement.parentNode) {
+        restoreConfirmElement.parentNode.removeChild(restoreConfirmElement);
+        restoreConfirmElement = null;
+      }
+    };
+
     const appendMessage = (item) => {
+      // 检查是否需要添加时间间隔线
+      let timeDiv = '';
+      const lastMessage = chatList.lastElementChild;
+      if (!lastMessage || lastMessage.classList.contains('msg-time-separator')) {
+        // 如果没有消息，或者最后一个元素是时间间隔线，添加时间间隔线
+        timeDiv = `<div class="msg-time-separator"><span class="msg-time-text">${formatMessageTime(item.createdAt)}</span></div>`;
+      } else {
+        // 找到最后一条消息的时间
+        const lastMsgTime = Array.from(chatList.children).reverse().find(child => child.classList.contains('msg'));
+        if (lastMsgTime) {
+          // 获取最后一条消息的时间戳
+          const lastTime = lastMsgTime.dataset.timestamp;
+          if (lastTime && new Date(item.createdAt).getMinutes() !== new Date(Number(lastTime)).getMinutes()) {
+            // 如果与最后一条消息不是同一分钟，添加时间间隔线
+            timeDiv = `<div class="msg-time-separator"><span class="msg-time-text">${formatMessageTime(item.createdAt)}</span></div>`;
+          }
+        }
+      }
+      
       const node = document.createElement("div");
-      node.innerHTML = renderMessageHtml(item);
-      const msgNode = node.firstElementChild;
-      if (msgNode) chatList.appendChild(msgNode);
+      node.innerHTML = timeDiv + renderMessageHtml(item);
+      const msgNode = node.lastElementChild;
+      if (msgNode) {
+        // 添加时间戳到消息元素，用于后续比较
+        msgNode.dataset.timestamp = item.createdAt;
+        chatList.appendChild(msgNode);
+        // 如果有时间间隔线，也添加到聊天列表
+        if (timeDiv) {
+          const timeNode = node.firstElementChild;
+          if (timeNode) {
+            chatList.insertBefore(timeNode, msgNode);
+          }
+        }
+      }
       chatList.scrollTop = chatList.scrollHeight;
       initHlsPlayers(msgNode || node);
     };
@@ -821,25 +1598,82 @@
       });
     };
 
-    const toggleMsgMenu = (button) => {
+    const toggleMsgMenu = (bubble, event) => {
+      // 如果点击的是菜单内的按钮，不执行切换操作
+      if (event && event.target.closest('.msg-menu')) {
+        return;
+      }
       // 关闭所有其他菜单
       document.querySelectorAll('.msg-menu.show').forEach(menu => {
-        if (menu !== button.nextElementSibling) {
+        const currentMenu = bubble.querySelector('.msg-menu');
+        if (menu !== currentMenu) {
           menu.classList.remove('show');
         }
       });
       // 切换当前菜单
-      const menu = button.nextElementSibling;
-      menu.classList.toggle('show');
+      const menu = bubble.querySelector('.msg-menu');
+      if (menu) {
+        menu.classList.toggle('show');
+      }
     };
 
     // 点击其他地方关闭菜单和删除确认面板
     document.addEventListener('click', (e) => {
-      if (!e.target.closest('.msg-actions') && !e.target.closest('#deleteConfirmPanel')) {
+      if (!e.target.closest('.msg-actions') && !e.target.closest('.msg-bubble') && !e.target.closest('#deleteConfirmPanel')) {
         document.querySelectorAll('.msg-menu.show').forEach(menu => {
           menu.classList.remove('show');
         });
         closeDeleteConfirm();
+      }
+    });
+
+    // 滚动加载更多历史消息
+    if (chatList) {
+      chatList.addEventListener('scroll', () => {
+        if (chatList.scrollTop === 0 && hasMoreHistory && !loadingHistory) {
+          loadMoreHistory();
+        }
+      });
+    }
+
+    // 处理管理菜单点击
+    if (adminMenu) {
+      adminMenu.addEventListener('click', (e) => {
+        const target = e.target;
+        if (target.dataset.action === 'chat-settings') {
+          e.stopPropagation();
+          if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'get_chat_settings' }));
+          }
+          chatSettingsPanel.classList.remove('hidden');
+          requestAnimationFrame(() => positionPopover(chatSettingsPanel, adminMenuBtn));
+        }
+      });
+    }
+
+    // 保存聊天设置
+    if (chatSettingsSave) {
+      chatSettingsSave.addEventListener('click', () => {
+        if (!ws || ws.readyState !== WebSocket.OPEN) {
+          showHint('未连接服务器');
+          return;
+        }
+        const keepDays = Number(chatKeepDays.value || 0);
+        const maxHistory = Number(chatMaxHistory.value || 30);
+        ws.send(JSON.stringify({ 
+          type: 'set_chat_settings', 
+          keepDays, 
+          maxHistory 
+        }));
+        chatSettingsPanel.classList.add('hidden');
+        showHint('保存成功');
+      });
+    }
+
+    // 点击其他地方关闭聊天设置面板
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('#chatSettingsPanel') && !e.target.closest('[data-action="chat-settings"]')) {
+        chatSettingsPanel.classList.add('hidden');
       }
     });
 
@@ -997,8 +1831,25 @@
         }
         if (data.type === "history") {
           historyLoaded = true;
-          serverMeta.textContent = `历史消息：共 ${data.data.length} 条`;
-          renderMessages(data.data);
+          if (data.before) {
+            // 分页加载的历史消息
+            serverMeta.textContent = `历史消息：加载中...`;
+            renderMessages(data.data, true);
+            hasMoreHistory = data.hasMore;
+            earliestMessageTime = data.before;
+            loadingHistory = false;
+          } else {
+            // 初始加载的历史消息
+            serverMeta.textContent = `历史消息：共 ${data.data.length} 条`;
+            renderMessages(data.data);
+            hasMoreHistory = data.data.length > 0;
+            if (data.data.length > 0) {
+              earliestMessageTime = data.data[0].createdAt;
+            }
+          }
+        }
+        if (data.type === "chat_settings") {
+          setChatSettings(data.data);
         }
         if (data.type === "message") {
           if (!historyLoaded) return;
@@ -1116,7 +1967,7 @@
     }
 
     // 点击删除按钮时显示确认面板
-    chatList.addEventListener('click', (e) => {
+    document.addEventListener('click', (e) => {
       if (e.target.dataset.action === 'delete') {
         e.stopPropagation();
         const messageId = e.target.closest('.msg').dataset.id;

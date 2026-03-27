@@ -3,12 +3,11 @@ const { ObjectId } = require("mongodb");
 const client = require("./mongo");
 
 const DB_NAME = process.env.MONGODB_DB || undefined;
-const MAX_HISTORY = 200;
 const MAX_MESSAGE_LENGTH = 500;
-const CHAT_KEEP_DAYS = 30;
 const SETTINGS_COLLECTION = "chat_settings";
 const ANNOUNCE_KEY = "chat_announcement";
 const RULES_KEY = "chat_rules";
+const CHAT_SETTINGS_KEY = "chat_settings";
 
 const getDb = async () => {
   await client.connect();
@@ -34,20 +33,40 @@ const getUserByToken = async (token) => {
   return { user, session };
 };
 
-const cleanupOldMessages = async () => {
+const getChatSettings = async () => {
   const db = await getDb();
-  const cutoff = Date.now() - CHAT_KEEP_DAYS * 24 * 60 * 60 * 1000;
-  await db.collection("chat_messages").deleteMany({ createdAt: { $lt: cutoff } });
+  const doc = await db.collection(SETTINGS_COLLECTION).findOne({ key: CHAT_SETTINGS_KEY });
+  return {
+    keepDays: Number(doc?.keepDays || 0), // 0 表示永久保存
+    maxHistory: Number(doc?.maxHistory || 30), // 每次加载的最大消息数
+  };
 };
 
-const loadHistory = async () => {
+const cleanupOldMessages = async () => {
+  const db = await getDb();
+  const settings = await getChatSettings();
+  if (settings.keepDays > 0) {
+    const cutoff = Date.now() - settings.keepDays * 24 * 60 * 60 * 1000;
+    await db.collection("chat_messages").deleteMany({ createdAt: { $lt: cutoff } });
+  }
+};
+
+const loadHistory = async (before = null, limit = null) => {
   const db = await getDb();
   await cleanupOldMessages();
+  const settings = await getChatSettings();
+  const maxLimit = limit || settings.maxHistory || 30;
+  
+  let query = {};
+  if (before) {
+    query.createdAt = { $lt: before };
+  }
+  
   const list = await db
     .collection("chat_messages")
-    .find({})
+    .find(query)
     .sort({ createdAt: -1 })
-    .limit(MAX_HISTORY)
+    .limit(maxLimit)
     .toArray();
   return list.reverse();
 };
@@ -514,6 +533,46 @@ const initChatWSS = (server) => {
         if (!ws.isAuthed || !ws.user || ws.user.role !== "admin") return;
         const result = await setRules(data.rules || {});
         broadcast({ type: "rules", data: result });
+      }
+
+      if (data.type === "set_chat_settings") {
+        if (!ws.isAuthed || !ws.user || ws.user.role !== "admin") return;
+        const db = await getDb();
+        await db.collection(SETTINGS_COLLECTION).updateOne(
+          { key: CHAT_SETTINGS_KEY },
+          { $set: { 
+            key: CHAT_SETTINGS_KEY, 
+            keepDays: Number(data.keepDays || 0),
+            maxHistory: Number(data.maxHistory || 30),
+            updatedAt: new Date() 
+          } },
+          { upsert: true }
+        );
+        const settings = await getChatSettings();
+        broadcast({ type: "chat_settings", data: settings });
+      }
+
+      if (data.type === "get_chat_settings") {
+        if (!ws.isAuthed || !ws.user || ws.user.role !== "admin") return;
+        const settings = await getChatSettings();
+        ws.send(JSON.stringify({ type: "chat_settings", data: settings }));
+      }
+
+      if (data.type === "load_history") {
+        if (!ws.isAuthed || !ws.user) return;
+        const before = data.before ? Number(data.before) : null;
+        const limit = data.limit ? Number(data.limit) : null;
+        const history = await loadHistory(before, limit);
+        ws.send(JSON.stringify({
+          type: "history",
+          data: history.map((item) => ({
+            ...item,
+            _id: String(item._id),
+            userId: String(item.userId || ""),
+          })),
+          before: history.length > 0 ? history[0].createdAt : null,
+          hasMore: history.length > 0,
+        }));
       }
     });
 
