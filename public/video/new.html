@@ -108,7 +108,7 @@
             position: absolute;
             right: 15px;
             bottom: 100px;
-            z-index: 3;
+            z-index: 20;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -282,7 +282,7 @@
                 <i class="fa fa-info-circle text-gray-400"></i>
                 <span>关于</span>
             </button>
-            <button onclick="window.location.href = '/user/member/feedback/'" class="flex items-center space-x-2">
+            <button onclick="window.open('/user/member/feedback/', '_blank')" class="flex items-center space-x-2">
                 <i class="fa fa-comment text-blue-400"></i>
                 <span>用户反馈</span>
             </button>
@@ -970,7 +970,7 @@
                 <p class="text-xs text-white/60 -mt-2">开启后会搜索官方推荐的所有接口</p>
 
                 <div class="flex items-center justify-between">
-                    <label class="block text-sm font-medium text-white/70">聚合接口选择（🌈已选 <span id="aggregateSelectedCount">0</span>）</label>
+                    <label class="block text-sm font-medium text-white/70">聚合接口选择（🌈当前已选 <span id="aggregateSelectedCount">0</span>）</label>
                     <button 
                         type="button"
                         onclick="toggleAggregateApiSection()"
@@ -981,11 +981,6 @@
                     </button>
                 </div>
                 <div id="aggregateApiSection" class="hidden space-y-2">
-                    <div class="flex space-x-2">
-                        <button onclick="selectAllAggregateApis()" class="bg-white/20 hover:bg-white/30 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 text-xs flex-1">全选</button>
-                        <button onclick="clearAggregateApis()" class="bg-white/20 hover:bg-white/30 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 text-xs flex-1">全不选</button>
-                        <button onclick="resetAggregateApis()" class="bg-white/20 hover:bg-white/30 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 text-xs flex-1">恢复默认</button>
-                    </div>
                     <div class="flex items-center justify-between">
                         <div class="text-xs text-white/60">
                             官方推荐（总数 <span id="officialApiCount">0</span>）
@@ -995,8 +990,22 @@
                         <button id="aggregateTabAdult" type="button" onclick="switchAggregateTab('adult')" class="flex-1 px-2 py-1 rounded-md bg-white/20 text-white">摩西（<span id="officialApiCountAdult">0</span>）</button>
                         <button id="aggregateTabNormal" type="button" onclick="switchAggregateTab('normal')" class="flex-1 px-2 py-1 rounded-md text-white/70">普通（<span id="officialApiCountNormal">0</span>）</button>
                     </div>
-                    <div id="aggregateApiListAdult" class="space-y-2"></div>
-                    <div id="aggregateApiListNormal" class="space-y-2 hidden"></div>
+                    <!-- 摩西接口列表和操作按钮 -->
+                    <div id="aggregateApiListAdult" class="space-y-2">
+                        <div class="flex space-x-2 py-2">
+                            <button onclick="selectAllAggregateApis()" class="bg-white/20 hover:bg-white/30 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 text-xs flex-1">全选</button>
+                            <button onclick="clearAggregateApis()" class="bg-white/20 hover:bg-white/30 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 text-xs flex-1">全不选</button>
+                            <button onclick="resetAggregateApis()" class="bg-white/20 hover:bg-white/30 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 text-xs flex-1">恢复默认</button>
+                        </div>
+                    </div>
+                    <!-- 普通接口列表和操作按钮 -->
+                    <div id="aggregateApiListNormal" class="space-y-2 hidden">
+                        <div class="flex space-x-2 py-2">
+                            <button onclick="selectAllAggregateApis()" class="bg-white/20 hover:bg-white/30 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 text-xs flex-1">全选</button>
+                            <button onclick="clearAggregateApis()" class="bg-white/20 hover:bg-white/30 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 text-xs flex-1">全不选</button>
+                            <button onclick="resetAggregateApis()" class="bg-white/20 hover:bg-white/30 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 text-xs flex-1">恢复默认</button>
+                        </div>
+                    </div>
                     <button onclick="confirmAggregateSelection()" class="bg-primary hover:bg-primary/90 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 text-xs w-full">
                         确认并关闭
                     </button>
@@ -1088,6 +1097,7 @@
         let currentVideoDesc = '';
         let currentVideoClass = '';
         let currentVideoActor = '';
+        let currentAggregateTab = 'adult'; // 当前聚合搜索选中的tab
         let currentVideoYear = '';
         let currentVideoRemarks = '';
         let lastVisitAtStart = null;
@@ -1587,15 +1597,25 @@
                     </div>
                 `;
             };
+            // 操作按钮HTML
+            const actionButtonsHtml = `
+                <div class="flex space-x-2 py-2">
+                    <button onclick="selectAllAggregateApis()" class="bg-white/20 hover:bg-white/30 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 text-xs flex-1">全选</button>
+                    <button onclick="clearAggregateApis()" class="bg-white/20 hover:bg-white/30 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 text-xs flex-1">全不选</button>
+                    <button onclick="resetAggregateApis()" class="bg-white/20 hover:bg-white/30 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 text-xs flex-1">恢复默认</button>
+                </div>
+            `;
             if (aggregateApiListAdult) {
-                aggregateApiListAdult.innerHTML = adultList.length 
+                const adultItemsHtml = adultList.length 
                     ? adultList.map(renderItem).join('')
                     : '<div class="text-xs text-white/60">暂无摩西接口</div>';
+                aggregateApiListAdult.innerHTML = actionButtonsHtml + adultItemsHtml;
             }
             if (aggregateApiListNormal) {
-                aggregateApiListNormal.innerHTML = normalList.length 
+                const normalItemsHtml = normalList.length 
                     ? normalList.map(renderItem).join('')
                     : '<div class="text-xs text-white/60">暂无普通接口</div>';
+                aggregateApiListNormal.innerHTML = actionButtonsHtml + normalItemsHtml;
             }
             updateAggregateSelectedCount();
         }
@@ -1642,35 +1662,65 @@
 
         // 更新聚合选择计数
         function updateAggregateSelectedCount() {
-            const count = getAggregateApiSelection().length;
-            const aggregateSelectedCount = document.getElementById('aggregateSelectedCount');
-            if (aggregateSelectedCount) {
-                aggregateSelectedCount.textContent = String(count);
-            }
+            updateCurrentTabSelectedCount(currentAggregateTab);
         }
 
-        // 全选聚合API
+        // 获取当前选中的聚合标签
+        function getCurrentAggregateTab() {
+            return currentAggregateTab;
+        }
+
+        // 全选聚合API（只选择当前tab的）
         function selectAllAggregateApis() {
             if (!officialApiCache || !Array.isArray(officialApiCache.data)) return;
-            const urls = officialApiCache.data.map(item => item.url).filter(Boolean);
-            const names = officialApiCache.data.map(item => item.name || '').filter(Boolean);
-            localStorage.setItem('aggregateApiSelection', JSON.stringify(urls));
-            localStorage.setItem('aggregateApiSelectionNames', JSON.stringify(names));
+            const filtered = officialApiCache.data.filter(item => normalizeCategory(item.category) === currentAggregateTab);
+            const urls = filtered.map(item => item.url).filter(Boolean);
+            const names = filtered.map(item => item.name || '').filter(Boolean);
+            
+            // 获取当前已选择的其他tab的API
+            const currentSelection = getAggregateApiSelection();
+            const currentSelectionNames = getAggregateApiSelectionNames();
+            const otherTabSelection = currentSelection.filter((url, index) => {
+                const api = officialApiCache.data.find(item => item.url === url);
+                return api && normalizeCategory(api.category) !== currentAggregateTab;
+            });
+            const otherTabSelectionNames = currentSelectionNames.filter((name, index) => {
+                const api = officialApiCache.data.find(item => item.url === currentSelection[index]);
+                return api && normalizeCategory(api.category) !== currentAggregateTab;
+            });
+            
+            // 合并选择
+            const newSelection = [...otherTabSelection, ...urls];
+            const newSelectionNames = [...otherTabSelectionNames, ...names];
+            
+            localStorage.setItem('aggregateApiSelection', JSON.stringify(newSelection));
+            localStorage.setItem('aggregateApiSelectionNames', JSON.stringify(newSelectionNames));
             renderAggregateApiSelection(officialApiCache.data);
         }
 
-        // 清空聚合API选择
+        // 清空聚合API选择（只清空当前tab的）
         function clearAggregateApis() {
-            localStorage.removeItem('aggregateApiSelection');
-            localStorage.removeItem('aggregateApiSelectionNames');
-            if (officialApiCache && Array.isArray(officialApiCache.data)) {
-                renderAggregateApiSelection(officialApiCache.data);
-            }
+            if (!officialApiCache || !Array.isArray(officialApiCache.data)) return;
+            
+            // 获取当前已选择的其他tab的API
+            const currentSelection = getAggregateApiSelection();
+            const currentSelectionNames = getAggregateApiSelectionNames();
+            const otherTabSelection = currentSelection.filter((url, index) => {
+                const api = officialApiCache.data.find(item => item.url === url);
+                return api && normalizeCategory(api.category) !== currentAggregateTab;
+            });
+            const otherTabSelectionNames = currentSelectionNames.filter((name, index) => {
+                const api = officialApiCache.data.find(item => item.url === currentSelection[index]);
+                return api && normalizeCategory(api.category) !== currentAggregateTab;
+            });
+            
+            localStorage.setItem('aggregateApiSelection', JSON.stringify(otherTabSelection));
+            localStorage.setItem('aggregateApiSelectionNames', JSON.stringify(otherTabSelectionNames));
+            renderAggregateApiSelection(officialApiCache.data);
         }
 
-        // 重置聚合API选择
+        // 重置聚合API选择（只重置当前tab的）
         function resetAggregateApis() {
-            // 这里可以实现默认选择逻辑
             clearAggregateApis();
         }
 
@@ -1710,6 +1760,7 @@
 
         // 切换聚合标签
         function switchAggregateTab(type) {
+            currentAggregateTab = type;
             const aggregateApiListAdult = document.getElementById('aggregateApiListAdult');
             const aggregateApiListNormal = document.getElementById('aggregateApiListNormal');
             const aggregateTabAdult = document.getElementById('aggregateTabAdult');
@@ -1725,6 +1776,20 @@
                 aggregateTabNormal.classList.toggle('bg-white/20', type === 'normal');
                 aggregateTabNormal.classList.toggle('text-white', type === 'normal');
                 aggregateTabNormal.classList.toggle('text-white/70', type !== 'normal');
+            }
+            // 更新当前tab的选中计数
+            updateCurrentTabSelectedCount(type);
+        }
+
+        // 更新当前tab的选中计数
+        function updateCurrentTabSelectedCount(type) {
+            if (!officialApiCache || !Array.isArray(officialApiCache.data)) return;
+            const selectedUrls = getAggregateApiSelection();
+            const currentTabApis = officialApiCache.data.filter(item => normalizeCategory(item.category) === type);
+            const currentTabSelectedCount = currentTabApis.filter(item => selectedUrls.includes(item.url)).length;
+            const aggregateSelectedCount = document.getElementById('aggregateSelectedCount');
+            if (aggregateSelectedCount) {
+                aggregateSelectedCount.textContent = String(currentTabSelectedCount);
             }
         }
 
@@ -2863,7 +2928,7 @@
                     <div class="video-player-container" id="player-${index}"></div>
                     ${pic ? `<img src="${pic}" alt="${title}" class="video-cover">` : ''}
                     <div class="play-button" onclick="playVideoAtIndex(${index})"><i class="fa fa-play"></i></div>
-                    <div class="video-info" style="z-index: 100; position: absolute; bottom: 80px; left: 10px; right: 80px; padding: 10px; border-radius: 8px;">
+                    <div class="video-info" style="z-index: 10; position: absolute; bottom: 20px; left: 10px; right: 80px; padding: 10px; border-radius: 8px;">
                         <div class="flex items-center gap-2 mb-2">
                             ${year ? `<span class="text-xs bg-amber-500/30 text-white px-2 py-0.5 rounded">${year}</span>` : ''}
                         </div>

@@ -17,6 +17,23 @@ router.get("/", async (ctx) => {
     ctx.redirect("/index.html");
 });
 
+// 51cg 路径重定向到 API
+router.get("/51cg", async (ctx) => {
+    ctx.redirect("/api/51cg");
+});
+
+router.get("/51cg/:param1", async (ctx) => {
+    ctx.redirect(`/api/51cg/${ctx.params.param1}`);
+});
+
+router.get("/51cg/:param1/:param2", async (ctx) => {
+    ctx.redirect(`/api/51cg/${ctx.params.param1}/${ctx.params.param2}`);
+});
+
+router.get("/51cg/:param1/:param2/:param3", async (ctx) => {
+    ctx.redirect(`/api/51cg/${ctx.params.param1}/${ctx.params.param2}/${ctx.params.param3}`);
+});
+
 function registerRoutes(folderPath, router, allRouterInfo, folderName) {
     try {
         if (fs.existsSync(folderPath)) {

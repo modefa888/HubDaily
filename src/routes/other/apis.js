@@ -154,7 +154,7 @@ apisRouter.get("/apis/official", async (ctx) => {
 });
 
 // 校验访问密码
-apisRouter.get("/apis/video/pass", async (ctx) => {
+apisRouter.get("/video/pass", async (ctx) => {
     const password = String(ctx.query.password || "");
     const ok = password === videoAccessPassword;
     ctx.body = {

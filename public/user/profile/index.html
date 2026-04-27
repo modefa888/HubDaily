@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/dplayer/dist/DPlayer.min.css">
     <script src="https://cdn.jsdelivr.net/npm/dplayer/dist/DPlayer.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
     <style>
       html {
         scrollbar-gutter: stable;
@@ -18,313 +19,469 @@
       body.drawer-open {
         overflow: hidden;
       }
+      .toast {
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 12px 24px;
+        border-radius: 12px;
+        color: white;
+        font-size: 14px;
+        z-index: 1000;
+        animation: toastFadeIn 0.3s ease-out;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+      }
+      .toast-success {
+        background: linear-gradient(135deg, #10b981, #059669);
+      }
+      .toast-error {
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+      }
+      .toast-info {
+        background: linear-gradient(135deg, #3b82f6, #2563eb);
+      }
+      @keyframes toastFadeIn {
+        from {
+          opacity: 0;
+          transform: translateX(-50%) translateY(-10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(-50%) translateY(0);
+        }
+      }
+      .skeleton {
+        background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+        background-size: 200% 100%;
+        animation: skeleton-loading 1.5s infinite;
+      }
+      @keyframes skeleton-loading {
+        0% {
+          background-position: 200% 0;
+        }
+        100% {
+          background-position: -200% 0;
+        }
+      }
+      .scrollbar-thin::-webkit-scrollbar {
+        width: 6px;
+      }
+      .scrollbar-thin::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .scrollbar-thin::-webkit-scrollbar-thumb {
+        background: #d1d5db;
+        border-radius: 3px;
+      }
+      .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+        background: #9ca3af;
+      }
     </style>
   </head>
-  <body class="bg-slate-100 text-slate-800 min-h-screen">
-    <div class="min-h-screen flex flex-col">
-      <nav class="bg-white border-b shadow-sm fixed top-0 left-0 right-0 z-40">
+  <body class="bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 min-h-screen">
+    <!-- 背景装饰 -->
+    <div class="fixed inset-0 overflow-hidden pointer-events-none">
+      <div class="absolute -top-40 -right-40 w-80 h-80 bg-blue-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-pulse"></div>
+      <div class="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-pulse" style="animation-delay: 1s;"></div>
+    </div>
+
+    <div class="min-h-screen flex flex-col relative">
+      <!-- 顶部导航 -->
+      <nav class="bg-white/80 backdrop-blur-lg border-b border-slate-200/50 shadow-sm fixed top-0 left-0 right-0 z-40">
         <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div class="flex items-center gap-2">
-            <button id="mobileMenuBtn" class="md:hidden px-2 py-1 rounded border text-slate-600">菜单</button>
-            <div class="text-lg font-semibold">个人中心</div>
+          <div class="flex items-center gap-3">
+            <button id="mobileMenuBtn" class="md:hidden p-2 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors">
+              <i class="fa fa-bars"></i>
+            </button>
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                <i class="fa fa-user text-white text-sm"></i>
+              </div>
+              <div class="text-lg font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">个人中心</div>
+            </div>
           </div>
-          <div class="flex items-center space-x-2">
-            <a href="/index.html" class="text-sm text-blue-600 hover:underline">返回首页</a>
-            <button id="logoutBtn" class="px-3 py-1.5 rounded bg-slate-800 text-white text-sm">退出</button>
+          <div class="flex items-center space-x-3">
+            <a href="/index.html" class="text-sm text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1">
+              <i class="fa fa-home"></i>
+              <span>返回首页</span>
+            </a>
+            <button id="logoutBtn" class="px-4 py-2 rounded-lg bg-gradient-to-r from-slate-700 to-slate-800 text-white text-sm font-medium hover:from-slate-800 hover:to-slate-900 transition-all shadow-md hover:shadow-lg">
+              <i class="fa fa-sign-out mr-1"></i>退出
+            </button>
           </div>
         </div>
       </nav>
 
-      <div id="sideNavOverlay" class="fixed inset-0 bg-black/40 hidden md:hidden z-30"></div>
+      <!-- 侧边栏遮罩 -->
+      <div id="sideNavOverlay" class="fixed inset-0 bg-black/30 backdrop-blur-sm hidden z-30"></div>
+
+      <!-- 主内容区 -->
       <div class="flex flex-1 pt-14">
-        <aside id="sideNav" class="w-52 bg-white border-r p-3 space-y-2 fixed top-14 bottom-0 left-0 overflow-y-auto transform -translate-x-full md:translate-x-0 transition-transform duration-200 z-40">
-          <button class="module-tab w-full text-left px-3 py-2 rounded text-sm bg-slate-800 text-white" data-module-target="profile">账号信息</button>
-          <button class="module-tab w-full text-left px-3 py-2 rounded text-sm bg-slate-200 text-slate-700" data-module-target="favorites">喜欢列表</button>
-          <button class="module-tab w-full text-left px-3 py-2 rounded text-sm bg-slate-200 text-slate-700" data-module-target="articleFavorites">文章收藏</button>
-          <button class="module-tab w-full text-left px-3 py-2 rounded text-sm bg-slate-200 text-slate-700" data-module-target="shares">分享列表</button>
+        <!-- 侧边导航 -->
+        <aside id="sideNav" class="w-52 bg-white/80 backdrop-blur-lg border-r border-slate-200/50 p-4 space-y-2 fixed top-14 bottom-0 left-0 overflow-y-auto transform -translate-x-full md:translate-x-0 transition-transform duration-200 z-40">
+          <div class="text-xs text-slate-400 uppercase tracking-wider px-3 mb-2">菜单</div>
+          <button class="module-tab w-full text-left px-4 py-3 rounded-xl text-sm font-medium bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25 transition-all" data-module-target="profile">
+            <i class="fa fa-user-circle mr-2"></i>账号信息
+          </button>
+          <button class="module-tab w-full text-left px-4 py-3 rounded-xl text-sm font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 hover:shadow-md transition-all" data-module-target="favorites">
+            <i class="fa fa-heart mr-2"></i>喜欢列表
+          </button>
+          <button class="module-tab w-full text-left px-4 py-3 rounded-xl text-sm font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 hover:shadow-md transition-all" data-module-target="articleFavorites">
+            <i class="fa fa-bookmark mr-2"></i>文章收藏
+          </button>
+          <button class="module-tab w-full text-left px-4 py-3 rounded-xl text-sm font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 hover:shadow-md transition-all" data-module-target="shares">
+            <i class="fa fa-share-alt mr-2"></i>分享列表
+          </button>
         </aside>
 
-        <main class="flex-1 p-4 ml-0 md:ml-52">
-          <div id="appContent" class="max-w-6xl mx-auto space-y-6">
+        <!-- 主内容 -->
+        <main class="flex-1 p-4 md:p-6 ml-0 md:ml-52">
+          <div id="appContent" class="max-w-4xl mx-auto space-y-6">
 
-            <section class="module-section bg-white rounded-xl shadow p-4 space-y-4" data-module="profile">
+            <!-- 账号信息模块 -->
+            <section class="module-section bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl shadow-slate-200/50 p-6 space-y-6" data-module="profile">
               <div class="flex items-center justify-between">
-                <h2 class="font-semibold">账号信息</h2>
-                <span id="profileStatus" class="text-xs text-slate-500">加载中...</span>
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+                    <i class="fa fa-user text-white"></i>
+                  </div>
+                  <h2 class="text-xl font-bold text-slate-800">账号信息</h2>
+                </div>
+                <span id="profileStatus" class="text-xs px-3 py-1 rounded-full bg-slate-100 text-slate-500">加载中...</span>
               </div>
               
-              <!-- 账号信息骨架屏 -->
+              <!-- 骨架屏 -->
               <div id="profileSkeleton" class="space-y-4">
-                <div class="h-8 bg-slate-200 rounded animate-pulse"></div>
+                <div class="h-8 skeleton rounded-lg"></div>
                 <div class="border-t border-slate-100 pt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <div class="h-4 bg-slate-200 rounded w-20 mb-2 animate-pulse"></div>
-                    <div class="h-8 bg-slate-200 rounded animate-pulse"></div>
+                    <div class="h-4 skeleton rounded w-20 mb-2"></div>
+                    <div class="h-10 skeleton rounded-xl"></div>
                   </div>
                   <div>
-                    <div class="h-4 bg-slate-200 rounded w-24 mb-2 animate-pulse"></div>
+                    <div class="h-4 skeleton rounded w-24 mb-2"></div>
                     <div class="flex items-center gap-3">
-                      <div class="w-12 h-12 bg-slate-200 rounded-full animate-pulse"></div>
-                      <div class="flex-1 h-8 bg-slate-200 rounded animate-pulse"></div>
+                      <div class="w-14 h-14 skeleton rounded-full"></div>
+                      <div class="flex-1 h-10 skeleton rounded-xl"></div>
                     </div>
                   </div>
                   <div class="md:col-span-2">
-                    <div class="h-4 bg-slate-200 rounded w-24 mb-2 animate-pulse"></div>
-                    <div class="h-24 bg-slate-200 rounded animate-pulse"></div>
+                    <div class="h-4 skeleton rounded w-24 mb-2"></div>
+                    <div class="h-24 skeleton rounded-xl"></div>
                   </div>
-                  <div class="md:col-span-2 h-4 bg-slate-200 rounded w-64 animate-pulse"></div>
+                  <div class="md:col-span-2 h-4 skeleton rounded w-64"></div>
                 </div>
                 <div class="border-t border-slate-100 pt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <div class="h-4 bg-slate-200 rounded w-20 mb-2 animate-pulse"></div>
-                    <div class="h-8 bg-slate-200 rounded animate-pulse"></div>
+                    <div class="h-4 skeleton rounded w-20 mb-2"></div>
+                    <div class="h-10 skeleton rounded-xl"></div>
                   </div>
                   <div class="flex items-end">
-                    <div class="h-8 bg-slate-200 rounded w-32 animate-pulse"></div>
+                    <div class="h-10 skeleton rounded-xl w-32"></div>
+                  </div>
+                </div>
+                <div class="border-t border-slate-100 pt-4">
+                  <div class="h-5 skeleton rounded w-32 mb-4"></div>
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="h-10 skeleton rounded-xl"></div>
+                    <div class="h-10 skeleton rounded-xl"></div>
+                    <div class="h-10 skeleton rounded-xl"></div>
+                    <div class="flex items-end">
+                      <div class="h-10 skeleton rounded-xl w-32"></div>
+                    </div>
                   </div>
                 </div>
               </div>
               
-              <div id="profileContent" class="hidden space-y-4">
-                <div id="profileSummary" class="text-sm text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2"></div>
+              <!-- 实际内容 -->
+              <div id="profileContent" class="hidden space-y-6">
+                <div id="profileSummary" class="text-sm text-slate-600 bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200/50 rounded-xl px-4 py-3"></div>
 
-                <div class="border-t border-slate-100 pt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <label class="text-xs text-slate-500">昵称</label>
-                    <input id="editNickname" class="mt-1 w-full border rounded px-3 py-2" placeholder="请输入昵称">
-                  </div>
-                  <div>
-                    <label class="text-xs text-slate-500">头像链接</label>
-                    <div class="mt-1 flex items-center gap-3">
-                      <img id="avatarPreview" src="/loading.gif" alt="avatar" class="w-12 h-12 rounded-full object-cover border border-slate-200 bg-slate-100" onerror="this.src='/loading.gif'">
-                      <input id="editAvatar" class="w-full border rounded px-3 py-2" placeholder="https://...">
-                    </div>
-                  </div>
-                  <div class="md:col-span-2">
-                    <label class="text-xs text-slate-500">个人备注</label>
-                    <textarea id="editProfileNote" rows="3" class="mt-1 w-full border rounded px-3 py-2" placeholder="填写个人备注"></textarea>
-                  </div>
-                  <div class="md:col-span-2 text-xs text-slate-500">账号/角色/创建时间等关键字段不可修改</div>
-                </div>
-
-                <div class="border-t border-slate-100 pt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <label class="text-xs text-slate-500">旧密码</label>
-                    <input id="oldPassword" type="password" class="mt-1 w-full border rounded px-3 py-2" placeholder="输入旧密码">
-                  </div>
-                  <div class="flex items-end">
-                    <button id="verifyPasswordBtn" class="px-4 py-2 rounded bg-slate-800 text-white text-sm">验证旧密码</button>
-                  </div>
-                  <div id="newPasswordFields" class="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 hidden">
+                <div class="border-t border-slate-100 pt-4 space-y-4">
+                  <h3 class="font-semibold text-slate-800 flex items-center gap-2">
+                    <i class="fa fa-user-edit text-blue-500"></i>基本信息
+                  </h3>
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                     <div>
-                      <label class="text-xs text-slate-500">新密码</label>
-                      <input id="newPassword" type="password" class="mt-1 w-full border rounded px-3 py-2" placeholder="输入新密码">
+                      <label class="block text-xs text-slate-500 mb-2">昵称</label>
+                      <input id="editNickname" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all" placeholder="请输入昵称">
                     </div>
                     <div>
-                      <label class="text-xs text-slate-500">确认新密码</label>
-                      <input id="newPasswordConfirm" type="password" class="mt-1 w-full border rounded px-3 py-2" placeholder="再次输入新密码">
+                      <label class="block text-xs text-slate-500 mb-2">头像链接</label>
+                      <div class="flex items-center gap-3">
+                        <img id="avatarPreview" src="/loading.gif" alt="avatar" class="w-14 h-14 rounded-full object-cover border-2 border-slate-200 bg-slate-100" onerror="this.src='https://via.placeholder.com/56'">
+                        <input id="editAvatar" class="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all" placeholder="https://...">
+                      </div>
                     </div>
                     <div class="md:col-span-2">
-                      <button id="savePasswordBtn" class="px-4 py-2 rounded bg-slate-800 text-white text-sm">修改密码</button>
+                      <label class="block text-xs text-slate-500 mb-2">个人备注</label>
+                      <textarea id="editProfileNote" rows="3" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all resize-none" placeholder="填写个人备注"></textarea>
+                    </div>
+                    <div class="md:col-span-2 text-xs text-slate-500 bg-slate-50 rounded-lg px-3 py-2">
+                      <i class="fa fa-info-circle mr-1"></i>账号/角色/创建时间等关键字段不可修改
                     </div>
                   </div>
                 </div>
 
-                <div class="border-t border-slate-100 pt-4 grid grid-cols-1 gap-4 text-sm">
-                  <h3 class="font-medium">安全问题设置</h3>
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="border-t border-slate-100 pt-4 space-y-4">
+                  <h3 class="font-semibold text-slate-800 flex items-center gap-2">
+                    <i class="fa fa-lock text-blue-500"></i>修改密码
+                  </h3>
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                     <div>
-                      <label class="text-xs text-slate-500">安全问题</label>
-                      <select id="editSecurityQuestion" class="mt-1 w-full border rounded px-3 py-2">
+                      <label class="block text-xs text-slate-500 mb-2">旧密码</label>
+                      <input id="oldPassword" type="password" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all" placeholder="输入旧密码">
+                    </div>
+                    <div class="flex items-end">
+                      <button id="verifyPasswordBtn" class="w-full px-4 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 text-white text-sm font-medium hover:from-blue-600 hover:to-purple-700 transition-all shadow-lg shadow-blue-500/25">
+                        <i class="fa fa-check mr-1"></i>验证旧密码
+                      </button>
+                    </div>
+                    <div id="newPasswordFields" class="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 hidden">
+                      <div>
+                        <label class="block text-xs text-slate-500 mb-2">新密码</label>
+                        <input id="newPassword" type="password" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all" placeholder="输入新密码">
+                      </div>
+                      <div>
+                        <label class="block text-xs text-slate-500 mb-2">确认新密码</label>
+                        <input id="newPasswordConfirm" type="password" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all" placeholder="再次输入新密码">
+                      </div>
+                      <div class="md:col-span-2">
+                        <button id="savePasswordBtn" class="w-full px-4 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white text-sm font-medium hover:from-emerald-600 hover:to-teal-700 transition-all shadow-lg shadow-emerald-500/25">
+                          <i class="fa fa-save mr-1"></i>修改密码
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="border-t border-slate-100 pt-4 space-y-4">
+                  <h3 class="font-semibold text-slate-800 flex items-center gap-2">
+                    <i class="fa fa-question-circle text-blue-500"></i>安全问题设置
+                  </h3>
+                  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                    <div>
+                      <label class="block text-xs text-slate-500 mb-2">安全问题</label>
+                      <select id="editSecurityQuestion" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all appearance-none cursor-pointer">
                         <option value="">请选择安全问题</option>
                       </select>
                     </div>
                     <div>
-                      <label class="text-xs text-slate-500">安全答案</label>
-                      <input id="editSecurityAnswer" type="text" class="mt-1 w-full border rounded px-3 py-2" placeholder="请输入安全答案">
+                      <label class="block text-xs text-slate-500 mb-2">安全答案</label>
+                      <input id="editSecurityAnswer" type="text" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all" placeholder="请输入安全答案">
                     </div>
                     <div>
-                      <label class="text-xs text-slate-500">验证密码</label>
-                      <input id="editSecurityQuestionPassword" type="password" class="mt-1 w-full border rounded px-3 py-2" placeholder="输入密码以验证">
+                      <label class="block text-xs text-slate-500 mb-2">验证密码</label>
+                      <input id="editSecurityQuestionPassword" type="password" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all" placeholder="输入密码以验证">
                     </div>
                   </div>
                   <div class="flex items-center gap-3">
-                    <button id="saveSecurityQuestionBtn" class="px-4 py-2 rounded bg-slate-800 text-white text-sm">保存安全问题</button>
+                    <button id="saveSecurityQuestionBtn" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-sm font-medium hover:from-indigo-600 hover:to-purple-700 transition-all shadow-lg shadow-indigo-500/25">
+                      <i class="fa fa-shield mr-1"></i>保存安全问题
+                    </button>
                     <span id="securityQuestionStatus" class="text-xs text-slate-500"></span>
                   </div>
                 </div>
               </div>
             </section>
 
-            <section class="module-section bg-white rounded-xl shadow p-4 space-y-4 hidden" data-module="favorites">
+            <!-- 喜欢列表模块 -->
+            <section class="module-section bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl shadow-slate-200/50 p-6 space-y-4 hidden" data-module="favorites">
               <div class="flex items-center justify-between">
-                <h2 class="font-semibold">喜欢列表</h2>
                 <div class="flex items-center gap-3">
-                  <span id="favoriteCount" class="text-xs text-slate-500">0</span>
-                  <button class="refresh-btn p-1.5 rounded text-sm text-slate-500 hover:bg-slate-100" data-refresh-target="favorites" title="刷新">↻</button>
+                  <div class="w-10 h-10 bg-gradient-to-br from-pink-500 to-rose-600 rounded-xl flex items-center justify-center">
+                    <i class="fa fa-heart text-white"></i>
+                  </div>
+                  <h2 class="text-xl font-bold text-slate-800">喜欢列表</h2>
+                </div>
+                <div class="flex items-center gap-3">
+                  <span id="favoriteCount" class="text-xs px-3 py-1 rounded-full bg-pink-100 text-pink-600">0</span>
+                  <button class="refresh-btn p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-all" data-refresh-target="favorites" title="刷新">
+                    <i class="fa fa-refresh"></i>
+                  </button>
                 </div>
               </div>
               
-              <!-- 喜欢列表骨架屏 -->
-              <div id="favoritesSkeleton" class="max-h-[70vh] overflow-y-auto pr-1">
+              <!-- 骨架屏 -->
+              <div id="favoritesSkeleton" class="max-h-[60vh] overflow-y-auto pr-2 scrollbar-thin">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div class="favorite-card rounded-lg border border-slate-200 p-3 animate-pulse">
-                    <div class="flex items-start gap-3">
-                      <div class="w-16 h-20 bg-slate-200 rounded animate-pulse"></div>
-                      <div class="flex-1 space-y-2">
-                        <div class="h-4 bg-slate-200 rounded animate-pulse"></div>
-                        <div class="h-3 bg-slate-200 rounded w-3/4 animate-pulse"></div>
-                        <div class="h-3 bg-slate-200 rounded w-1/2 animate-pulse"></div>
+                  <div class="favorite-card rounded-xl border border-slate-200 p-4 skeleton">
+                    <div class="flex items-start gap-4">
+                      <div class="w-20 h-24 skeleton rounded-lg"></div>
+                      <div class="flex-1 space-y-3">
+                        <div class="h-5 skeleton rounded"></div>
+                        <div class="h-4 skeleton rounded w-3/4"></div>
+                        <div class="h-4 skeleton rounded w-1/2"></div>
                       </div>
                     </div>
                   </div>
-                  <div class="favorite-card rounded-lg border border-slate-200 p-3 animate-pulse">
-                    <div class="flex items-start gap-3">
-                      <div class="w-16 h-20 bg-slate-200 rounded animate-pulse"></div>
-                      <div class="flex-1 space-y-2">
-                        <div class="h-4 bg-slate-200 rounded animate-pulse"></div>
-                        <div class="h-3 bg-slate-200 rounded w-3/4 animate-pulse"></div>
-                        <div class="h-3 bg-slate-200 rounded w-1/2 animate-pulse"></div>
+                  <div class="favorite-card rounded-xl border border-slate-200 p-4 skeleton">
+                    <div class="flex items-start gap-4">
+                      <div class="w-20 h-24 skeleton rounded-lg"></div>
+                      <div class="flex-1 space-y-3">
+                        <div class="h-5 skeleton rounded"></div>
+                        <div class="h-4 skeleton rounded w-3/4"></div>
+                        <div class="h-4 skeleton rounded w-1/2"></div>
                       </div>
                     </div>
                   </div>
-                  <div class="favorite-card rounded-lg border border-slate-200 p-3 animate-pulse">
-                    <div class="flex items-start gap-3">
-                      <div class="w-16 h-20 bg-slate-200 rounded animate-pulse"></div>
-                      <div class="flex-1 space-y-2">
-                        <div class="h-4 bg-slate-200 rounded animate-pulse"></div>
-                        <div class="h-3 bg-slate-200 rounded w-3/4 animate-pulse"></div>
-                        <div class="h-3 bg-slate-200 rounded w-1/2 animate-pulse"></div>
+                  <div class="favorite-card rounded-xl border border-slate-200 p-4 skeleton">
+                    <div class="flex items-start gap-4">
+                      <div class="w-20 h-24 skeleton rounded-lg"></div>
+                      <div class="flex-1 space-y-3">
+                        <div class="h-5 skeleton rounded"></div>
+                        <div class="h-4 skeleton rounded w-3/4"></div>
+                        <div class="h-4 skeleton rounded w-1/2"></div>
                       </div>
                     </div>
                   </div>
-                  <div class="favorite-card rounded-lg border border-slate-200 p-3 animate-pulse">
-                    <div class="flex items-start gap-3">
-                      <div class="w-16 h-20 bg-slate-200 rounded animate-pulse"></div>
-                      <div class="flex-1 space-y-2">
-                        <div class="h-4 bg-slate-200 rounded animate-pulse"></div>
-                        <div class="h-3 bg-slate-200 rounded w-3/4 animate-pulse"></div>
-                        <div class="h-3 bg-slate-200 rounded w-1/2 animate-pulse"></div>
+                  <div class="favorite-card rounded-xl border border-slate-200 p-4 skeleton">
+                    <div class="flex items-start gap-4">
+                      <div class="w-20 h-24 skeleton rounded-lg"></div>
+                      <div class="flex-1 space-y-3">
+                        <div class="h-5 skeleton rounded"></div>
+                        <div class="h-4 skeleton rounded w-3/4"></div>
+                        <div class="h-4 skeleton rounded w-1/2"></div>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
               
-              <div id="favoritesContent" class="max-h-[70vh] overflow-y-auto pr-1 hidden">
+              <!-- 实际内容 -->
+              <div id="favoritesContent" class="max-h-[60vh] overflow-y-auto pr-2 scrollbar-thin hidden">
                 <div id="favoriteList" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
               </div>
             </section>
 
-            <section class="module-section bg-white rounded-xl shadow p-4 space-y-4 hidden" data-module="articleFavorites">
+            <!-- 文章收藏模块 -->
+            <section class="module-section bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl shadow-slate-200/50 p-6 space-y-4 hidden" data-module="articleFavorites">
               <div class="flex items-center justify-between">
-                <h2 class="font-semibold">文章收藏</h2>
                 <div class="flex items-center gap-3">
-                  <span id="articleFavoriteStatus" class="text-xs text-slate-500">加载中...</span>
-                  <button class="refresh-btn p-1.5 rounded text-sm text-slate-500 hover:bg-slate-100" data-refresh-target="articleFavorites" title="刷新">↻</button>
+                  <div class="w-10 h-10 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl flex items-center justify-center">
+                    <i class="fa fa-bookmark text-white"></i>
+                  </div>
+                  <h2 class="text-xl font-bold text-slate-800">文章收藏</h2>
+                </div>
+                <div class="flex items-center gap-3">
+                  <span id="articleFavoriteStatus" class="text-xs px-3 py-1 rounded-full bg-amber-100 text-amber-600">加载中...</span>
+                  <button class="refresh-btn p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-all" data-refresh-target="articleFavorites" title="刷新">
+                    <i class="fa fa-refresh"></i>
+                  </button>
                 </div>
               </div>
               
-              <!-- 文章收藏骨架屏 -->
+              <!-- 骨架屏 -->
               <div id="articleFavoritesSkeleton" class="space-y-3">
-                <div class="article-favorite-card rounded-lg border border-slate-200 p-4 animate-pulse">
-                  <div class="flex justify-between items-start mb-2">
-                    <div class="h-4 bg-slate-200 rounded w-1/2 animate-pulse"></div>
-                    <div class="flex gap-2">
-                      <div class="h-4 bg-slate-200 rounded w-16 animate-pulse"></div>
-                      <div class="h-4 bg-slate-200 rounded w-20 animate-pulse"></div>
+                <div class="article-favorite-card rounded-xl border border-slate-200 p-5 skeleton">
+                  <div class="flex justify-between items-start mb-3">
+                    <div class="h-5 skeleton rounded w-1/2"></div>
+                    <div class="flex gap-3">
+                      <div class="h-5 skeleton rounded w-16"></div>
+                      <div class="h-5 skeleton rounded w-20"></div>
                     </div>
                   </div>
-                  <div class="h-3 bg-slate-200 rounded w-1/3 mb-2 animate-pulse"></div>
-                  <div class="h-3 bg-slate-200 rounded w-1/4 mb-2 animate-pulse"></div>
-                  <div class="h-3 bg-slate-200 rounded w-1/2 animate-pulse"></div>
+                  <div class="h-4 skeleton rounded w-1/3 mb-2"></div>
+                  <div class="h-4 skeleton rounded w-1/4 mb-2"></div>
+                  <div class="h-4 skeleton rounded w-1/2"></div>
                 </div>
-                <div class="article-favorite-card rounded-lg border border-slate-200 p-4 animate-pulse">
-                  <div class="flex justify-between items-start mb-2">
-                    <div class="h-4 bg-slate-200 rounded w-1/2 animate-pulse"></div>
-                    <div class="flex gap-2">
-                      <div class="h-4 bg-slate-200 rounded w-16 animate-pulse"></div>
-                      <div class="h-4 bg-slate-200 rounded w-20 animate-pulse"></div>
+                <div class="article-favorite-card rounded-xl border border-slate-200 p-5 skeleton">
+                  <div class="flex justify-between items-start mb-3">
+                    <div class="h-5 skeleton rounded w-1/2"></div>
+                    <div class="flex gap-3">
+                      <div class="h-5 skeleton rounded w-16"></div>
+                      <div class="h-5 skeleton rounded w-20"></div>
                     </div>
                   </div>
-                  <div class="h-3 bg-slate-200 rounded w-1/3 mb-2 animate-pulse"></div>
-                  <div class="h-3 bg-slate-200 rounded w-1/4 mb-2 animate-pulse"></div>
-                  <div class="h-3 bg-slate-200 rounded w-1/2 animate-pulse"></div>
+                  <div class="h-4 skeleton rounded w-1/3 mb-2"></div>
+                  <div class="h-4 skeleton rounded w-1/4 mb-2"></div>
+                  <div class="h-4 skeleton rounded w-1/2"></div>
                 </div>
-                <div class="article-favorite-card rounded-lg border border-slate-200 p-4 animate-pulse">
-                  <div class="flex justify-between items-start mb-2">
-                    <div class="h-4 bg-slate-200 rounded w-1/2 animate-pulse"></div>
-                    <div class="flex gap-2">
-                      <div class="h-4 bg-slate-200 rounded w-16 animate-pulse"></div>
-                      <div class="h-4 bg-slate-200 rounded w-20 animate-pulse"></div>
+                <div class="article-favorite-card rounded-xl border border-slate-200 p-5 skeleton">
+                  <div class="flex justify-between items-start mb-3">
+                    <div class="h-5 skeleton rounded w-1/2"></div>
+                    <div class="flex gap-3">
+                      <div class="h-5 skeleton rounded w-16"></div>
+                      <div class="h-5 skeleton rounded w-20"></div>
                     </div>
                   </div>
-                  <div class="h-3 bg-slate-200 rounded w-1/3 mb-2 animate-pulse"></div>
-                  <div class="h-3 bg-slate-200 rounded w-1/4 mb-2 animate-pulse"></div>
-                  <div class="h-3 bg-slate-200 rounded w-1/2 animate-pulse"></div>
+                  <div class="h-4 skeleton rounded w-1/3 mb-2"></div>
+                  <div class="h-4 skeleton rounded w-1/4 mb-2"></div>
+                  <div class="h-4 skeleton rounded w-1/2"></div>
                 </div>
               </div>
               
+              <!-- 实际内容 -->
               <div id="articleFavoritesContent" class="space-y-3 hidden">
                 <div id="articleFavoriteList" class="space-y-3"></div>
               </div>
             </section>
 
-            <section class="module-section bg-white rounded-xl shadow p-4 space-y-4 hidden" data-module="shares">
+            <!-- 分享列表模块 -->
+            <section class="module-section bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl shadow-slate-200/50 p-6 space-y-4 hidden" data-module="shares">
               <div class="flex items-center justify-between">
-                <h2 class="font-semibold">分享列表</h2>
                 <div class="flex items-center gap-3">
-                  <span id="shareCount" class="text-xs text-slate-500">0</span>
-                  <button class="refresh-btn p-1.5 rounded text-sm text-slate-500 hover:bg-slate-100" data-refresh-target="shares" title="刷新">↻</button>
+                  <div class="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center">
+                    <i class="fa fa-share-alt text-white"></i>
+                  </div>
+                  <h2 class="text-xl font-bold text-slate-800">分享列表</h2>
+                </div>
+                <div class="flex items-center gap-3">
+                  <span id="shareCount" class="text-xs px-3 py-1 rounded-full bg-cyan-100 text-cyan-600">0</span>
+                  <button class="refresh-btn p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-all" data-refresh-target="shares" title="刷新">
+                    <i class="fa fa-refresh"></i>
+                  </button>
                 </div>
               </div>
               
-              <!-- 分享列表骨架屏 -->
-              <div id="sharesSkeleton" class="max-h-[70vh] overflow-y-auto pr-1">
-                <div class="space-y-3">
-                  <div class="share-card rounded-lg border border-slate-200 p-3 animate-pulse">
-                    <div class="flex items-start gap-3">
-                      <div class="w-20 h-28 bg-slate-200 rounded animate-pulse"></div>
-                      <div class="flex-1 space-y-2">
-                        <div class="h-4 bg-slate-200 rounded animate-pulse"></div>
-                        <div class="h-3 bg-slate-200 rounded w-3/4 animate-pulse"></div>
-                        <div class="h-3 bg-slate-200 rounded w-1/2 animate-pulse"></div>
-                        <div class="h-3 bg-slate-200 rounded w-2/3 animate-pulse"></div>
-                        <div class="h-3 bg-slate-200 rounded w-1/2 animate-pulse"></div>
+              <!-- 骨架屏 -->
+              <div id="sharesSkeleton" class="max-h-[60vh] overflow-y-auto pr-2 scrollbar-thin">
+                <div class="space-y-4">
+                  <div class="share-card rounded-xl border border-slate-200 p-4 skeleton">
+                    <div class="flex items-start gap-4">
+                      <div class="w-24 h-32 skeleton rounded-lg"></div>
+                      <div class="flex-1 space-y-3">
+                        <div class="h-5 skeleton rounded"></div>
+                        <div class="h-4 skeleton rounded w-3/4"></div>
+                        <div class="h-4 skeleton rounded w-1/2"></div>
+                        <div class="h-4 skeleton rounded w-2/3"></div>
+                        <div class="h-4 skeleton rounded w-1/2"></div>
                       </div>
                     </div>
-                    <div class="flex items-center gap-3 mt-3">
-                      <div class="h-3 bg-slate-200 rounded w-16 animate-pulse"></div>
-                      <div class="h-3 bg-slate-200 rounded w-16 animate-pulse"></div>
-                      <div class="h-3 bg-slate-200 rounded w-16 animate-pulse"></div>
-                      <div class="h-3 bg-slate-200 rounded w-16 animate-pulse"></div>
-                      <div class="h-3 bg-slate-200 rounded w-16 animate-pulse"></div>
+                    <div class="flex items-center gap-4 mt-4">
+                      <div class="h-4 skeleton rounded w-16"></div>
+                      <div class="h-4 skeleton rounded w-16"></div>
+                      <div class="h-4 skeleton rounded w-16"></div>
+                      <div class="h-4 skeleton rounded w-16"></div>
+                      <div class="h-4 skeleton rounded w-16"></div>
                     </div>
                   </div>
-                  <div class="share-card rounded-lg border border-slate-200 p-3 animate-pulse">
-                    <div class="flex items-start gap-3">
-                      <div class="w-20 h-28 bg-slate-200 rounded animate-pulse"></div>
-                      <div class="flex-1 space-y-2">
-                        <div class="h-4 bg-slate-200 rounded animate-pulse"></div>
-                        <div class="h-3 bg-slate-200 rounded w-3/4 animate-pulse"></div>
-                        <div class="h-3 bg-slate-200 rounded w-1/2 animate-pulse"></div>
-                        <div class="h-3 bg-slate-200 rounded w-2/3 animate-pulse"></div>
-                        <div class="h-3 bg-slate-200 rounded w-1/2 animate-pulse"></div>
+                  <div class="share-card rounded-xl border border-slate-200 p-4 skeleton">
+                    <div class="flex items-start gap-4">
+                      <div class="w-24 h-32 skeleton rounded-lg"></div>
+                      <div class="flex-1 space-y-3">
+                        <div class="h-5 skeleton rounded"></div>
+                        <div class="h-4 skeleton rounded w-3/4"></div>
+                        <div class="h-4 skeleton rounded w-1/2"></div>
+                        <div class="h-4 skeleton rounded w-2/3"></div>
+                        <div class="h-4 skeleton rounded w-1/2"></div>
                       </div>
                     </div>
-                    <div class="flex items-center gap-3 mt-3">
-                      <div class="h-3 bg-slate-200 rounded w-16 animate-pulse"></div>
-                      <div class="h-3 bg-slate-200 rounded w-16 animate-pulse"></div>
-                      <div class="h-3 bg-slate-200 rounded w-16 animate-pulse"></div>
-                      <div class="h-3 bg-slate-200 rounded w-16 animate-pulse"></div>
-                      <div class="h-3 bg-slate-200 rounded w-16 animate-pulse"></div>
+                    <div class="flex items-center gap-4 mt-4">
+                      <div class="h-4 skeleton rounded w-16"></div>
+                      <div class="h-4 skeleton rounded w-16"></div>
+                      <div class="h-4 skeleton rounded w-16"></div>
+                      <div class="h-4 skeleton rounded w-16"></div>
+                      <div class="h-4 skeleton rounded w-16"></div>
                     </div>
                   </div>
                 </div>
               </div>
               
-              <div id="sharesContent" class="max-h-[70vh] overflow-y-auto pr-1 hidden">
-                <div id="shareList" class="space-y-3"></div>
+              <!-- 实际内容 -->
+              <div id="sharesContent" class="max-h-[60vh] overflow-y-auto pr-2 scrollbar-thin hidden">
+                <div id="shareList" class="space-y-4"></div>
               </div>
             </section>
 
@@ -333,41 +490,74 @@
       </div>
     </div>
 
-    <div id="toast" class="fixed top-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-sm px-4 py-2 rounded hidden z-[70]"></div>
+    <!-- Toast提示 -->
+    <div id="toast" class="toast toast-info hidden"></div>
 
-    <div id="profilePlayerModal" class="fixed inset-0 z-[70] hidden items-center justify-center bg-black/70 p-4">
-      <div class="bg-white rounded-xl shadow-xl w-full max-w-4xl p-4 space-y-3">
+    <!-- 确认删除弹窗 -->
+    <div id="confirmModal" class="fixed inset-0 z-[70] hidden items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+        <div class="text-center">
+          <div class="w-14 h-14 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-3">
+            <i class="fa fa-exclamation-triangle text-amber-600 text-xl"></i>
+          </div>
+          <h3 class="font-semibold text-slate-800">确认操作</h3>
+          <p id="confirmMessage" class="text-sm text-slate-600 mt-2"></p>
+        </div>
+        <div class="flex items-center justify-center gap-3">
+          <button id="cancelDeleteBtn" class="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 transition-all">
+            取消
+          </button>
+          <button id="confirmDeleteBtn" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-red-500 to-rose-600 text-white text-sm font-medium hover:from-red-600 hover:to-rose-700 transition-all">
+            确认删除
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 播放器弹窗 -->
+    <div id="profilePlayerModal" class="fixed inset-0 z-[70] hidden items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl p-6 space-y-4">
         <div class="flex items-center justify-between">
           <div id="profilePlayerTitle" class="font-semibold text-slate-800">播放</div>
-          <button id="closeProfilePlayer" class="text-slate-500">✕</button>
+          <button id="closeProfilePlayer" class="p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-all">
+            <i class="fa fa-times"></i>
+          </button>
         </div>
-        <div id="profilePlayerContainer" class="w-full aspect-video bg-black rounded overflow-hidden"></div>
+        <div id="profilePlayerContainer" class="w-full aspect-video bg-black rounded-xl overflow-hidden"></div>
         <div class="text-xs text-slate-500">如无法播放，可复制链接到新窗口播放。</div>
       </div>
     </div>
 
-    <div id="renewModal" class="fixed inset-0 z-[70] hidden items-center justify-center bg-black/50 p-4">
-      <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-4 space-y-4">
+    <!-- 续签弹窗 -->
+    <div id="renewModal" class="fixed inset-0 z-[70] hidden items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-5">
         <div class="flex items-center justify-between">
-          <div class="font-semibold text-slate-800">续签分享</div>
-          <button id="closeRenewModal" class="text-slate-500">✕</button>
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
+              <i class="fa fa-clock text-white"></i>
+            </div>
+            <h3 class="font-semibold text-slate-800">续签分享</h3>
+          </div>
+          <button id="closeRenewModal" class="p-2 rounded-lg text-slate-500 hover:bg-slate-100 transition-all">
+            <i class="fa fa-times"></i>
+          </button>
         </div>
-        <div class="space-y-3 text-sm">
+        <div class="space-y-4 text-sm">
           <div class="flex flex-wrap gap-2">
-            <button class="renew-quick px-2 py-1 rounded border text-slate-600" data-seconds="1800">30分钟</button>
-            <button class="renew-quick px-2 py-1 rounded border text-slate-600" data-seconds="7200">2小时</button>
-            <button class="renew-quick px-2 py-1 rounded border text-slate-600" data-seconds="86400">1天</button>
-            <button class="renew-quick px-2 py-1 rounded border text-slate-600" data-seconds="604800">7天</button>
-            <button class="renew-quick px-2 py-1 rounded border text-slate-600" data-seconds="2592000">30天</button>
-            <button class="renew-quick px-2 py-1 rounded border text-slate-600" data-seconds="0">永久</button>
+            <button class="renew-quick px-3 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-blue-300 hover:text-blue-600 transition-all" data-seconds="1800">30分钟</button>
+            <button class="renew-quick px-3 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-blue-300 hover:text-blue-600 transition-all" data-seconds="7200">2小时</button>
+            <button class="renew-quick px-3 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-blue-300 hover:text-blue-600 transition-all" data-seconds="86400">1天</button>
+            <button class="renew-quick px-3 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-blue-300 hover:text-blue-600 transition-all" data-seconds="604800">7天</button>
+            <button class="renew-quick px-3 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-blue-300 hover:text-blue-600 transition-all" data-seconds="2592000">30天</button>
+            <button class="renew-quick px-3 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-blue-300 hover:text-blue-600 transition-all" data-seconds="0">永久</button>
           </div>
           <div class="grid grid-cols-2 gap-3">
             <label class="text-xs text-slate-500">自定义（分钟）</label>
-            <input id="renewCustomMinutes" type="number" min="1" class="border rounded px-2 py-1 text-sm" placeholder="例如 90">
+            <input id="renewCustomMinutes" type="number" min="1" class="px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all" placeholder="例如 90">
           </div>
           <div class="grid grid-cols-2 gap-3">
-            <label class="text-xs text-slate-500">选择</label>
-            <select id="renewSelect" class="border rounded px-2 py-1 text-sm">
+            <label class="text-xs text-slate-500">选择时长</label>
+            <select id="renewSelect" class="px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all appearance-none cursor-pointer">
               <option value="1800">30分钟</option>
               <option value="7200">2小时</option>
               <option value="86400">1天</option>
@@ -377,40 +567,80 @@
             </select>
           </div>
         </div>
-        <div class="flex items-center justify-between">
-          <button id="pauseShareBtn" class="text-rose-600 text-sm">暂停分享</button>
-          <div class="flex items-center gap-2">
-            <button id="confirmRenewBtn" class="px-3 py-1.5 rounded bg-indigo-600 text-white text-sm">确认续签</button>
-            <button id="cancelRenewBtn" class="px-3 py-1.5 rounded border text-slate-600 text-sm">取消</button>
+        <div class="flex items-center justify-between pt-2">
+          <button id="pauseShareBtn" class="text-red-600 text-sm font-medium hover:text-red-700 transition-all">暂停分享</button>
+          <div class="flex items-center gap-3">
+            <button id="confirmRenewBtn" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-sm font-medium hover:from-indigo-600 hover:to-purple-700 transition-all">
+              <i class="fa fa-check mr-1"></i>确认续签
+            </button>
+            <button id="cancelRenewBtn" class="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 transition-all">
+              取消
+            </button>
           </div>
         </div>
       </div>
     </div>
 
-    <div id="episodeModal" class="fixed inset-0 z-[70] hidden items-center justify-center bg-black/50 p-4">
-      <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-4 space-y-4">
+    <!-- 集数选择弹窗 -->
+    <div id="episodeModal" class="fixed inset-0 z-[70] hidden items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
         <div class="flex items-center justify-between">
-          <div class="font-semibold text-slate-800">选择集数</div>
-          <button id="closeEpisodeModal" class="text-slate-500">✕</button>
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-lg flex items-center justify-center">
+              <i class="fa fa-list text-white"></i>
+            </div>
+            <h3 class="font-semibold text-slate-800">选择集数</h3>
+          </div>
+          <button id="closeEpisodeModal" class="p-2 rounded-lg text-slate-500 hover:bg-slate-100 transition-all">
+            <i class="fa fa-times"></i>
+          </button>
         </div>
         <div class="max-h-80 overflow-y-auto">
-          <div id="episodeList" class="grid grid-cols-3 gap-2"></div>
+          <div id="episodeList" class="grid grid-cols-3 gap-3"></div>
         </div>
         <div class="flex justify-end">
-          <button id="cancelEpisodeBtn" class="px-3 py-1.5 rounded border text-slate-600 text-sm">取消</button>
+          <button id="cancelEpisodeBtn" class="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 transition-all">
+            取消
+          </button>
         </div>
+      </div>
+    </div>
+
+    <!-- 图片查看器弹窗 -->
+    <div id="imageViewer" class="fixed inset-0 z-[80] hidden items-center justify-center bg-black/90 backdrop-blur-md p-4">
+      <div class="absolute top-4 right-4 flex items-center gap-3">
+        <button id="prevImageBtn" class="p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all">
+          <i class="fa fa-chevron-left"></i>
+        </button>
+        <button id="closeImageViewer" class="p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all">
+          <i class="fa fa-times"></i>
+        </button>
+        <button id="nextImageBtn" class="p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all">
+          <i class="fa fa-chevron-right"></i>
+        </button>
+      </div>
+      <div id="imageViewerContent" class="max-w-full max-h-[80vh] flex items-center justify-center">
+        <img id="viewerImage" src="" alt="" class="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl">
+      </div>
+      <div id="imageViewerTitle" class="absolute bottom-4 left-1/2 -translate-x-1/2 text-white text-sm bg-black/50 px-4 py-2 rounded-full">
       </div>
     </div>
 
     <script>
       const TOKEN_KEY = "userToken";
-      const toast = (msg) => {
+      const getToken = () => localStorage.getItem(TOKEN_KEY) || "";
+      const token = getToken();
+      if (!token) {
+        const redirect = encodeURIComponent(window.location.pathname);
+        window.location.href = `/login/index.html?redirect=${redirect}`;
+      }
+      const toast = (msg, type = 'info') => {
         const el = document.getElementById("toast");
         el.textContent = msg;
+        el.className = `toast toast-${type}`;
         el.classList.remove("hidden");
-        setTimeout(() => el.classList.add("hidden"), 1800);
+        setTimeout(() => el.classList.add("hidden"), 2500);
       };
-      const getToken = () => localStorage.getItem(TOKEN_KEY) || "";
       const authHeaders = () => {
         const token = getToken();
         return token ? { Authorization: "Bearer " + token } : {};
@@ -493,8 +723,8 @@
         document.querySelectorAll(".module-tab").forEach((btn) => {
           const active = btn.getAttribute("data-module-target") === name;
           btn.className = active
-            ? "module-tab w-full text-left px-3 py-2 rounded text-sm bg-slate-800 text-white"
-            : "module-tab w-full text-left px-3 py-2 rounded text-sm bg-slate-200 text-slate-700";
+            ? "module-tab w-full text-left px-4 py-3 rounded-xl text-sm font-medium bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25 transition-all"
+            : "module-tab w-full text-left px-4 py-3 rounded-xl text-sm font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 hover:shadow-md transition-all";
         });
       };
 
@@ -530,9 +760,8 @@
         if (editNickname) editNickname.value = user.nickname || "";
         if (editAvatar) editAvatar.value = user.avatar || "";
         if (editProfileNote) editProfileNote.value = user.profileNote || "";
-        if (avatarPreview) avatarPreview.src = user.avatar || "/loading.gif";
+        if (avatarPreview) avatarPreview.src = user.avatar || "https://via.placeholder.com/56";
         if (editSecurityQuestion) {
-          // 设置安全问题的选中值
           editSecurityQuestion.value = user.securityQuestion || "";
         }
         if (editSecurityAnswer) editSecurityAnswer.value = "";
@@ -541,18 +770,16 @@
           profileNote: user.profileNote || "",
           avatar: user.avatar || "",
         };
-        // 隐藏骨架屏，显示实际内容
         document.getElementById("profileSkeleton").classList.add("hidden");
         document.getElementById("profileContent").classList.remove("hidden");
       };
 
       const renderFavorites = (list) => {
         if (!favoriteList) return;
-        // 隐藏骨架屏，显示实际内容
         document.getElementById("favoritesSkeleton").classList.add("hidden");
         document.getElementById("favoritesContent").classList.remove("hidden");
         if (!Array.isArray(list) || list.length === 0) {
-          favoriteList.innerHTML = '<div class="text-sm text-slate-500">暂无喜欢</div>';
+          favoriteList.innerHTML = '<div class="text-center py-12"><div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4"><i class="fa fa-heart-o text-slate-400 text-2xl"></i></div><p class="text-slate-500">暂无喜欢</p><p class="text-sm text-slate-400 mt-1">收藏喜欢的视频后会显示在这里</p></div>';
           if (favoriteCount) favoriteCount.textContent = "0";
           return;
         }
@@ -560,15 +787,19 @@
         favoriteList.innerHTML = list
           .map(
             (item) => `
-              <div class="favorite-card flex gap-3 rounded-lg border border-slate-200 p-3">
-                <img src="${item.pic || "/loading.gif"}" alt="" class="w-16 h-20 object-cover rounded bg-slate-100" onerror="this.src='/loading.gif'">
-                <div class="min-w-0 flex-1">
-                  <div class="text-sm font-medium truncate">${item.title || "未命名"}</div>
+              <div class="favorite-card bg-slate-50/50 rounded-xl border border-slate-200 p-4 hover:shadow-lg hover:border-blue-200 transition-all">
+                <img src="${item.pic || "https://via.placeholder.com/80x96"}" alt="" class="w-20 h-24 object-cover rounded-lg bg-slate-100 float-left mr-4" onerror="this.src='https://via.placeholder.com/80x96'">
+                <div class="min-w-0">
+                  <div class="text-sm font-medium text-slate-800 truncate">${item.title || "未命名"}</div>
                   <div class="text-xs text-slate-500 mt-1">来源：${item.source || "-"}</div>
                   <div class="text-xs text-slate-500 mt-1">收藏时间：${formatTime(item.timestamp)}</div>
-                  <div class="mt-2 flex items-center gap-3 text-xs">
-                    <button class="text-emerald-600 hover:underline" data-action="play" data-url="${item.url || ""}" data-title="${item.title || ""}">播放</button>
-                    <button class="text-rose-600 hover:underline" data-action="delete-favorite" data-url="${item.url || ""}">删除</button>
+                  <div class="mt-3 flex items-center gap-3 text-xs">
+                    <button class="text-emerald-600 hover:text-emerald-700 font-medium flex items-center gap-1" data-action="play" data-url="${item.url || ""}" data-title="${item.title || ""}">
+                      <i class="fa fa-play-circle"></i>播放
+                    </button>
+                    <button class="text-red-500 hover:text-red-600 font-medium flex items-center gap-1" data-action="delete-favorite" data-url="${item.url || ""}">
+                      <i class="fa fa-trash"></i>删除
+                    </button>
                   </div>
                 </div>
               </div>
@@ -579,11 +810,10 @@
 
       const renderShares = (list) => {
         if (!shareList) return;
-        // 隐藏骨架屏，显示实际内容
         document.getElementById("sharesSkeleton").classList.add("hidden");
         document.getElementById("sharesContent").classList.remove("hidden");
         if (!Array.isArray(list) || list.length === 0) {
-          shareList.innerHTML = '<div class="text-sm text-slate-500">暂无分享</div>';
+          shareList.innerHTML = '<div class="text-center py-12"><div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4"><i class="fa fa-share-alt-o text-slate-400 text-2xl"></i></div><p class="text-slate-500">暂无分享</p><p class="text-sm text-slate-400 mt-1">分享视频后会显示在这里</p></div>';
           if (shareCount) shareCount.textContent = "0";
           return;
         }
@@ -595,24 +825,32 @@
             const expired = paused || !!(expiresAt && Date.now() > expiresAt);
             const shareUrl = expired ? "#" : buildSharePlayUrl(item);
             return `
-              <div class="share-card rounded-lg border border-slate-200 p-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3" data-share-id="${item.shareId || ""}" data-expires-at="${expiresAt}" data-paused="${paused ? "1" : "0"}">
-                <div class="flex items-start gap-3 min-w-0 flex-1">
-                  <img src="${item.pic || "/loading.gif"}" alt="" class="w-20 h-28 object-cover rounded bg-slate-100" onerror="this.src='/loading.gif'">
-                  <div class="min-w-0">
-                  <div class="text-sm font-medium truncate">${item.title || "未命名"}</div>
+              <div class="share-card bg-slate-50/50 rounded-xl border border-slate-200 p-4 hover:shadow-lg hover:border-blue-200 transition-all" data-share-id="${item.shareId || ""}" data-expires-at="${expiresAt}" data-paused="${paused ? "1" : "0"}">
+                <img src="${item.pic || "https://via.placeholder.com/96x128"}" alt="" class="w-24 h-32 object-cover rounded-lg bg-slate-100 float-left mr-4" onerror="this.src='https://via.placeholder.com/96x128'">
+                <div class="min-w-0">
+                  <div class="text-sm font-medium text-slate-800 truncate">${item.title || "未命名"}</div>
                   <div class="text-xs text-slate-500 mt-1 break-all">分享ID：${item.shareId || "-"}</div>
                   <div class="text-xs text-slate-500 mt-1">来源：${item.source || "-"}</div>
                   <div class="text-xs text-slate-500 mt-1">创建时间：${formatTime(item.createdAt)}</div>
                   <div class="text-xs text-slate-500 mt-1 share-expire">到期时间：${item.expiresAt ? formatTime(item.expiresAt) : "永久"}</div>
-                  <div class="text-xs mt-1 share-status ${expired ? "text-rose-600" : "text-emerald-600"}">${paused ? "已暂停" : (expired ? "已过期" : "可用")}</div>
-                  </div>
+                  <div class="text-xs mt-1 share-status font-medium ${expired ? "text-red-500" : "text-emerald-500"}">${paused ? "已暂停" : (expired ? "已过期" : "可用")}</div>
                 </div>
-                <div class="flex items-center gap-3">
+                <div class="clear-both mt-4 pt-4 border-t border-slate-200 flex items-center justify-between">
                   <div class="text-xs text-slate-500">浏览：${item.viewCount || 0}</div>
-                  <button class="text-xs ${paused ? "text-slate-400 cursor-not-allowed" : "text-emerald-600 hover:underline"}" data-action="play" data-url="${item.url || ""}" data-title="${item.title || ""}" ${paused ? "disabled" : ""}>播放</button>
-                  <a href="${shareUrl}" target="_blank" class="text-xs ${expired ? "text-slate-400 pointer-events-none" : "text-blue-600 hover:underline"}">打开链接</a>
-                  <button class="text-xs text-indigo-600 hover:underline" data-action="renew-share" data-share-id="${item.shareId || ""}">续签</button>
-                  <button class="text-xs text-rose-600 hover:underline" data-action="delete-share" data-share-id="${item.shareId || ""}">删除</button>
+                  <div class="flex items-center gap-4 text-xs">
+                    <button class="${paused ? "text-slate-400 cursor-not-allowed" : "text-emerald-600 hover:text-emerald-700 font-medium"} flex items-center gap-1" data-action="play" data-url="${item.url || ""}" data-title="${item.title || ""}" ${paused ? "disabled" : ""}>
+                      <i class="fa fa-play-circle"></i>播放
+                    </button>
+                    <a href="${shareUrl}" target="_blank" class="${expired ? "text-slate-400 pointer-events-none" : "text-blue-600 hover:text-blue-700 font-medium"} flex items-center gap-1">
+                      <i class="fa fa-external-link"></i>打开链接
+                    </a>
+                    <button class="text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1" data-action="renew-share" data-share-id="${item.shareId || ""}">
+                      <i class="fa fa-refresh"></i>续签
+                    </button>
+                    <button class="text-red-500 hover:text-red-600 font-medium flex items-center gap-1" data-action="delete-share" data-share-id="${item.shareId || ""}">
+                      <i class="fa fa-trash"></i>删除
+                    </button>
+                  </div>
                 </div>
               </div>
             `;
@@ -622,23 +860,26 @@
 
       const renderArticleFavorites = (list) => {
         if (!articleFavoriteList) return;
-        // 隐藏骨架屏，显示实际内容
         document.getElementById("articleFavoritesSkeleton").classList.add("hidden");
         document.getElementById("articleFavoritesContent").classList.remove("hidden");
         if (!Array.isArray(list) || list.length === 0) {
-          articleFavoriteList.innerHTML = '<div class="text-sm text-slate-500">暂无文章收藏</div>';
+          articleFavoriteList.innerHTML = '<div class="text-center py-12"><div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4"><i class="fa fa-bookmark-o text-slate-400 text-2xl"></i></div><p class="text-slate-500">暂无文章收藏</p><p class="text-sm text-slate-400 mt-1">收藏文章后会显示在这里</p></div>';
           if (articleFavoriteStatus) articleFavoriteStatus.textContent = "已加载";
           return;
         }
         if (articleFavoriteStatus) articleFavoriteStatus.textContent = `已加载 (${list.length})`;
         articleFavoriteList.innerHTML = list
           .map((article) => `
-            <div class="article-favorite-card rounded-lg border border-slate-200 p-4">
+            <div class="article-favorite-card bg-slate-50/50 rounded-xl border border-slate-200 p-5 hover:shadow-lg hover:border-blue-200 transition-all">
               <div class="flex justify-between items-start">
-                <a href="/articles/detail.html?id=${article._id}" class="text-sm font-medium hover:underline">${article.title || "无标题"}</a>
-                <div class="flex gap-2">
-                  <a href="/articles/detail.html?id=${article._id}" class="text-xs text-blue-600 hover:underline">查看</a>
-                  <button class="text-xs text-rose-600 hover:underline" data-action="unfavorite-article" data-article-id="${article._id}">取消收藏</button>
+                <a href="/articles/detail.html?id=${article._id}" class="text-sm font-medium text-slate-800 hover:text-blue-600 hover:underline">${article.title || "无标题"}</a>
+                <div class="flex gap-4">
+                  <a href="/articles/detail.html?id=${article._id}" class="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1">
+                    <i class="fa fa-eye"></i>查看
+                  </a>
+                  <button class="text-xs text-red-500 hover:text-red-600 font-medium flex items-center gap-1" data-action="unfavorite-article" data-article-id="${article._id}">
+                    <i class="fa fa-bookmark-o"></i>取消收藏
+                  </button>
                 </div>
               </div>
               <div class="text-xs text-slate-500 mt-2">分类：${article.category || "未分类"}</div>
@@ -648,7 +889,6 @@
           `)
           .join("");
         
-        // 绑定取消收藏按钮事件
         bindArticleFavoriteButtons();
       };
 
@@ -669,24 +909,22 @@
                 throw new Error(data.message || "取消收藏失败");
               }
               
-              // 移除卡片
               const card = target.closest(".article-favorite-card");
               if (card) card.remove();
               
-              // 更新状态
               const remainingCards = document.querySelectorAll(".article-favorite-card");
               if (articleFavoriteStatus) {
                 articleFavoriteStatus.textContent = `已加载 (${remainingCards.length})`;
               }
               
               if (remainingCards.length === 0) {
-                articleFavoriteList.innerHTML = '<div class="text-sm text-slate-500">暂无文章收藏</div>';
+                articleFavoriteList.innerHTML = '<div class="text-center py-12"><div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4"><i class="fa fa-bookmark-o text-slate-400 text-2xl"></i></div><p class="text-slate-500">暂无文章收藏</p><p class="text-sm text-slate-400 mt-1">收藏文章后会显示在这里</p></div>';
                 if (articleFavoriteStatus) articleFavoriteStatus.textContent = "已加载";
               }
               
-              toast("取消收藏成功");
+              toast("取消收藏成功", "success");
             } catch (err) {
-              toast(err.message || "取消收藏失败");
+              toast(err.message || "取消收藏失败", "error");
             }
           });
         });
@@ -699,7 +937,6 @@
         return data;
       };
 
-      // 加载安全问题列表
       const loadSecurityQuestions = async () => {
         try {
           const res = await fetch("/api/user/password-reset-settings", { headers: authHeaders() });
@@ -707,9 +944,7 @@
           if (data.code === 200 && data.data && data.data.securityQuestions) {
             const select = document.getElementById("editSecurityQuestion");
             if (select) {
-              // 清空现有选项
               select.innerHTML = '<option value="">请选择安全问题</option>';
-              // 添加从后台获取的安全问题
               data.data.securityQuestions.forEach((question) => {
                 const option = document.createElement("option");
                 option.value = question;
@@ -723,37 +958,9 @@
         }
       };
 
-      const loadAll = async () => {
-        profileStatus.textContent = "加载中...";
-        if (articleFavoriteStatus) articleFavoriteStatus.textContent = "加载中...";
-        try {
-          const [profileRes, favoritesRes, articleFavoritesRes, sharesRes] = await Promise.all([
-            fetchJson("/api/user/profile"),
-            fetchJson("/api/user/favorites"),
-            fetchJson("/api/article/favorites"),
-            fetchJson("/api/user/shares"),
-          ]);
-          renderProfile(profileRes.data || {});
-          renderFavorites(favoritesRes.data || []);
-          renderArticleFavorites(articleFavoritesRes.data || []);
-          renderShares(sharesRes.data || []);
-          bindPlayButtons();
-          bindDeleteButtons();
-          bindRenewButtons();
-          profileStatus.textContent = "已加载";
-          if (articleFavoriteStatus) articleFavoriteStatus.textContent = "已加载";
-          // 加载安全问题列表
-          await loadSecurityQuestions();
-        } catch (err) {
-          profileStatus.textContent = "加载失败";
-          if (articleFavoriteStatus) articleFavoriteStatus.textContent = "加载失败";
-          toast(err.message || "加载失败");
-        }
-      };
-
       const updateProfile = async (payload, successMsg) => {
         if (!currentUser || !currentUser._id) {
-          toast("用户未加载");
+          toast("用户未加载", "error");
           return;
         }
         const res = await fetch("/api/user/profile", {
@@ -766,7 +973,7 @@
           throw new Error(data.message || "更新失败");
         }
         renderProfile(data.data || {});
-        if (successMsg) toast(successMsg);
+        if (successMsg) toast(successMsg, "success");
       };
 
       const debounce = (fn, wait) => {
@@ -791,7 +998,7 @@
         try {
           await updateProfile({ nickname, profileNote, avatar }, "已自动保存");
         } catch (err) {
-          toast(err.message || "自动保存失败");
+          toast(err.message || "自动保存失败", "error");
         }
       }, 800);
 
@@ -806,7 +1013,7 @@
       if (editAvatar) {
         const updateAvatarPreview = () => {
           const url = (editAvatar.value || "").trim();
-          if (avatarPreview) avatarPreview.src = url || "/loading.gif";
+          if (avatarPreview) avatarPreview.src = url || "https://via.placeholder.com/56";
         };
         editAvatar.addEventListener("input", updateAvatarPreview);
         editAvatar.addEventListener("blur", updateAvatarPreview);
@@ -833,7 +1040,7 @@
         verifyPasswordBtn.addEventListener("click", async () => {
           const oldPwd = (oldPassword?.value || "").trim();
           if (!oldPwd) {
-            toast("请输入旧密码");
+            toast("请输入旧密码", "error");
             return;
           }
           try {
@@ -847,11 +1054,11 @@
             if (data.code !== 200 || !data.data) {
               throw new Error(data.message || "旧密码验证失败");
             }
-            toast("旧密码验证通过");
+            toast("旧密码验证通过", "success");
             setPasswordStage(true);
           } catch (err) {
             setPasswordStage(false);
-            toast(err.message || "旧密码验证失败");
+            toast(err.message || "旧密码验证失败", "error");
           } finally {
             setButtonLoading(verifyPasswordBtn, false);
           }
@@ -864,15 +1071,15 @@
           const pwd = (newPassword?.value || "").trim();
           const confirm = (newPasswordConfirm?.value || "").trim();
           if (!oldPwd) {
-            toast("请输入旧密码");
+            toast("请输入旧密码", "error");
             return;
           }
           if (!pwd) {
-            toast("请输入新密码");
+            toast("请输入新密码", "error");
             return;
           }
           if (pwd !== confirm) {
-            toast("两次密码不一致");
+            toast("两次密码不一致", "error");
             return;
           }
           try {
@@ -883,7 +1090,7 @@
             newPasswordConfirm.value = "";
             setPasswordStage(false);
           } catch (err) {
-            toast(err.message || "更新失败");
+            toast(err.message || "更新失败", "error");
           } finally {
             setButtonLoading(savePasswordBtn, false);
           }
@@ -896,19 +1103,18 @@
           const answer = (editSecurityAnswer?.value || "").trim();
           const password = (editSecurityQuestionPassword?.value || "").trim();
           if (!question) {
-            toast("请选择安全问题");
+            toast("请选择安全问题", "error");
             return;
           }
           if (!answer) {
-            toast("请输入安全答案");
+            toast("请输入安全答案", "error");
             return;
           }
           if (!password) {
-            toast("请输入密码以验证");
+            toast("请输入密码以验证", "error");
             return;
           }
           try {
-            // 先验证密码
             setButtonLoading(saveSecurityQuestionBtn, true, "验证密码中...");
             if (securityQuestionStatus) securityQuestionStatus.textContent = "验证密码中...";
             const verifyRes = await fetch("/api/user/verify-password", {
@@ -921,7 +1127,6 @@
               throw new Error(verifyData.message || "密码验证失败");
             }
             
-            // 密码验证通过，保存安全问题
             if (securityQuestionStatus) securityQuestionStatus.textContent = "保存中...";
             const res = await fetch("/api/user/security-question", {
               method: "PUT",
@@ -936,12 +1141,12 @@
             editSecurityAnswer.value = "";
             editSecurityQuestionPassword.value = "";
             if (securityQuestionStatus) securityQuestionStatus.textContent = "已保存";
-            toast("安全问题已保存");
+            toast("安全问题已保存", "success");
             setTimeout(() => {
               if (securityQuestionStatus) securityQuestionStatus.textContent = "";
             }, 2000);
           } catch (err) {
-            toast(err.message || "保存失败");
+            toast(err.message || "保存失败", "error");
             if (securityQuestionStatus) securityQuestionStatus.textContent = "保存失败";
           } finally {
             setButtonLoading(saveSecurityQuestionBtn, false);
@@ -962,7 +1167,7 @@
         currentVideoTitle = title;
         
         episodeList.innerHTML = episodes.map((ep, index) => `
-          <button class="px-3 py-2 border rounded text-sm hover:bg-slate-100" data-episode-index="${index}">
+          <button class="px-4 py-3 border border-slate-200 rounded-xl text-sm hover:bg-slate-50 hover:border-blue-300 hover:text-blue-600 transition-all" data-episode-index="${index}">
             ${ep.name}
           </button>
         `).join('');
@@ -971,7 +1176,6 @@
         modal.classList.add("flex");
         document.body.style.overflow = "hidden";
         
-        // 绑定集数选择事件
         episodeList.querySelectorAll('button').forEach(btn => {
           btn.addEventListener('click', (e) => {
             const index = Number(e.currentTarget.getAttribute('data-episode-index'));
@@ -994,21 +1198,14 @@
       };
       
       const openProfilePlayerWithUrl = (url, title = "") => {
-        // 延迟执行，确保DOM元素已经加载完成
         setTimeout(() => {
           const modal = document.getElementById("profilePlayerModal");
           const container = document.getElementById("profilePlayerContainer");
           const titleEl = document.getElementById("profilePlayerTitle");
           
-          console.log("检查播放器元素：");
-          console.log("modal:", modal);
-          console.log("container:", container);
-          console.log("titleEl:", titleEl);
-          console.log("DPlayer:", window.DPlayer);
-          
           if (!modal || !container || !window.DPlayer) {
             console.error("播放器初始化失败：缺少必要元素或DPlayer库");
-            toast("播放器初始化失败，请刷新页面重试");
+            toast("播放器初始化失败，请刷新页面重试", "error");
             return;
           }
           
@@ -1022,7 +1219,6 @@
             console.error("播放失败：视频URL为空");
             return;
           }
-          console.log("正在播放视频：", safeUrl);
           const isHls = safeUrl.toLowerCase().includes(".m3u8");
           if (isHls && !window.Hls) {
             console.error("播放失败：HLS.js库未加载");
@@ -1038,11 +1234,10 @@
               }
             }
           });
-          // 监听播放器事件
           profilePlayerInstance.on('error', (error) => {
             if (isPlayerClosed) return;
             console.error("播放器错误：", error);
-            toast("播放失败：" + (error.message || "未知错误"));
+            toast("播放失败：" + (error.message || "未知错误"), "error");
           });
           profilePlayerInstance.on('play', () => {
             if (isPlayerClosed) return;
@@ -1069,10 +1264,8 @@
       };
 
       const closeProfilePlayer = () => {
-        // 先设置标志
         isPlayerClosed = true;
         
-        // 先隐藏模态框，确保用户体验
         const modal = document.getElementById("profilePlayerModal");
         if (modal) {
           modal.classList.add("hidden");
@@ -1080,10 +1273,8 @@
         }
         document.body.style.overflow = "";
         
-        // 然后处理播放器实例
         if (profilePlayerInstance) {
           try {
-            // 先移除事件监听器
             profilePlayerInstance.off('error');
             profilePlayerInstance.off('play');
             profilePlayerInstance.destroy();
@@ -1095,7 +1286,6 @@
         }
       };
 
-      // 绑定集数模态框关闭事件
       const closeEpisodeBtn = document.getElementById("closeEpisodeModal");
       const cancelEpisodeBtn = document.getElementById("cancelEpisodeBtn");
       if (closeEpisodeBtn) {
@@ -1123,7 +1313,6 @@
         let deleteShareId = "";
         let deleteShareButton = null;
         
-        // 确认删除弹窗事件
         document.getElementById("cancelDeleteBtn").addEventListener("click", () => {
           document.getElementById("confirmModal").classList.add("hidden");
           deleteFavoriteUrl = "";
@@ -1135,7 +1324,6 @@
         document.getElementById("confirmDeleteBtn").addEventListener("click", async () => {
           try {
             if (deleteFavoriteUrl) {
-              // 删除喜欢
               const res = await fetch("/api/user/favorites", {
                 method: "DELETE",
                 headers: { "Content-Type": "application/json", ...authHeaders() },
@@ -1152,12 +1340,11 @@
                 favoriteCount.textContent = String(next);
               }
               if (favoriteList && !favoriteList.querySelector(".favorite-card")) {
-                favoriteList.innerHTML = '<div class="text-sm text-slate-500">暂无喜欢</div>';
+                favoriteList.innerHTML = '<div class="text-center py-12"><div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4"><i class="fa fa-heart-o text-slate-400 text-2xl"></i></div><p class="text-slate-500">暂无喜欢</p><p class="text-sm text-slate-400 mt-1">收藏喜欢的视频后会显示在这里</p></div>';
                 if (favoriteCount) favoriteCount.textContent = "0";
               }
-              toast("已删除喜欢");
+              toast("已删除喜欢", "success");
             } else if (deleteShareId) {
-              // 删除分享
               const res = await fetch(`/api/user/shares/${encodeURIComponent(deleteShareId)}`, {
                 method: "DELETE",
                 headers: { "Content-Type": "application/json", ...authHeaders() },
@@ -1173,13 +1360,13 @@
                 shareCount.textContent = String(next);
               }
               if (shareList && !shareList.querySelector(".share-card")) {
-                shareList.innerHTML = '<div class="text-sm text-slate-500">暂无分享</div>';
+                shareList.innerHTML = '<div class="text-center py-12"><div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4"><i class="fa fa-share-alt-o text-slate-400 text-2xl"></i></div><p class="text-slate-500">暂无分享</p><p class="text-sm text-slate-400 mt-1">分享视频后会显示在这里</p></div>';
                 if (shareCount) shareCount.textContent = "0";
               }
-              toast("已删除分享");
+              toast("已删除分享", "success");
             }
           } catch (err) {
-            toast(err.message || "删除失败");
+            toast(err.message || "删除失败", "error");
           } finally {
             document.getElementById("confirmModal").classList.add("hidden");
             deleteFavoriteUrl = "";
@@ -1242,7 +1429,7 @@
 
       document.getElementById("logoutBtn").addEventListener("click", () => {
         localStorage.removeItem(TOKEN_KEY);
-        toast("已退出登录");
+        toast("已退出登录", "success");
         setTimeout(() => (window.location.href = "/login/index.html"), 400);
       });
       document.getElementById("closeProfilePlayer").addEventListener("click", closeProfilePlayer);
@@ -1295,21 +1482,21 @@
               }
               if (statusEl) {
                 statusEl.textContent = "可用";
-                statusEl.classList.remove("text-rose-600");
-                statusEl.classList.add("text-emerald-600");
+                statusEl.classList.remove("text-red-500");
+                statusEl.classList.add("text-emerald-500");
               }
               const playBtn = card.querySelector('[data-action="play"]');
               const openLink = card.querySelector("a[href]");
               if (playBtn) {
                 playBtn.disabled = false;
                 playBtn.classList.remove("text-slate-400", "cursor-not-allowed");
-                playBtn.classList.add("text-emerald-600", "hover:underline");
+                playBtn.classList.add("text-emerald-600", "hover:text-emerald-700");
               }
               if (openLink) {
                 const shareUrl = buildSharePlayUrl({ shareId: renewTarget });
                 openLink.setAttribute("href", shareUrl);
                 openLink.classList.remove("text-slate-400", "pointer-events-none");
-                openLink.classList.add("text-blue-600", "hover:underline");
+                openLink.classList.add("text-blue-600", "hover:text-blue-700");
               }
               card.setAttribute("data-paused", "0");
             }
@@ -1317,9 +1504,9 @@
               renewModal.classList.add("hidden");
               renewModal.classList.remove("flex");
             }
-            toast("续签成功");
+            toast("续签成功", "success");
           } catch (err) {
-            toast(err.message || "续签失败");
+            toast(err.message || "续签失败", "error");
           } finally {
             setButtonLoading(confirmRenewBtn, false);
           }
@@ -1348,121 +1535,173 @@
               if (nextPaused) {
                 if (statusEl) {
                   statusEl.textContent = "已暂停";
-                  statusEl.classList.remove("text-emerald-600");
-                  statusEl.classList.add("text-rose-600");
+                  statusEl.classList.remove("text-emerald-500");
+                  statusEl.classList.add("text-red-500");
                 }
                 if (playBtn) {
                   playBtn.disabled = true;
-                  playBtn.classList.remove("text-emerald-600", "hover:underline");
+                  playBtn.classList.remove("text-emerald-600", "hover:text-emerald-700");
                   playBtn.classList.add("text-slate-400", "cursor-not-allowed");
                 }
                 if (openLink) {
                   openLink.setAttribute("href", "#");
-                  openLink.classList.remove("text-blue-600", "hover:underline");
+                  openLink.classList.remove("text-blue-600", "hover:text-blue-700");
                   openLink.classList.add("text-slate-400", "pointer-events-none");
                 }
                 card.setAttribute("data-paused", "1");
               } else {
                 if (statusEl) {
                   statusEl.textContent = "可用";
-                  statusEl.classList.remove("text-rose-600");
-                  statusEl.classList.add("text-emerald-600");
+                  statusEl.classList.remove("text-red-500");
+                  statusEl.classList.add("text-emerald-500");
                 }
                 if (playBtn) {
                   playBtn.disabled = false;
                   playBtn.classList.remove("text-slate-400", "cursor-not-allowed");
-                  playBtn.classList.add("text-emerald-600", "hover:underline");
+                  playBtn.classList.add("text-emerald-600", "hover:text-emerald-700");
                 }
                 if (openLink) {
                   const shareUrl = buildSharePlayUrl({ shareId: renewTarget });
                   openLink.setAttribute("href", shareUrl);
                   openLink.classList.remove("text-slate-400", "pointer-events-none");
-                  openLink.classList.add("text-blue-600", "hover:underline");
+                  openLink.classList.add("text-blue-600", "hover:text-blue-700");
                 }
                 card.setAttribute("data-paused", "0");
               }
             }
-            setPauseButtonState(nextPaused);
-            toast(nextPaused ? "已暂停分享" : "已恢复分享");
+            if (renewModal) {
+              renewModal.classList.add("hidden");
+              renewModal.classList.remove("flex");
+            }
+            toast(nextPaused ? "分享已暂停" : "分享已恢复", "success");
           } catch (err) {
-            toast(err.message || (nextPaused ? "暂停失败" : "恢复失败"));
+            toast(err.message || (nextPaused ? "暂停失败" : "恢复失败"), "error");
           } finally {
             setButtonLoading(pauseShareBtn, false);
           }
         });
       }
 
-      document.getElementById("mobileMenuBtn").addEventListener("click", () => toggleMobileMenu());
-      document.getElementById("sideNavOverlay").addEventListener("click", () => toggleMobileMenu(false));
-
-      // 刷新按钮事件处理
-      document.querySelectorAll(".refresh-btn").forEach((btn) => {
-        btn.addEventListener("click", async (e) => {
-          const target = e.currentTarget;
-          const module = target.getAttribute("data-refresh-target");
-          if (!module) return;
-          
-          // 显示骨架屏，隐藏实际内容
-          const skeletonId = module + "Skeleton";
-          const contentId = module + "Content";
-          const skeleton = document.getElementById(skeletonId);
-          const content = document.getElementById(contentId);
-          
-          if (skeleton && content) {
-            skeleton.classList.remove("hidden");
-            content.classList.add("hidden");
-          }
-          
-          // 重新加载对应模块的数据
-          try {
-            switch (module) {
-              case "favorites":
-                const favoritesRes = await fetchJson("/api/user/favorites");
-                renderFavorites(favoritesRes.data || []);
-                bindPlayButtons();
-                bindDeleteButtons();
-                break;
-              case "articleFavorites":
-                if (articleFavoriteStatus) articleFavoriteStatus.textContent = "加载中...";
-                const articleFavoritesRes = await fetchJson("/api/article/favorites");
-                renderArticleFavorites(articleFavoritesRes.data || []);
-                break;
-              case "shares":
-                const sharesRes = await fetchJson("/api/user/shares");
-                renderShares(sharesRes.data || []);
-                bindPlayButtons();
-                bindDeleteButtons();
-                bindRenewButtons();
-                break;
-            }
-          } catch (err) {
-            toast(err.message || "刷新失败");
-            // 加载失败时也显示内容，避免一直显示骨架屏
-            if (skeleton && content) {
-              skeleton.classList.add("hidden");
-              content.classList.remove("hidden");
-            }
-          }
-        });
+      document.getElementById("mobileMenuBtn").addEventListener("click", () => {
+        toggleMobileMenu();
+      });
+      document.getElementById("sideNavOverlay").addEventListener("click", () => {
+        toggleMobileMenu(false);
       });
 
-      setPasswordStage(false);
-      setActiveModule("profile");
+      // 图片查看器功能
+      const imageViewer = document.getElementById("imageViewer");
+      const viewerImage = document.getElementById("viewerImage");
+      const imageViewerTitle = document.getElementById("imageViewerTitle");
+      const closeImageViewerBtn = document.getElementById("closeImageViewer");
+      const prevImageBtn = document.getElementById("prevImageBtn");
+      const nextImageBtn = document.getElementById("nextImageBtn");
+      
+      let currentImageIndex = 0;
+      let currentImageList = [];
+
+      const openImageViewer = (images, index = 0) => {
+        if (!images || images.length === 0) return;
+        currentImageList = images;
+        currentImageIndex = Math.min(index, images.length - 1);
+        viewerImage.src = images[currentImageIndex].url;
+        imageViewerTitle.textContent = images[currentImageIndex].title || `图片 ${currentImageIndex + 1}/${images.length}`;
+        imageViewer.classList.remove("hidden");
+        imageViewer.classList.add("flex");
+        document.body.style.overflow = "hidden";
+      };
+
+      const closeImageViewer = () => {
+        imageViewer.classList.add("hidden");
+        imageViewer.classList.remove("flex");
+        document.body.style.overflow = "";
+        viewerImage.src = "";
+      };
+
+      const navigateImage = (direction) => {
+        if (currentImageList.length <= 1) return;
+        if (direction === "next") {
+          currentImageIndex = (currentImageIndex + 1) % currentImageList.length;
+        } else {
+          currentImageIndex = (currentImageIndex - 1 + currentImageList.length) % currentImageList.length;
+        }
+        viewerImage.src = currentImageList[currentImageIndex].url;
+        imageViewerTitle.textContent = currentImageList[currentImageIndex].title || `图片 ${currentImageIndex + 1}/${currentImageList.length}`;
+      };
+
+      const bindImageClickEvents = () => {
+        document.querySelectorAll('img[src]').forEach((img) => {
+          if (img.classList.contains('no-zoom')) return;
+          img.style.cursor = 'pointer';
+          img.addEventListener('click', () => {
+            const src = img.getAttribute('src');
+            if (!src || src.startsWith('data:')) return;
+            
+            const title = img.getAttribute('alt') || img.getAttribute('title') || '';
+            const images = [{ url: src, title }];
+            
+            openImageViewer(images, 0);
+          });
+        });
+      };
+
+      if (closeImageViewerBtn) {
+        closeImageViewerBtn.addEventListener("click", closeImageViewer);
+      }
+      if (prevImageBtn) {
+        prevImageBtn.addEventListener("click", () => navigateImage("prev"));
+      }
+      if (nextImageBtn) {
+        nextImageBtn.addEventListener("click", () => navigateImage("next"));
+      }
+
+      imageViewer.addEventListener("click", (e) => {
+        if (e.target === imageViewer) {
+          closeImageViewer();
+        }
+      });
+
+      document.addEventListener("keydown", (e) => {
+        if (!imageViewer.classList.contains("hidden")) {
+          if (e.key === "Escape") {
+            closeImageViewer();
+          } else if (e.key === "ArrowLeft") {
+            navigateImage("prev");
+          } else if (e.key === "ArrowRight") {
+            navigateImage("next");
+          }
+        }
+      });
+
+      const loadAll = async () => {
+        profileStatus.textContent = "加载中...";
+        if (articleFavoriteStatus) articleFavoriteStatus.textContent = "加载中...";
+        try {
+          const [profileRes, favoritesRes, articleFavoritesRes, sharesRes] = await Promise.all([
+            fetchJson("/api/user/profile"),
+            fetchJson("/api/user/favorites"),
+            fetchJson("/api/article/favorites"),
+            fetchJson("/api/user/shares"),
+          ]);
+          renderProfile(profileRes.data || {});
+          renderFavorites(favoritesRes.data || []);
+          renderArticleFavorites(articleFavoritesRes.data || []);
+          renderShares(sharesRes.data || []);
+          bindPlayButtons();
+          bindDeleteButtons();
+          bindRenewButtons();
+          bindImageClickEvents();
+          profileStatus.textContent = "已加载";
+          if (articleFavoriteStatus) articleFavoriteStatus.textContent = "已加载";
+          await loadSecurityQuestions();
+        } catch (err) {
+          profileStatus.textContent = "加载失败";
+          if (articleFavoriteStatus) articleFavoriteStatus.textContent = "加载失败";
+          toast(err.message || "加载失败", "error");
+        }
+      };
+
       loadAll();
     </script>
-    <script src="/assets/login-guard.js"></script>
-    <script src="/assets/page-permission.js"></script>
-
-    <!-- 确认删除弹窗 -->
-    <div id="confirmModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
-      <div class="bg-white rounded-xl shadow-lg p-6 max-w-md w-full mx-4">
-        <h3 class="text-lg font-semibold mb-4">确认删除</h3>
-        <p id="confirmMessage" class="text-slate-600 mb-6">您确定要删除这个项目吗？</p>
-        <div class="flex justify-end space-x-3">
-          <button id="cancelDeleteBtn" class="px-4 py-2 rounded border border-slate-300 text-slate-700 hover:bg-slate-50">取消</button>
-          <button id="confirmDeleteBtn" class="px-4 py-2 rounded bg-rose-600 text-white hover:bg-rose-700">确认删除</button>
-        </div>
-      </div>
-    </div>
   </body>
 </html>

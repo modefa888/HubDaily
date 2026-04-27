@@ -103,6 +103,19 @@
     </style>
 
     <style>
+        /* 确保页面居中 */
+        main {
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .container {
+            max-width: 1280px;
+            margin-left: auto;
+            margin-right: auto;
+            padding-left: 1rem;
+            padding-right: 1rem;
+        }
         body.page-loading {
             opacity: 0;
             visibility: hidden;
@@ -156,14 +169,20 @@
         /* 加载动画 */
         .loader {
             border-top-color: #6366f1;
+            border-right-color: #8b5cf6;
+            border-bottom-color: #ec4899;
+            border-left-color: #06b6d4;
             animation: spinner 0.8s linear infinite;
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.5);
         }
 
         @keyframes spinner {
             0% {
                 transform: rotate(0deg);
             }
-
+            50% {
+                box-shadow: 0 0 30px rgba(99, 102, 241, 0.8);
+            }
             100% {
                 transform: rotate(360deg);
             }
@@ -505,6 +524,17 @@
         let isSettingsPanelVisible = false; // 设置面板显示状态
         let lastScrollTop = 0;
         let panelCloseTimer = null;
+        
+        // 加载更多相关变量
+        let isLoadMoreInProgress = false;
+        let lastAutoLoadAt = 0;
+        const AUTO_LOAD_OFFSET = 240;
+        const AUTO_LOAD_THROTTLE = 800;
+        
+        // 倒计时相关变量
+        let countdownTimer = null;
+        let countdownSeconds = 3;
+        let isCountdownActive = false;
 
         const clearPanelCloseTimer = () => {
             if (panelCloseTimer) {
@@ -569,11 +599,22 @@
                 siteName = savedSite;
                 document.getElementById('siteSelector').value = savedSite;
                 updateSiteSelectorColor(savedSite);
+            } else {
+                // 如果没有保存的站点，使用第一个可用站点
+                siteName = siteOptions[0].value;
+                document.getElementById('siteSelector').value = siteOptions[0].value;
+                updateSiteSelectorColor(siteOptions[0].value);
             }
             updateWatermark(siteName);
-            fetchData('', currentPage);
+            
+            // 先显示页面，然后再加载数据
             document.body.classList.remove('page-loading');
             document.body.classList.add('page-loaded');
+            
+            // 显示加载状态
+            showLoadingMessage();
+            await fetchData('', currentPage);
+            hideLoadingMessage();
         };
 
         window.onload = () => {
@@ -591,53 +632,85 @@
             }
             lastScrollTop = currentScroll <= 0 ? 0 : currentScroll;
 
+            // 滚动到页面底部时自动启动倒计时
             const loadMoreButton = document.getElementById('loadMoreButton');
             if (loadMoreButton && !loadMoreButton.classList.contains('hidden')) {
                 const now = Date.now();
                 const doc = document.documentElement;
                 const scrollBottom = (window.pageYOffset || doc.scrollTop) + window.innerHeight;
                 const pageHeight = doc.scrollHeight || document.body.scrollHeight;
-                if (pageHeight - scrollBottom <= AUTO_LOAD_OFFSET && now - lastAutoLoadAt > AUTO_LOAD_THROTTLE) {
+                
+                // 只有不在加载中且不在倒计时中时才触发
+                if (pageHeight - scrollBottom <= AUTO_LOAD_OFFSET && 
+                    now - lastAutoLoadAt > AUTO_LOAD_THROTTLE && 
+                    !isLoadMoreInProgress && 
+                    !isCountdownActive) {
                     lastAutoLoadAt = now;
-                    loadMoreData();
+                    loadMoreData(); // 启动倒计时
                 }
             }
+            
+            // 滚动时重置倒计时
+            resetCountdownOnScroll();
         };
 
         // 异步获取数据
         const fetchData = async (searchTerm, page) => {
             try {
-                showLoadingMessage();
                 // 确定要使用的搜索词
                 const termToUse = searchTerm && searchTerm.trim() !== '' ? searchTerm : '空姐';
                 
                 if (page === 1) {
                     clearDataContainer();
                     document.getElementById('loadedTotalCount').textContent = '0';
+                    showLoadingMessage();
                 }
                 
-                // 并行请求所有站点
-                const sites = siteOptions.map(site => site.value);
-                
-                // 并行请求所有站点，不等待所有请求完成
-                sites.forEach(async (site) => {
-                    try {
-                        const URL = `${host}/api/${site}/${encodeURIComponent(termToUse)}/${page}`;
-                        const response = await fetch(URL);
-                        const responseData = await response.json();
-                        const data = responseData.data.data;
-                        
-                        if (data && data.length > 0) {
-                            renderData(data);
+                // 只请求当前选中站点的数据
+                try {
+                    const URL = `${host}/api/${siteName}/${encodeURIComponent(termToUse)}/${page}`;
+                    const response = await fetch(URL);
+                    const responseData = await response.json();
+                    
+                    if (responseData.code === 200 && responseData.data && responseData.data.data && responseData.data.data.length > 0) {
+                        // 如果是第一页，先清空加载状态
+                        if (page === 1) {
+                            clearDataContainer();
                         }
-                    } catch (error) {
-                        console.error(`Error fetching data from ${site}:`, error);
+                        renderData(responseData.data.data, siteName);
+                    } else if (responseData.code === 200 && (!responseData.data || !responseData.data.data || responseData.data.data.length === 0)) {
+                        // 接口成功但无数据
+                        if (page === 1) {
+                            clearDataContainer();
+                            hideLoadingMessage();
+                            showToast(`当前站点"${siteName}"暂无数据，请尝试其他站点或更换搜索关键词`, 'info');
+                            document.getElementById('emptyState').classList.remove('hidden');
+                            document.getElementById('loadMoreButton').classList.add('hidden');
+                        }
+                    } else {
+                        // 接口返回错误
+                        console.error(`API error from ${siteName}:`, responseData.message);
+                        if (page === 1) {
+                            clearDataContainer();
+                            hideLoadingMessage();
+                            showToast(`站点"${siteName}"访问失败: ${responseData.message || '未知错误'}`, 'error');
+                            document.getElementById('emptyState').classList.remove('hidden');
+                            document.getElementById('loadMoreButton').classList.add('hidden');
+                        }
                     }
-                });
+                } catch (error) {
+                    console.error(`Error fetching data from ${siteName}:`, error);
+                    if (page === 1) {
+                        clearDataContainer();
+                        hideLoadingMessage();
+                        showToast(`站点"${siteName}"访问失败，请检查网络或尝试其他站点`, 'error');
+                        document.getElementById('emptyState').classList.remove('hidden');
+                        document.getElementById('loadMoreButton').classList.add('hidden');
+                    }
+                    return;
+                }
                 
-                // 不等待所有请求完成，让每个请求完成后立即渲染
-                
-                // 延迟检查是否有数据，确保所有请求都有机会完成
+                // 检查是否有数据
                 setTimeout(() => {
                     const videoList = document.getElementById('videoList');
                     if (videoList.children.length === 0) {
@@ -646,8 +719,12 @@
                     } else {
                         document.getElementById('loadMoreButton').classList.remove('hidden');
                         document.getElementById('emptyState').classList.add('hidden');
+                        // 按钮显示后自动启动倒计时
+                        setTimeout(() => {
+                            showLoadMoreButtonWithCountdown();
+                        }, 100);
                     }
-                }, 3000);
+                }, 500);
                 
             } catch (error) {
                 console.error('Error fetching data:', error);
@@ -659,7 +736,7 @@
 
         // 渲染数据到页面
         // 渲染数据到页面 - 最终完整版（收藏按钮右上角+无背景+红心持久）
-        const renderData = (data) => {
+        const renderData = (data, currentSite) => {
             const videoListContainer = document.getElementById('videoList');
 
             data.forEach((video, index) => {
@@ -667,7 +744,7 @@
                     return;
                 }
                 // 判断当前视频是否已收藏（核心：渲染时直接显示红心/白心）
-                const liked = isLiked(video.aid);
+                const liked = isLiked(video.aid, currentSite);
                 const card = document.createElement('div');
                 card.classList.add('video-card', 'bg-white', 'rounded-xl', 'overflow-hidden', 'shadow-lg', 'card-hover', 'animate-slide-up');
                 card.style.animationDelay = `${index * 0.1}s`;
@@ -676,6 +753,7 @@
                 card.dataset.img = video.img;
                 card.dataset.href = video.href;
                 card.dataset.videoUrl = video.video_url;
+                card.dataset.site = currentSite;
 
                 card.innerHTML = `
                     <div class="relative overflow-hidden">
@@ -687,7 +765,7 @@
                         >
                         <!-- 收藏按钮：右上角+无背景+修复图标类名冲突 -->
                         <div class="like-btn absolute top-3 right-3 ${liked ? 'text-like' : 'text-white/90'} hover:text-like text-xl z-10" 
-                            onclick="toggleLike('${video.aid}', '${video.title}', '${video.img}', '${video.href}', '${video.video_url}')"
+                            onclick="toggleLike('${video.aid}', '${video.title}', '${video.img}', '${video.href}', '${video.video_url}', '${currentSite}')"
                             data-aid="${video.aid}">
                             <i class="fa ${liked ? 'fa-heart' : 'fa-heart-o'}"></i>
                         </div>
@@ -703,7 +781,7 @@
                         <!-- 播放按钮（右下角，无冲突） -->
                         <button 
                             class="playButton absolute bottom-3 right-3 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white w-10 h-10 rounded-full flex items-center justify-center transition-all z-10"
-                            onclick="openVideoPlayer('${video.href}','${video.title}','${video.aid}','${video.video_url}','${siteName}','${video.img}')"
+                            onclick="openVideoPlayer('${video.href}','${video.title}','${video.aid}','${video.video_url}','${currentSite}','${video.img}')"
                         >
                             <i class="fa fa-play"></i>
                         </button>
@@ -747,14 +825,38 @@
             document.getElementById('videoList').innerHTML = '';
         };
 
-        // 显示加载消息 - 现在不需要显示加载状态悬浮框
+        // 显示加载消息
         const showLoadingMessage = () => {
-            // 不显示加载状态悬浮框
+            const videoList = document.getElementById('videoList');
+            videoList.innerHTML = '';
+            
+            // 在 main 区域显示加载状态
+            const main = document.querySelector('main');
+            main.style.minHeight = '60vh';
+            
+            // 隐藏加载更多按钮
+            const loadMoreButton = document.getElementById('loadMoreButton');
+            if (loadMoreButton) {
+                loadMoreButton.classList.add('hidden');
+            }
+            
+            videoList.innerHTML = `
+                <div class="col-span-full flex flex-col items-center justify-center py-20" style="grid-column: 1 / -1; justify-self: center; width: 100%;">
+                    <div class="loader w-12 h-12 border-4 border-gray-200 rounded-full"></div>
+                    <p class="mt-6 text-lg text-gray-500">正在从 ${siteName} 获取数据...</p>
+                    <p class="mt-2 text-sm text-gray-400">请稍候...</p>
+                </div>
+            `;
         };
-
-        // 隐藏加载消息 - 现在不需要显示加载状态悬浮框
+        
+        // 隐藏加载消息并恢复布局
         const hideLoadingMessage = () => {
-            // 不显示加载状态悬浮框
+            const main = document.querySelector('main');
+            main.style.minHeight = '';
+            main.style.display = '';
+            main.style.flexDirection = '';
+            main.style.justifyContent = '';
+            main.style.alignItems = '';
         };
 
         // 搜索功能
@@ -770,13 +872,81 @@
             }
         };
 
-        let isLoadMoreInProgress = false;
-        let lastAutoLoadAt = 0;
-        const AUTO_LOAD_OFFSET = 240;
-        const AUTO_LOAD_THROTTLE = 800;
-
-        // 加载更多数据
+        // 加载更多数据（带倒计时）
         const loadMoreData = async () => {
+            if (isLoadMoreInProgress) return;
+            
+            const loadMoreButton = document.getElementById('loadMoreButton');
+            
+            // 如果已经在倒计时中，重置倒计时
+            if (isCountdownActive) {
+                clearTimeout(countdownTimer);
+            }
+            
+            isCountdownActive = true;
+            countdownSeconds = 3;
+            
+            // 更新按钮显示
+            updateLoadMoreButton(countdownSeconds);
+            
+            // 开始倒计时
+            const startCountdown = () => {
+                countdownSeconds--;
+                
+                if (countdownSeconds > 0) {
+                    updateLoadMoreButton(countdownSeconds);
+                    countdownTimer = setTimeout(startCountdown, 1000);
+                } else {
+                    // 倒计时结束，执行加载
+                    isCountdownActive = false;
+                    updateLoadMoreButton(0);
+                    executeLoadMore();
+                }
+            };
+            
+            countdownTimer = setTimeout(startCountdown, 1000);
+        };
+        
+        // 导出到全局作用域，供onclick调用
+        window.loadMoreData = loadMoreData;
+        
+        // 更新加载更多按钮显示
+        const updateLoadMoreButton = (seconds) => {
+            const loadMoreButton = document.getElementById('loadMoreButton');
+            if (!loadMoreButton) return;
+            
+            // 确保按钮可见
+            loadMoreButton.classList.remove('hidden');
+            
+            const span = loadMoreButton.querySelector('span');
+            const icon = loadMoreButton.querySelector('i');
+            
+            if (seconds > 0) {
+                span.textContent = `加载更多 (${seconds}s)`;
+                icon.className = 'fa fa-clock-o';
+                loadMoreButton.classList.add('opacity-70');
+                loadMoreButton.disabled = true;
+            } else {
+                span.textContent = '加载更多';
+                icon.className = 'fa fa-refresh';
+                loadMoreButton.classList.remove('opacity-70');
+                loadMoreButton.disabled = false;
+            }
+        };
+        
+        // 按钮显示时自动启动倒计时
+        const showLoadMoreButtonWithCountdown = () => {
+            const loadMoreButton = document.getElementById('loadMoreButton');
+            if (loadMoreButton && !loadMoreButton.classList.contains('hidden')) {
+                // 如果不在倒计时中，自动启动倒计时
+                if (!isCountdownActive && !isLoadMoreInProgress) {
+                    loadMoreData();
+                }
+            }
+        };
+        
+        // 执行实际的加载操作
+        const executeLoadMore = async () => {
             if (isLoadMoreInProgress) return;
             isLoadMoreInProgress = true;
             currentPage++;
@@ -786,6 +956,18 @@
                 isLoadMoreInProgress = false;
             }
         };
+        
+        // 滚动时重置倒计时
+        const resetCountdownOnScroll = () => {
+            if (isCountdownActive) {
+                clearTimeout(countdownTimer);
+                isCountdownActive = false;
+                updateLoadMoreButton(0);
+            }
+        };
+        
+        // 添加滚动事件监听
+        window.addEventListener('scroll', resetCountdownOnScroll);
 
         // 处理回车键搜索
         const handleKeyPress = (event) => {
@@ -806,7 +988,6 @@
         const openVideoPlayer = async (videoUrl, videoTitle, videoRid, video_url, siteKey, videoImg = null) => {
         
             try {
-                showLoadingMessage(); // 保留加载提示，提升交互体验
                 // 核心：拼接播放页地址（完全匹配规则：http://127.0.0.1:8800/J1/play.html?key=hsex&parm=视频Rid）
                 const playPageUrl = `${host}/J1/play.html?key=${siteKey}&parm=${videoRid}`;
                 // 新标签页打开播放页
@@ -819,8 +1000,6 @@
             } catch (error) {
                 console.error('打开播放页失败：', error);
                 showToast('打开播放页失败，请稍后重试', 'error');
-            } finally {
-                hideLoadingMessage(); // 隐藏加载提示
             }
                 };
 
@@ -1025,10 +1204,10 @@
         };
 
         // 新增：收藏功能核心方法 -------------------------- 开始
-        // 判断视频是否已收藏（通过aid唯一标识）
-        const isLiked = (videoAid) => {
+        // 判断视频是否已收藏（通过aid和站点唯一标识）
+        const isLiked = (videoAid, videoSite) => {
             const likes = getLikes();
-            return likes.some(item => item.aid === videoAid);
+            return likes.some(item => item.aid === videoAid && item.siteName === videoSite);
         };
 
         // 新增：拉黑功能核心方法 -------------------------- 开始
@@ -1180,10 +1359,10 @@
         };
 
         // 保存收藏（核心：包含img、title、所有播放所需参数）
-        const saveLike = (videoAid, videoTitle, videoImg, videoHref, videoUrl) => {
+        const saveLike = (videoAid, videoTitle, videoImg, videoHref, videoUrl, videoSite) => {
             const likes = getLikes();
             // 避免重复收藏
-            if (isLiked(videoAid)) return;
+            if (isLiked(videoAid, videoSite)) return;
             // 收藏数据：必须包含img、title，其余为播放所需
             const likeItem = {
                 aid: videoAid,
@@ -1191,7 +1370,7 @@
                 img: videoImg,
                 href: videoHref,
                 video_url: videoUrl,
-                siteName: siteName,
+                siteName: videoSite,
                 timestamp: Date.now() // 收藏时间
             };
             likes.unshift(likeItem); // 最新收藏的在最前面
@@ -1204,9 +1383,9 @@
         };
 
         // 取消收藏（补充：同步更新页面所有按钮样式）
-        const removeLike = (videoAid) => {
+        const removeLike = (videoAid, videoSite) => {
             let likes = getLikes();
-            likes = likes.filter(item => item.aid !== videoAid);
+            likes = likes.filter(item => item.aid !== videoAid || item.siteName !== videoSite);
             localStorage.setItem('videoLikes', JSON.stringify(likes));
             // 同步更新页面中该视频的所有收藏按钮样式
             const allLikeBtns = document.querySelectorAll(`.like-btn[data-aid="${videoAid}"]`);
@@ -1219,16 +1398,16 @@
         };
 
         // 切换收藏状态（最终版：点击白空心→红实心永久，点击红实心→白空心，逻辑完全正确）
-        const toggleLike = (videoAid, videoTitle, videoImg, videoHref, videoUrl) => {
-            const isNowLiked = isLiked(videoAid); // 先判断当前是否已收藏
+        const toggleLike = (videoAid, videoTitle, videoImg, videoHref, videoUrl, videoSite) => {
+            const isNowLiked = isLiked(videoAid, videoSite); // 先判断当前是否已收藏
             // 1. 执行收藏/取消逻辑（本地存储）
             if (!isNowLiked) {
                 // 未收藏 → 执行收藏：加红色实心
-                saveLike(videoAid, videoTitle, videoImg, videoHref, videoUrl);
+                saveLike(videoAid, videoTitle, videoImg, videoHref, videoUrl, videoSite);
                 showToast('已加入我的喜欢', 'success');
             } else {
                 // 已收藏 → 执行取消：恢复白色空心
-                removeLike(videoAid);
+                removeLike(videoAid, videoSite);
                 showToast('已取消收藏', 'info');
             }
             // 2. 统一更新所有同视频按钮样式（核心：判断反转为 !isNowLiked）
@@ -1458,10 +1637,17 @@
                 updateWatermark(newSite);
                 // 保存选择到localStorage
                 localStorage.setItem('selectedSite', newSite);
-                // 重置搜索状态并重新加载数据
+                // 重置搜索状态
                 currentSearchTerm = '';
                 currentPage = 1;
                 document.getElementById('searchInput').value = '';
+                
+                // 隐藏空状态，显示加载状态
+                document.getElementById('emptyState').classList.add('hidden');
+                document.getElementById('loadMoreButton').classList.add('hidden');
+                showLoadingMessage();
+                
+                // 重新加载数据
                 fetchData('', currentPage);
 
                 const siteInfo = siteOptions.find(site => site.value === newSite);
