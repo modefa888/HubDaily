@@ -117,6 +117,26 @@
             opacity: 0;
         }
 
+        /* 视频封面wrapper和竖屏图片样式 */
+        .video-cover-wrapper {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        
+        .video-cover-wrapper.portrait {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .video-cover-wrapper.portrait img.lazy-image {
+            width: auto !important;
+            height: 100% !important;
+            max-width: none !important;
+            object-fit: contain !important;
+        }
+
         .dplayer-notice,
         .dplayer-notice * {
             writing-mode: horizontal-tb;
@@ -668,14 +688,45 @@
     <!-- 悬浮控制按钮 -->
     <div 
         id="floatingButtons" 
-        class="fixed bottom-6 right-6 glass-effect rounded-lg shadow-lg p-2"
+        class="fixed bottom-6 right-6 glass-effect rounded-lg shadow-lg p-2 md:hidden"
+        onclick="event.stopPropagation(); toggleFloatingButtons();"
     >
-        <div class="flex flex-col space-y-2">
+        <!-- 内容区域，默认隐藏 -->
+        <div id="floatingButtonsContent" class="hidden flex flex-col space-y-2 mt-2" onclick="event.stopPropagation();">
             <div class="text-xs text-gray-600 text-center px-2 py-1 bg-white/80 rounded-full">
                 总数 <span id="loadedTotalCount" class="font-semibold text-gray-800">0</span>
             </div>
             <div id="progressDisplay" class="text-xs text-gray-600 text-center px-2 py-1 bg-white/80 rounded-full">
                 进度 <span id="progressText" class="font-semibold"><span class="text-green-600" id="progressDone">0</span>/<span id="progressTotal">0</span></span>
+            </div>
+            <button 
+                onclick="playRandomVideo()" 
+                class="p-3 rounded-full hover:bg-gray-200 transition-colors"
+                title="随机播放"
+            >
+                <i class="fa fa-random"></i>
+            </button>
+            <button 
+                onclick="scrollToTop()" 
+                class="p-3 rounded-full hover:bg-gray-200 transition-colors"
+                title="回到顶部"
+            >
+                <i class="fa fa-arrow-up"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- 桌面端悬浮控制按钮 -->
+    <div 
+        id="floatingButtonsDesktop" 
+        class="fixed bottom-6 right-6 glass-effect rounded-lg shadow-lg p-2 hidden md:flex"
+    >
+        <div class="flex flex-col space-y-2">
+            <div class="text-xs text-gray-600 text-center px-2 py-1 bg-white/80 rounded-full">
+                总数 <span id="loadedTotalCountDesktop" class="font-semibold text-gray-800">0</span>
+            </div>
+            <div id="progressDisplayDesktop" class="text-xs text-gray-600 text-center px-2 py-1 bg-white/80 rounded-full">
+                进度 <span id="progressTextDesktop" class="font-semibold"><span class="text-green-600" id="progressDoneDesktop">0</span>/<span id="progressTotalDesktop">0</span></span>
             </div>
             <button 
                 onclick="playRandomVideo()" 
@@ -2110,8 +2161,12 @@
                 let completed = 0;
                 const progressDone = document.getElementById('progressDone');
                 const progressTotal = document.getElementById('progressTotal');
+                const progressDoneDesktop = document.getElementById('progressDoneDesktop');
+                const progressTotalDesktop = document.getElementById('progressTotalDesktop');
                 if (progressDone) progressDone.textContent = '0';
                 if (progressTotal) progressTotal.textContent = activeApis.length;
+                if (progressDoneDesktop) progressDoneDesktop.textContent = '0';
+                if (progressTotalDesktop) progressTotalDesktop.textContent = activeApis.length;
                 
                 if (page === 1) {
                     videoList.innerHTML = '';
@@ -2198,6 +2253,7 @@
                     } finally {
                         completed += 1;
                         if (progressDone) progressDone.textContent = completed;
+                        if (progressDoneDesktop) progressDoneDesktop.textContent = completed;
                     }
                 });
                 
@@ -2205,6 +2261,7 @@
                 
                 // 所有请求完成后，更新进度显示为"完成/总接口数"
                 if (progressDone) progressDone.textContent = '完成';
+                if (progressDoneDesktop) progressDoneDesktop.textContent = '完成';
                 
                 currentPage = page;
                 searchTerm = keyword;
@@ -2339,14 +2396,17 @@
                 const buttonClass = isNormal ? 'btn-primary text-xs' : 'btn-primary text-sm';
                 card.innerHTML = `
                     <div class="${thumbClass}" data-preview-group="video" data-preview-url="${video.vod_pic || FALLBACK_IMAGE}" data-preview-title="${video.vod_name || ''}" data-preview-video-url="${video.vod_play_url || ''}" data-preview-source="${sourceLabel || ''}" data-preview-category="${category}" onclick="openPreviewFromGroup(this)">
-                        <img 
-                            src="${FALLBACK_IMAGE}" 
-                            data-src="${video.vod_pic}" 
-                            alt="${video.vod_name}" 
-                            onerror="this.onerror=null;this.src='${FALLBACK_IMAGE}';"
-                            loading="lazy"
-                            class="w-full h-full object-cover lazy-image"
-                        >
+                        <div class="video-cover-wrapper" id="cover-wrapper-${index}">
+                            <img 
+                                src="${FALLBACK_IMAGE}" 
+                                data-src="${video.vod_pic}" 
+                                alt="${video.vod_name}" 
+                                onerror="this.onerror=null;this.src='${FALLBACK_IMAGE}';"
+                                loading="lazy"
+                                class="w-full h-full object-cover lazy-image"
+                                onload="checkVideoImageOrientation(this, ${index})"
+                            >
+                        </div>
                         ${isNormal && video.vod_remarks ? `<div class="absolute top-2 left-2 bg-black/70 text-white text-[11px] px-2 py-1 rounded-full max-w-[85%] truncate">${video.vod_remarks}</div>` : ''}
                         <div class="privacy-mask"></div>
                         <div class="count-badge hidden absolute top-2 right-2 bg-black/70 text-white text-[11px] px-2 py-1 rounded-full"></div>
@@ -2428,12 +2488,17 @@
 
         function updateLoadedCount(totalCount) {
             let changed = false;
+            const loadedTotalCountDesktop = document.getElementById('loadedTotalCountDesktop');
             if (loadedTotalCount && totalCount !== null && totalCount !== undefined) {
                 loadedTotalCount.textContent = String(totalCount);
                 changed = true;
             }
+            if (loadedTotalCountDesktop && totalCount !== null && totalCount !== undefined) {
+                loadedTotalCountDesktop.textContent = String(totalCount);
+                changed = true;
+            }
             if (!changed) return;
-            const targets = [loadedTotalCount].filter(Boolean);
+            const targets = [loadedTotalCount, loadedTotalCountDesktop].filter(Boolean);
             targets.forEach((el) => el.classList.add('animate-pulse'));
             setTimeout(() => {
                 targets.forEach((el) => el.classList.remove('animate-pulse'));
@@ -2480,8 +2545,20 @@
                         if (entry.isIntersecting) {
                             const img = entry.target;
                             if (img.dataset.src && img.src !== img.dataset.src) {
+                                img.onload = function() {
+                                    // 图片加载完成后检测方向
+                                    const wrapper = img.closest('.video-cover-wrapper');
+                                    if (wrapper) {
+                                        const wrapperId = wrapper.id;
+                                        const match = wrapperId.match(/cover-wrapper-(\d+)/);
+                                        if (match) {
+                                            const index = parseInt(match[1], 10);
+                                            applyVideoImageOrientation(img, index);
+                                        }
+                                    }
+                                    img.classList.remove('lazy-image');
+                                };
                                 img.src = img.dataset.src;
-                                img.classList.remove('lazy-image');
                             }
                             imageObserver.unobserve(img);
                         }
@@ -2492,14 +2569,46 @@
                     // 只观察那些还没有加载的图片
                     if (img.src !== img.dataset.src) {
                         imageObserver.observe(img);
+                    } else if (img.naturalWidth) {
+                        // 已经加载的图片，立即检测
+                        const wrapper = img.closest('.video-cover-wrapper');
+                        if (wrapper) {
+                            const wrapperId = wrapper.id;
+                            const match = wrapperId.match(/cover-wrapper-(\d+)/);
+                            if (match) {
+                                const index = parseInt(match[1], 10);
+                                applyVideoImageOrientation(img, index);
+                            }
+                        }
                     }
                 });
             } else {
                 // 回退方案
                 lazyImages.forEach(img => {
                     if (img.dataset.src && img.src !== img.dataset.src) {
+                        img.onload = function() {
+                            const wrapper = img.closest('.video-cover-wrapper');
+                            if (wrapper) {
+                                const wrapperId = wrapper.id;
+                                const match = wrapperId.match(/cover-wrapper-(\d+)/);
+                                if (match) {
+                                    const index = parseInt(match[1], 10);
+                                    applyVideoImageOrientation(img, index);
+                                }
+                            }
+                            img.classList.remove('lazy-image');
+                        };
                         img.src = img.dataset.src;
-                        img.classList.remove('lazy-image');
+                    } else if (img.naturalWidth) {
+                        const wrapper = img.closest('.video-cover-wrapper');
+                        if (wrapper) {
+                            const wrapperId = wrapper.id;
+                            const match = wrapperId.match(/cover-wrapper-(\d+)/);
+                            if (match) {
+                                const index = parseInt(match[1], 10);
+                                applyVideoImageOrientation(img, index);
+                            }
+                        }
                     }
                 });
             }
@@ -2762,6 +2871,35 @@
                 });
             }
         });
+
+        // 检测视频图片方向，如果是竖屏图片则添加特殊样式
+        function checkVideoImageOrientation(img, index) {
+            // 使用setTimeout确保图片尺寸已经加载完成
+            setTimeout(function() {
+                // 如果naturalWidth为0，说明图片还没加载完成，使用loaded事件
+                if (!img.naturalWidth || !img.naturalHeight) {
+                    img.addEventListener('load', function() {
+                        applyVideoImageOrientation(img, index);
+                    });
+                } else {
+                    applyVideoImageOrientation(img, index);
+                }
+            }, 100);
+        }
+
+        // 应用视频图片方向样式
+        function applyVideoImageOrientation(img, index) {
+            if (img.naturalWidth && img.naturalHeight) {
+                const aspectRatio = img.naturalWidth / img.naturalHeight;
+                // 如果是竖屏图片（宽高比小于0.75），添加portrait类
+                if (aspectRatio < 0.75) {
+                    const wrapper = document.getElementById(`cover-wrapper-${index}`);
+                    if (wrapper) {
+                        wrapper.classList.add('portrait');
+                    }
+                }
+            }
+        }
 
         // 加载更多
         async function loadMoreData() {
@@ -6963,6 +7101,30 @@
                 behavior: 'smooth'
             });
         }
+        
+        // 折叠/展开悬浮控制按钮
+        function toggleFloatingButtons() {
+            const content = document.getElementById('floatingButtonsContent');
+            if (content) {
+                if (content.classList.contains('hidden')) {
+                    content.classList.remove('hidden');
+                } else {
+                    content.classList.add('hidden');
+                }
+            }
+        }
+        
+        // 移动端点击其他地方自动折叠
+        document.addEventListener('click', function(event) {
+            const floatingButtons = document.getElementById('floatingButtons');
+            const content = document.getElementById('floatingButtonsContent');
+            if (floatingButtons && content && !content.classList.contains('hidden')) {
+                // 检查点击是否在floatingButtons区域内
+                if (!floatingButtons.contains(event.target)) {
+                    content.classList.add('hidden');
+                }
+            }
+        });
         
         // 显示加载指示器
         function showLoading(text = '加载中...') {

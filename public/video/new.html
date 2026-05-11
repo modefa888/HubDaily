@@ -167,6 +167,32 @@
             object-fit: cover;
             z-index: 1;
         }
+        
+        .video-cover-wrapper {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            overflow: hidden;
+        }
+        
+        .video-cover-wrapper.portrait {
+            width: auto;
+            height: 100%;
+            left: 0;
+            right: auto;
+            transform: none;
+        }
+        
+        .video-cover-wrapper.portrait .video-cover {
+            position: relative;
+            width: auto;
+            height: 100%;
+            max-width: none;
+            object-fit: contain;
+        }
 
         .play-button {
             position: absolute;
@@ -1251,6 +1277,35 @@
             await fetchOfficialApis(false);
             // 默认选择所有摩西接口，不选择普通接口
             selectAllAdultAggregateApis();
+        }
+
+        // 检测图片方向，如果是竖屏图片则添加特殊样式
+        function checkImageOrientation(img, index) {
+            // 使用setTimeout确保图片尺寸已经加载完成
+            setTimeout(function() {
+                // 如果naturalWidth为0，说明图片还没加载完成，使用loaded事件
+                if (!img.naturalWidth || !img.naturalHeight) {
+                    img.addEventListener('load', function() {
+                        applyOrientation(img, index);
+                    });
+                } else {
+                    applyOrientation(img, index);
+                }
+            }, 100);
+        }
+
+        // 应用图片方向样式
+        function applyOrientation(img, index) {
+            if (img.naturalWidth && img.naturalHeight) {
+                const aspectRatio = img.naturalWidth / img.naturalHeight;
+                // 如果是竖屏图片（宽高比小于0.75），添加portrait类
+                if (aspectRatio < 0.75) {
+                    const wrapper = document.getElementById(`cover-wrapper-${index}`);
+                    if (wrapper) {
+                        wrapper.classList.add('portrait');
+                    }
+                }
+            }
         }
 
         // 选择所有摩西接口
@@ -2924,9 +2979,19 @@
                 
                 const videoItem = document.createElement('div');
                 videoItem.className = 'video-item';
+                
+                // 检测图片是否为竖屏，并添加相应的wrapper
+                const coverHtml = pic ? `
+                    <div class="video-cover-wrapper" id="cover-wrapper-${index}">
+                        <img src="${pic}" alt="${title}" class="video-cover" 
+                             onload="checkImageOrientation(this, ${index})"
+                             onerror="this.style.display='none'">
+                    </div>
+                ` : '';
+                
                 videoItem.innerHTML = `
                     <div class="video-player-container" id="player-${index}"></div>
-                    ${pic ? `<img src="${pic}" alt="${title}" class="video-cover">` : ''}
+                    ${coverHtml}
                     <div class="play-button" onclick="playVideoAtIndex(${index})"><i class="fa fa-play"></i></div>
                     <div class="video-info" style="z-index: 10; position: absolute; bottom: 20px; left: 10px; right: 80px; padding: 10px; border-radius: 8px;">
                         <div class="flex items-center gap-2 mb-2">
