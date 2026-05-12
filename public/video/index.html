@@ -146,6 +146,37 @@
 
     </style>
 
+    <script>
+        function toggleMoreMenu() {
+            const menu = document.getElementById('moreMenu');
+            if (!menu) return;
+            menu.classList.toggle('hidden');
+            if (!menu.classList.contains('hidden')) {
+                menu.addEventListener('mouseleave', function handleMouseLeave() {
+                    menu.classList.add('hidden');
+                    menu.removeEventListener('mouseleave', handleMouseLeave);
+                }, { once: true });
+            }
+        }
+
+        function handleMoreAction(action) {
+            toggleMoreMenu();
+            if (action === 'favorite') {
+                if (typeof toggleFavorites === 'function') toggleFavorites();
+            } else if (action === 'share') {
+                if (typeof toggleSharePanel === 'function') toggleSharePanel();
+            } else if (action === 'history') {
+                if (typeof toggleHistory === 'function') toggleHistory();
+            } else if (action === 'user') {
+                if (typeof toggleUserInfo === 'function') toggleUserInfo();
+            } else if (action === 'setting') {
+                if (typeof toggleHostModal === 'function') toggleHostModal();
+            } else if (action === 'about') {
+                if (typeof toggleAboutPanel === 'function') toggleAboutPanel();
+            }
+        }
+    </script>
+
 </head>
 <body class="bg-gray-100 transition-colors duration-300">
     <div id="appContent">
@@ -2346,7 +2377,7 @@
             const layoutCategory = categories.size === 1 ? Array.from(categories)[0] : 'adult';
             updateVideoGridLayout(layoutCategory);
 
-            videos.forEach(video => {
+            videos.forEach((video, index) => {
                 const favorited = isFavorited(video.vod_play_url);
                 const sourceLabel = video._sourceLabel || getHostLabel();
                 const category = resolveVideoCategory(video);
@@ -2463,12 +2494,12 @@
                     </div>
                 `;
                 
-                const index = renderedVideos.length;
-                card.dataset.index = String(index);
+                const cardIndex = renderedVideos.length;
+                card.dataset.index = String(cardIndex);
                 const thumb = card.querySelector('.video-thumb');
                 if (thumb) {
                     thumb.addEventListener('mouseenter', () => {
-                        showCardCount(thumb, index);
+                        showCardCount(thumb, cardIndex);
                     });
                     thumb.addEventListener('mouseleave', () => {
                         hideCardCount(thumb);
