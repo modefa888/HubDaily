@@ -21,6 +21,7 @@ const captchaModule = require("./modules/captcha");
 const navigationModule = require("./modules/navigation");
 const tvModule = require("./modules/tv");
 const tvM3u8Module = require("./modules/tv.m3u8");
+const smartArchiveModule = require("./modules/smartArchive");
 
 // 注册模块路由 - 确保具体路由先于通配符路由
 // 先注册验证码模块（公开接口）
@@ -39,6 +40,7 @@ userRouter.use(shareModule.router.routes(), shareModule.router.allowedMethods())
 userRouter.use(navigationModule.router.routes(), navigationModule.router.allowedMethods());
 userRouter.use(tvModule.router.routes(), tvModule.router.allowedMethods());
 userRouter.use(tvM3u8Module.routes(), tvM3u8Module.allowedMethods());
+userRouter.use(smartArchiveModule.router.routes(), smartArchiveModule.router.allowedMethods());
 // 最后注册包含通配符的路由模块
 userRouter.use(userModule.router.routes(), userModule.router.allowedMethods());
 

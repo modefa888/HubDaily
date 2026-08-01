@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能存档管理</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            overflow-y: scroll;
+        }
+        .archive-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
+        }
+        .archive-cover {
+            background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+        }
+        .modal-backdrop {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(4px);
+        }
+        .star-btn { transition: all 0.2s; }
+        .star-btn:hover { transform: scale(1.15); }
+        .star-active { color: #f59e0b; }
+        .toast {
+            position: fixed;
+            top: 80px;
+            right: 24px;
+            z-index: 100;
+            padding: 12px 20px;
+            border-radius: 8px;
+            color: white;
+            font-size: 14px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+            animation: slideIn 0.3s ease;
+        }
+        .toast.success { background: #10b981; }
+        .toast.error { background: #ef4444; }
+        .toast.info { background: #3b82f6; }
+        @keyframes slideIn {
+            from { transform: translateX(120%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .table-row:hover {
+            background: #f8fafc;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen">
+    <!-- 导航 -->
+    <nav class="bg-white border-b shadow-sm fixed top-0 left-0 right-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <a href="/user/admin/" class="text-slate-500 hover:text-slate-800">
+                    <i class="fa fa-arrow-left"></i>
+                </a>
+                <div class="text-lg font-semibold">智能存档管理</div>
+            </div>
+            <div class="flex items-center space-x-2">
+                <span id="authStatus" class="text-sm text-slate-500">校验中...</span>
+                <button id="logoutBtn" class="hidden px-3 py-1.5 rounded bg-slate-800 text-white text-sm">退出</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="pt-16 pb-12 px-4 max-w-7xl mx-auto space-y-4">
+        <!-- 统计卡片 -->
+        <section class="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div class="bg-white rounded-xl shadow p-4">
+                <div class="text-xs text-slate-500">总存档数</div>
+                <div id="statTotal" class="text-2xl font-bold text-slate-800 mt-1">0</div>
+            </div>
+            <div class="bg-white rounded-xl shadow p-4">
+                <div class="text-xs text-slate-500">含 m3u8 地址</div>
+                <div id="statM3u8" class="text-2xl font-bold text-blue-600 mt-1">0</div>
+            </div>
+            <div class="bg-white rounded-xl shadow p-4">
+                <div class="text-xs text-slate-500">含封面</div>
+                <div id="statCover" class="text-2xl font-bold text-emerald-600 mt-1">0</div>
+            </div>
+            <div class="bg-white rounded-xl shadow p-4">
+                <div class="text-xs text-slate-500">平均评分</div>
+                <div id="statRating" class="text-2xl font-bold text-amber-500 mt-1">0.0</div>
+            </div>
+        </section>
+
+        <!-- 脚本接口配置（根据当前域名动态生成） -->
+        <section class="bg-white rounded-xl shadow p-4 space-y-3">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <i class="fa fa-code text-indigo-500"></i>
+                    <h3 class="text-sm font-semibold text-slate-700">脚本接口配置</h3>
+                </div>
+                <span class="text-xs text-slate-400">根据当前域名自动生成</span>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <!-- HOST 配置 -->
+                <div class="border rounded-lg p-3 bg-slate-50">
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="text-xs font-medium text-slate-600">HOST（接口基址）</label>
+                        <button data-copy-target="scriptHost" class="copy-btn text-xs px-2 py-1 rounded bg-indigo-500 text-white hover:bg-indigo-600">
+                            <i class="fa fa-copy"></i> 复制
+                        </button>
+                    </div>
+                    <code id="scriptHost" class="block text-sm text-slate-800 break-all"></code>
+                </div>
+                <!-- @connect 指令 -->
+                <div class="border rounded-lg p-3 bg-slate-50">
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="text-xs font-medium text-slate-600">@connect 域名</label>
+                        <button data-copy-target="scriptConnect" class="copy-btn text-xs px-2 py-1 rounded bg-indigo-500 text-white hover:bg-indigo-600">
+                            <i class="fa fa-copy"></i> 复制
+                        </button>
+                    </div>
+                    <code id="scriptConnect" class="block text-sm text-slate-800 break-all"></code>
+                </div>
+            </div>
+            <!-- 完整配置片段 -->
+            <div class="border rounded-lg p-3 bg-slate-50">
+                <div class="flex items-center justify-between mb-1">
+                    <label class="text-xs font-medium text-slate-600">完整配置片段（复制到油猴脚本头部）</label>
+                    <button data-copy-target="scriptSnippet" class="copy-btn text-xs px-2 py-1 rounded bg-slate-800 text-white hover:bg-slate-900">
+                        <i class="fa fa-copy"></i> 复制全部
+                    </button>
+                </div>
+                <pre id="scriptSnippet" class="text-xs text-slate-800 overflow-auto whitespace-pre-wrap"></pre>
+            </div>
+            <!-- 脚本下载地址 -->
+            <div class="border rounded-lg p-3 bg-slate-50">
+                <div class="flex items-center justify-between mb-1">
+                    <label class="text-xs font-medium text-slate-600">脚本下载地址（远程获取）</label>
+                    <div class="flex items-center gap-2">
+                        <a id="scriptDownloadLink" href="#" target="_blank" class="text-xs px-2 py-1 rounded bg-emerald-500 text-white hover:bg-emerald-600">
+                            <i class="fa fa-download"></i> 下载
+                        </a>
+                        <button data-copy-target="scriptDownloadUrl" class="copy-btn text-xs px-2 py-1 rounded bg-indigo-500 text-white hover:bg-indigo-600">
+                            <i class="fa fa-copy"></i> 复制
+                        </button>
+                    </div>
+                </div>
+                <code id="scriptDownloadUrl" class="block text-sm text-slate-800 break-all"></code>
+            </div>
+            <!-- 查看与编辑脚本 -->
+            <div class="border rounded-lg p-3 bg-slate-50">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <label class="text-xs font-medium text-slate-600">脚本源码（智能存档助手.js）</label>
+                        <p class="text-xs text-slate-400 mt-0.5">查看与在线编辑脚本内容</p>
+                    </div>
+                    <button id="editScriptBtn" class="text-xs px-3 py-1.5 rounded bg-amber-500 text-white hover:bg-amber-600">
+                        <i class="fa fa-edit"></i> 查看/编辑脚本
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 搜索筛选 -->
+        <section class="bg-white rounded-xl shadow p-4 space-y-3">
+            <div class="flex flex-wrap items-center gap-2">
+                <input id="searchInput" type="text" placeholder="搜索标题、URL、备注、m3u8地址..."
+                    class="flex-1 min-w-[200px] border rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                <select id="minRatingSelect" class="border rounded px-3 py-2 text-sm">
+                    <option value="0">全部评分</option>
+                    <option value="1">1星及以上</option>
+                    <option value="2">2星及以上</option>
+                    <option value="3">3星及以上</option>
+                    <option value="4">4星及以上</option>
+                    <option value="5">5星</option>
+                </select>
+                <select id="hasM3u8Select" class="border rounded px-3 py-2 text-sm">
+                    <option value="">不限m3u8</option>
+                    <option value="yes">含m3u8</option>
+                    <option value="no">无m3u8</option>
+                </select>
+                <select id="sortBySelect" class="border rounded px-3 py-2 text-sm">
+                    <option value="updatedAt">更新时间</option>
+                    <option value="createdAt">创建时间</option>
+                    <option value="rating">评分</option>
+                    <option value="pageTitle">标题</option>
+                </select>
+                <select id="sortOrderSelect" class="border rounded px-3 py-2 text-sm">
+                    <option value="desc">降序</option>
+                    <option value="asc">升序</option>
+                </select>
+                <button id="searchBtn" class="px-4 py-2 rounded bg-blue-600 text-white text-sm hover:bg-blue-700">
+                    <i class="fa fa-search"></i> 搜索
+                </button>
+                <button id="resetBtn" class="px-4 py-2 rounded bg-slate-200 text-slate-700 text-sm hover:bg-slate-300">
+                    重置
+                </button>
+            </div>
+            <div class="flex flex-wrap items-center gap-2 text-sm">
+                <span class="text-slate-500">视图：</span>
+                <button id="viewListBtn" class="px-3 py-1 rounded bg-slate-800 text-white">列表</button>
+                <button id="viewGridBtn" class="px-3 py-1 rounded bg-slate-200 text-slate-700">卡片</button>
+                <span class="ml-auto text-slate-500">已加载 <span id="totalCount" class="font-semibold text-slate-800">0</span> 条</span>
+            </div>
+        </section>
+
+        <!-- 列表视图 -->
+        <section id="listView" class="bg-white rounded-xl shadow p-4">
+            <div class="overflow-auto">
+                <table class="min-w-full text-sm">
+                    <thead class="text-left text-slate-500 border-b">
+                        <tr>
+                            <th class="py-2 pr-2"><input type="checkbox" id="selectAllCheckbox"></th>
+                            <th class="py-2 pr-2">封面</th>
+                            <th class="py-2 pr-2">标题/URL</th>
+                            <th class="py-2 pr-2">备注</th>
+                            <th class="py-2 pr-2">m3u8</th>
+                            <th class="py-2 pr-2">评分</th>
+                            <th class="py-2 pr-2">更新时间</th>
+                            <th class="py-2 pr-2">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody" class="divide-y"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- 卡片视图 -->
+        <section id="gridView" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        </section>
+
+        <!-- 分页 -->
+        <section class="flex flex-wrap items-center justify-between gap-2 text-sm">
+            <div class="flex items-center gap-2">
+                <span id="paginationInfo" class="text-slate-500"></span>
+            </div>
+            <div id="paginationButtons" class="flex flex-wrap items-center gap-1"></div>
+        </section>
+    </div>
+
+    <!-- 编辑模态框 -->
+    <div id="editModal" class="fixed inset-0 z-50 hidden items-center justify-center modal-backdrop p-4">
+        <div class="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="px-5 py-4 border-b flex items-center justify-between">
+                <h3 class="font-semibold text-lg">编辑存档</h3>
+                <button id="closeEditBtn" class="text-slate-400 hover:text-slate-700">
+                    <i class="fa fa-times text-xl"></i>
+                </button>
+            </div>
+            <div class="p-5 space-y-3">
+                <input type="hidden" id="editId">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">页面标题</label>
+                    <input id="editTitle" type="text" class="w-full border rounded px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">页面URL</label>
+                    <input id="editHref" type="text" class="w-full border rounded px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">封面图URL</label>
+                    <input id="editCover" type="text" class="w-full border rounded px-3 py-2 text-sm" placeholder="留空表示无封面">
+                    <img id="editCoverPreview" class="mt-2 max-h-32 rounded hidden" alt="封面预览">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">备注</label>
+                    <textarea id="editRemark" rows="2" class="w-full border rounded px-3 py-2 text-sm"></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">m3u8 地址（每行一个）</label>
+                    <textarea id="editM3u8" rows="5" class="w-full border rounded px-3 py-2 text-sm font-mono"></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">评分</label>
+                    <div id="editRating" class="flex items-center gap-1">
+                        <button type="button" class="star-btn text-2xl text-slate-300" data-value="1">★</button>
+                        <button type="button" class="star-btn text-2xl text-slate-300" data-value="2">★</button>
+                        <button type="button" class="star-btn text-2xl text-slate-300" data-value="3">★</button>
+                        <button type="button" class="star-btn text-2xl text-slate-300" data-value="4">★</button>
+                        <button type="button" class="star-btn text-2xl text-slate-300" data-value="5">★</button>
+                        <span id="editRatingText" class="ml-2 text-sm text-slate-500">未评分</span>
+                    </div>
+                </div>
+            </div>
+            <div class="px-5 py-4 border-t flex items-center justify-end gap-2">
+                <button id="cancelEditBtn" class="px-4 py-2 rounded bg-slate-200 text-slate-700 text-sm">取消</button>
+                <button id="saveEditBtn" class="px-4 py-2 rounded bg-blue-600 text-white text-sm hover:bg-blue-700">
+                    <i class="fa fa-check"></i> 保存
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 详情模态框 -->
+    <div id="detailModal" class="fixed inset-0 z-50 hidden items-center justify-center modal-backdrop p-4">
+        <div class="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="px-5 py-4 border-b flex items-center justify-between">
+                <h3 class="font-semibold text-lg">存档详情</h3>
+                <button id="closeDetailBtn" class="text-slate-400 hover:text-slate-700">
+                    <i class="fa fa-times text-xl"></i>
+                </button>
+            </div>
+            <div id="detailContent" class="p-5 space-y-3"></div>
+        </div>
+    </div>
+
+    <!-- 加载中 -->
+    <div id="loadingOverlay" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop">
+        <div class="bg-white rounded-xl px-6 py-4 flex items-center gap-3">
+            <div class="w-5 h-5 border-2 border-slate-300 border-t-blue-600 rounded-full animate-spin"></div>
+            <span class="text-slate-700">处理中...</span>
+        </div>
+    </div>
+
+    <!-- 脚本编辑弹窗 -->
+    <div id="scriptModal" class="fixed inset-0 z-50 hidden items-center justify-center modal-backdrop p-4">
+        <div class="bg-white rounded-xl shadow-xl max-w-5xl w-full max-h-[92vh] flex flex-col">
+            <div class="px-5 py-4 border-b flex items-center justify-between">
+                <div>
+                    <h3 class="font-semibold text-lg">脚本源码编辑</h3>
+                    <p class="text-xs text-slate-400 mt-0.5">文件：public/智能存档助手.js <span id="scriptUpdatedAt" class="ml-2"></span></p>
+                </div>
+                <button id="closeScriptBtn" class="text-slate-400 hover:text-slate-700">
+                    <i class="fa fa-times text-xl"></i>
+                </button>
+            </div>
+            <div class="p-4 flex-1 overflow-hidden flex flex-col">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs text-slate-500">直接编辑后点击保存，将立即写入服务器脚本文件</span>
+                    <div class="flex items-center gap-2">
+                        <button id="resetScriptBtn" class="text-xs px-3 py-1.5 rounded bg-slate-200 text-slate-700 hover:bg-slate-300">
+                            <i class="fa fa-undo"></i> 重新加载
+                        </button>
+                        <button id="saveScriptBtn" class="text-xs px-3 py-1.5 rounded bg-emerald-500 text-white hover:bg-emerald-600">
+                            <i class="fa fa-save"></i> 保存脚本
+                        </button>
+                    </div>
+                </div>
+                <textarea id="scriptContent" spellcheck="false" class="flex-1 w-full border rounded p-3 text-xs font-mono resize-none focus:outline-none focus:border-blue-500" style="min-height: 400px;" placeholder="加载中..."></textarea>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 配置
+        const API_BASE = '/api';
+        const PAGE_SIZE = 20;
+        let currentPage = 1;
+        let currentView = 'list'; // list | grid
+        let selectedIds = new Set();
+        let editingRating = 0;
+
+        // 工具函数
+        const getToken = () => {
+            return localStorage.getItem('token') || localStorage.getItem('userToken') || '';
+        };
+
+        // 跳转登录页（携带当前地址作为 redirect 参数，登录成功后返回）
+        const redirectToLogin = () => {
+            const redirect = encodeURIComponent(window.location.pathname + window.location.search);
+            window.location.href = `/login/index.html?redirect=${redirect}`;
+        };
+
+        const toast = (msg, type = 'info') => {
+            const el = document.createElement('div');
+            el.className = `toast ${type}`;
+            el.textContent = msg;
+            document.body.appendChild(el);
+            setTimeout(() => {
+                el.style.transition = 'opacity 0.3s';
+                el.style.opacity = '0';
+                setTimeout(() => el.remove(), 300);
+            }, 2500);
+        };
+
+        const showLoading = () => document.getElementById('loadingOverlay').classList.remove('hidden');
+        const hideLoading = () => document.getElementById('loadingOverlay').classList.add('hidden');
+
+        const formatDate = (date) => {
+            if (!date) return '-';
+            const d = new Date(date);
+            if (isNaN(d.getTime())) return '-';
+            const pad = (n) => String(n).padStart(2, '0');
+            return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        };
+
+        const escapeHtml = (str) => {
+            return String(str || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        };
+
+        const apiRequest = async (path, options = {}) => {
+            const headers = {
+                'Content-Type': 'application/json',
+                ...options.headers,
+            };
+            const token = getToken();
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+            try {
+                const response = await fetch(API_BASE + path, {
+                    ...options,
+                    headers,
+                });
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.message || `请求失败: ${response.status}`);
+                }
+                return data;
+            } catch (error) {
+                console.error('API请求失败:', error);
+                throw error;
+            }
+        };
+
+        // 根据当前域名动态生成脚本接口配置并填充
+        const initScriptConfig = () => {
+            const origin = window.location.origin;
+            const hostname = window.location.hostname;
+            const host = `${origin}/api`;
+            const connectLine = `// @connect      ${hostname}`;
+            // 脚本下载地址（通过 API 端点下载，避免中文文件名编码问题）
+            const downloadUrl = `${origin}/api/smart_archive/download_script`;
+            const snippet = `// ==UserScript==\n` +
+                `// @name         智能存档助手 - 油猴版\n` +
+                `// @namespace    http://tampermonkey.net/\n` +
+                `// @version      3.0.1\n` +
+                `// @description  智能存档工具，支持m3u8检测、五星评分、上传存档\n` +
+                `// @author       Tabbit\n` +
+                `// @match        *://*/*\n` +
+                `// @grant        GM_xmlhttpRequest\n` +
+                `// @grant        GM_setValue\n` +
+                `// @grant        GM_getValue\n` +
+                `// @grant        GM_addStyle\n` +
+                `${connectLine}\n` +
+                `// @run-at       document-end\n` +
+                `// ==/UserScript==\n\n` +
+                `(function() {\n` +
+                `    'use strict';\n\n` +
+                `    // 配置\n` +
+                `    const HOST = '${host}';\n` +
+                `    const TOKEN = 'YOUR_BEARER_TOKEN_HERE'; // 请替换为您的实际token\n` +
+                `})();`;
+            document.getElementById('scriptHost').textContent = host;
+            document.getElementById('scriptConnect').textContent = connectLine;
+            document.getElementById('scriptSnippet').textContent = snippet;
+            // 下载地址
+            document.getElementById('scriptDownloadUrl').textContent = downloadUrl;
+            const link = document.getElementById('scriptDownloadLink');
+            link.href = downloadUrl;
+        };
+
+        // 加载脚本内容
+        let originalScriptContent = '';
+        const loadScriptContent = async () => {
+            showLoading();
+            try {
+                const data = await apiRequest('/smart_archive/script');
+                if (data.code === 200) {
+                    originalScriptContent = data.data.content || '';
+                    document.getElementById('scriptContent').value = originalScriptContent;
+                    const updatedAt = data.data.updatedAt;
+                    document.getElementById('scriptUpdatedAt').textContent = updatedAt
+                        ? `（更新于 ${formatDate(updatedAt)}）`
+                        : '';
+                } else {
+                    toast(data.message || '加载脚本失败', 'error');
+                }
+            } catch (error) {
+                toast('加载脚本失败: ' + (error.message || ''), 'error');
+            } finally {
+                hideLoading();
+            }
+        };
+
+        // 保存脚本内容
+        const saveScriptContent = async () => {
+            const content = document.getElementById('scriptContent').value;
+            if (content === originalScriptContent) {
+                toast('内容未修改', 'info');
+                return;
+            }
+            if (!confirm('确认保存并覆盖服务器上的脚本文件？')) return;
+            showLoading();
+            try {
+                const data = await apiRequest('/smart_archive/script', {
+                    method: 'PUT',
+                    body: JSON.stringify({ content }),
+                });
+                if (data.code === 200) {
+                    originalScriptContent = content;
+                    const updatedAt = data.data?.updatedAt;
+                    document.getElementById('scriptUpdatedAt').textContent = updatedAt
+                        ? `（更新于 ${formatDate(updatedAt)}）`
+                        : '';
+                    toast('脚本保存成功', 'success');
+                } else {
+                    toast(data.message || '保存失败', 'error');
+                }
+            } catch (error) {
+                toast('保存失败: ' + (error.message || ''), 'error');
+            } finally {
+                hideLoading();
+            }
+        };
+
+        // 打开脚本编辑弹窗
+        const openScriptModal = async () => {
+            document.getElementById('scriptModal').classList.remove('hidden');
+            document.getElementById('scriptModal').classList.add('flex');
+            await loadScriptContent();
+        };
+
+        // 关闭脚本编辑弹窗
+        const closeScriptModal = () => {
+            document.getElementById('scriptModal').classList.add('hidden');
+            document.getElementById('scriptModal').classList.remove('flex');
+        };
+
+        // 复制到剪贴板
+        const copyToClipboard = async (text) => {
+            try {
+                if (navigator.clipboard && window.isSecureContext) {
+                    await navigator.clipboard.writeText(text);
+                } else {
+                    const ta = document.createElement('textarea');
+                    ta.value = text;
+                    ta.style.position = 'fixed';
+                    ta.style.left = '-9999px';
+                    document.body.appendChild(ta);
+                    ta.select();
+                    document.execCommand('copy');
+                    ta.remove();
+                }
+                return true;
+            } catch (e) {
+                console.error('复制失败:', e);
+                return false;
+            }
+        };
+
+        // 绑定复制按钮
+        const bindCopyButtons = () => {
+            document.querySelectorAll('.copy-btn').forEach((btn) => {
+                btn.addEventListener('click', async () => {
+                    const targetId = btn.getAttribute('data-copy-target');
+                    const el = document.getElementById(targetId);
+                    if (!el) return;
+                    const text = el.textContent || '';
+                    const ok = await copyToClipboard(text);
+                    const original = btn.innerHTML;
+                    if (ok) {
+                        btn.innerHTML = '<i class="fa fa-check"></i> 已复制';
+                        toast('已复制到剪贴板', 'success');
+                    } else {
+                        btn.innerHTML = '<i class="fa fa-times"></i> 失败';
+                        toast('复制失败', 'error');
+                    }
+                    setTimeout(() => { btn.innerHTML = original; }, 1500);
+                });
+            });
+        };
+
+        // 检查登录状态
+        const checkAuth = async () => {
+            const token = getToken();
+            if (!token) {
+                redirectToLogin();
+                return false;
+            }
+            try {
+                const data = await apiRequest('/user/profile');
+                if (data.code === 200 && data.data?.role === 'admin') {
+                    document.getElementById('authStatus').textContent = `已登录: ${data.data.nickname || data.data.username || ''}`;
+                    document.getElementById('logoutBtn').classList.remove('hidden');
+                    return true;
+                } else {
+                    redirectToLogin();
+                    return false;
+                }
+            } catch (error) {
+                redirectToLogin();
+                return false;
+            }
+        };
+
+        // 退出登录
+        const logout = async () => {
+            try {
+                await apiRequest('/user/logout', { method: 'POST' });
+            } catch (e) {}
+            localStorage.removeItem('token');
+            localStorage.removeItem('userToken');
+            window.location.href = '/login/';
+        };
+
+        // 加载统计
+        const loadStats = async () => {
+            try {
+                const data = await apiRequest('/smart_archive/stats/summary');
+                if (data.code === 200) {
+                    const d = data.data || {};
+                    document.getElementById('statTotal').textContent = d.total || 0;
+                    document.getElementById('statM3u8').textContent = d.withM3u8 || 0;
+                    document.getElementById('statCover').textContent = d.withCover || 0;
+                    document.getElementById('statRating').textContent = (d.averageRating || 0).toFixed(1);
+                }
+            } catch (error) {
+                console.warn('加载统计失败:', error.message);
+            }
+        };
+
+        // 加载列表
+        const loadList = async () => {
+            const keyword = document.getElementById('searchInput').value.trim();
+            const minRating = document.getElementById('minRatingSelect').value;
+            const hasM3u8 = document.getElementById('hasM3u8Select').value;
+            const sortBy = document.getElementById('sortBySelect').value;
+            const sortOrder = document.getElementById('sortOrderSelect').value;
+            const params = new URLSearchParams({
+                page: currentPage,
+                pageSize: PAGE_SIZE,
+                sortBy,
+                sortOrder,
+            });
+            if (keyword) params.set('keyword', keyword);
+            if (minRating) params.set('minRating', minRating);
+            if (hasM3u8) params.set('hasM3u8', hasM3u8);
+
+            showLoading();
+            try {
+                const data = await apiRequest('/smart_archive/list?' + params.toString());
+                if (data.code === 200) {
+                    document.getElementById('totalCount').textContent = data.total || 0;
+                    renderPagination(data.total, data.page, data.pageSize);
+                    renderList(data.data || []);
+                } else {
+                    toast(data.message || '加载失败', 'error');
+                }
+            } catch (error) {
+                toast('加载失败: ' + error.message, 'error');
+            } finally {
+                hideLoading();
+            }
+        };
+
+        // 渲染列表
+        const renderList = (list) => {
+            const tbody = document.getElementById('tableBody');
+            const grid = document.getElementById('gridView');
+            if (currentView === 'list') {
+                tbody.innerHTML = '';
+                if (list.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-slate-400">暂无数据</td></tr>`;
+                    return;
+                }
+                list.forEach((item) => {
+                    const tr = document.createElement('tr');
+                    tr.className = 'table-row';
+                    const rating = item.rating || 0;
+                    const ratingStars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
+                    const m3u8Count = (item.m3u8Urls || []).length;
+                    const checked = selectedIds.has(String(item._id)) ? 'checked' : '';
+                    tr.innerHTML = `
+                        <td class="py-2 pr-2"><input type="checkbox" class="row-checkbox" data-id="${item._id}" ${checked}></td>
+                        <td class="py-2 pr-2">
+                            ${item.coverImage
+                                ? `<img src="${escapeHtml(item.coverImage)}" class="w-12 h-16 object-cover rounded cursor-pointer" onerror="this.style.display='none'" onclick="openImagePreview('${escapeHtml(item.coverImage)}')">`
+                                : `<div class="w-12 h-16 archive-cover rounded flex items-center justify-center text-slate-400"><i class="fa fa-image"></i></div>`}
+                        </td>
+                        <td class="py-2 pr-2 max-w-[280px]">
+                            <div class="font-medium truncate" title="${escapeHtml(item.pageTitle || '')}">${escapeHtml(item.pageTitle || '无标题')}</div>
+                            <div class="text-xs text-slate-500 truncate" title="${escapeHtml(item.pageHref || '')}">
+                                <a href="${escapeHtml(item.pageHref || '#')}" target="_blank" class="hover:text-blue-600">${escapeHtml(item.pageHref || '')}</a>
+                            </div>
+                        </td>
+                        <td class="py-2 pr-2 max-w-[200px]">
+                            <div class="truncate text-slate-600" title="${escapeHtml(item.remark || '')}">${escapeHtml(item.remark || '无')}</div>
+                        </td>
+                        <td class="py-2 pr-2">
+                            <span class="px-2 py-0.5 rounded text-xs ${m3u8Count > 0 ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-500'}">${m3u8Count}</span>
+                        </td>
+                        <td class="py-2 pr-2">
+                            <span class="text-amber-500" title="${rating}星">${ratingStars}</span>
+                        </td>
+                        <td class="py-2 pr-2 text-xs text-slate-500">${formatDate(item.updatedAt)}</td>
+                        <td class="py-2 pr-2 whitespace-nowrap">
+                            <button class="text-blue-600 hover:text-blue-800 px-1" onclick="openDetail('${item._id}')" title="详情"><i class="fa fa-eye"></i></button>
+                            <button class="text-emerald-600 hover:text-emerald-800 px-1" onclick="openEdit('${item._id}')" title="编辑"><i class="fa fa-edit"></i></button>
+                            <button class="text-red-600 hover:text-red-800 px-1" onclick="deleteItem('${item._id}')" title="删除"><i class="fa fa-trash"></i></button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } else {
+                grid.innerHTML = '';
+                if (list.length === 0) {
+                    grid.innerHTML = `<div class="col-span-full text-center py-8 text-slate-400">暂无数据</div>`;
+                    return;
+                }
+                list.forEach((item) => {
+                    const card = document.createElement('div');
+                    card.className = 'archive-card bg-white rounded-xl shadow p-3 flex flex-col gap-2 transition-all';
+                    const rating = item.rating || 0;
+                    const m3u8Count = (item.m3u8Urls || []).length;
+                    card.innerHTML = `
+                        <div class="aspect-video archive-cover rounded overflow-hidden flex items-center justify-center">
+                            ${item.coverImage
+                                ? `<img src="${escapeHtml(item.coverImage)}" class="w-full h-full object-cover" onerror="this.style.display='none'">`
+                                : `<i class="fa fa-image text-3xl text-slate-300"></i>`}
+                        </div>
+                        <div class="font-medium text-sm truncate" title="${escapeHtml(item.pageTitle || '')}">${escapeHtml(item.pageTitle || '无标题')}</div>
+                        <div class="text-xs text-slate-500 truncate">
+                            <a href="${escapeHtml(item.pageHref || '#')}" target="_blank" class="hover:text-blue-600">${escapeHtml(item.pageHref || '')}</a>
+                        </div>
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="text-amber-500">${'★'.repeat(rating)}${'☆'.repeat(5 - rating)}</span>
+                            <span class="${m3u8Count > 0 ? 'text-blue-600' : 'text-slate-400'}">m3u8: ${m3u8Count}</span>
+                        </div>
+                        <div class="text-xs text-slate-500 truncate" title="${escapeHtml(item.remark || '')}">${escapeHtml(item.remark || '无备注')}</div>
+                        <div class="text-xs text-slate-400">${formatDate(item.updatedAt)}</div>
+                        <div class="flex items-center gap-1 pt-1 border-t">
+                            <button class="flex-1 py-1 text-xs text-blue-600 hover:bg-blue-50 rounded" onclick="openDetail('${item._id}')">详情</button>
+                            <button class="flex-1 py-1 text-xs text-emerald-600 hover:bg-emerald-50 rounded" onclick="openEdit('${item._id}')">编辑</button>
+                            <button class="flex-1 py-1 text-xs text-red-600 hover:bg-red-50 rounded" onclick="deleteItem('${item._id}')">删除</button>
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                });
+            }
+        };
+
+        // 渲染分页
+        const renderPagination = (total, page, pageSize) => {
+            const totalPages = Math.ceil(total / pageSize) || 1;
+            document.getElementById('paginationInfo').textContent = `第 ${page} / ${totalPages} 页，共 ${total} 条`;
+            const btns = document.getElementById('paginationButtons');
+            btns.innerHTML = '';
+            const mkBtn = (text, disabled, onClick) => {
+                const btn = document.createElement('button');
+                btn.className = 'px-3 py-1 rounded text-sm ' + (disabled ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-slate-200 text-slate-700 hover:bg-slate-300');
+                btn.textContent = text;
+                if (!disabled) btn.onclick = onClick;
+                return btn;
+            };
+            btns.appendChild(mkBtn('首页', page === 1, () => { currentPage = 1; loadList(); }));
+            btns.appendChild(mkBtn('上一页', page === 1, () => { currentPage = Math.max(1, page - 1); loadList(); }));
+            // 页码
+            const startPage = Math.max(1, page - 2);
+            const endPage = Math.min(totalPages, page + 2);
+            for (let i = startPage; i <= endPage; i++) {
+                const btn = mkBtn(String(i), false, () => { currentPage = i; loadList(); });
+                if (i === page) btn.className = 'px-3 py-1 rounded text-sm bg-blue-600 text-white';
+                btns.appendChild(btn);
+            }
+            btns.appendChild(mkBtn('下一页', page === totalPages, () => { currentPage = Math.min(totalPages, page + 1); loadList(); }));
+            btns.appendChild(mkBtn('末页', page === totalPages, () => { currentPage = totalPages; loadList(); }));
+        };
+
+        // 打开编辑
+        const openEdit = async (id) => {
+            try {
+                const data = await apiRequest('/smart_archive/' + id);
+                if (data.code !== 200) {
+                    toast(data.message || '获取详情失败', 'error');
+                    return;
+                }
+                const item = data.data;
+                document.getElementById('editId').value = item._id;
+                document.getElementById('editTitle').value = item.pageTitle || '';
+                document.getElementById('editHref').value = item.pageHref || '';
+                document.getElementById('editCover').value = item.coverImage || '';
+                document.getElementById('editRemark').value = item.remark || '';
+                document.getElementById('editM3u8').value = (item.m3u8Urls || []).join('\n');
+                editingRating = item.rating || 0;
+                updateEditRatingUI(editingRating);
+                // 封面预览
+                const preview = document.getElementById('editCoverPreview');
+                if (item.coverImage) {
+                    preview.src = item.coverImage;
+                    preview.classList.remove('hidden');
+                    preview.onerror = () => preview.classList.add('hidden');
+                } else {
+                    preview.classList.add('hidden');
+                }
+                document.getElementById('editModal').classList.remove('hidden');
+                document.getElementById('editModal').classList.add('flex');
+            } catch (error) {
+                toast('获取详情失败: ' + error.message, 'error');
+            }
+        };
+
+        const updateEditRatingUI = (rating) => {
+            editingRating = rating;
+            const btns = document.querySelectorAll('#editRating .star-btn');
+            btns.forEach((btn) => {
+                const v = parseInt(btn.dataset.value);
+                if (v <= rating) {
+                    btn.classList.add('star-active');
+                    btn.classList.remove('text-slate-300');
+                } else {
+                    btn.classList.remove('star-active');
+                    btn.classList.add('text-slate-300');
+                }
+            });
+            const texts = ['未评分', '1星 - 很差', '2星 - 较差', '3星 - 一般', '4星 - 较好', '5星 - 优秀'];
+            document.getElementById('editRatingText').textContent = texts[rating] || '未评分';
+        };
+
+        const closeEdit = () => {
+            document.getElementById('editModal').classList.add('hidden');
+            document.getElementById('editModal').classList.remove('flex');
+        };
+
+        // 保存编辑
+        const saveEdit = async () => {
+            const id = document.getElementById('editId').value;
+            if (!id) {
+                toast('缺少ID', 'error');
+                return;
+            }
+            const body = {
+                pageTitle: document.getElementById('editTitle').value.trim(),
+                pageHref: document.getElementById('editHref').value.trim(),
+                coverImage: document.getElementById('editCover').value.trim(),
+                remark: document.getElementById('editRemark').value.trim(),
+                m3u8Urls: document.getElementById('editM3u8').value.split('\n').map((s) => s.trim()).filter(Boolean),
+                rating: editingRating,
+            };
+            try {
+                const data = await apiRequest('/smart_archive/' + id, {
+                    method: 'PUT',
+                    body: JSON.stringify(body),
+                });
+                if (data.code === 200) {
+                    toast('保存成功', 'success');
+                    closeEdit();
+                    loadList();
+                    loadStats();
+                } else {
+                    toast(data.message || '保存失败', 'error');
+                }
+            } catch (error) {
+                toast('保存失败: ' + error.message, 'error');
+            }
+        };
+
+        // 打开详情
+        const openDetail = async (id) => {
+            try {
+                const data = await apiRequest('/smart_archive/' + id);
+                if (data.code !== 200) {
+                    toast(data.message || '获取详情失败', 'error');
+                    return;
+                }
+                const item = data.data;
+                const rating = item.rating || 0;
+                const m3u8List = (item.m3u8Urls || []).map((url, i) =>
+                    `<div class="text-xs bg-slate-50 p-2 rounded font-mono break-all">${i + 1}. ${escapeHtml(url)} <button class="ml-2 text-blue-600 hover:underline" onclick="copyText('${escapeHtml(url)}')">复制</button></div>`
+                ).join('');
+                document.getElementById('detailContent').innerHTML = `
+                    ${item.coverImage ? `<div class="mb-3"><img src="${escapeHtml(item.coverImage)}" class="max-h-48 rounded mx-auto" onerror="this.parentElement.style.display='none'"></div>` : ''}
+                    <div>
+                        <div class="text-xs text-slate-500 mb-1">标题</div>
+                        <div class="font-medium">${escapeHtml(item.pageTitle || '无标题')}</div>
+                    </div>
+                    <div>
+                        <div class="text-xs text-slate-500 mb-1">页面URL</div>
+                        <a href="${escapeHtml(item.pageHref || '#')}" target="_blank" class="text-blue-600 hover:underline break-all text-sm">${escapeHtml(item.pageHref || '')}</a>
+                    </div>
+                    <div>
+                        <div class="text-xs text-slate-500 mb-1">备注</div>
+                        <div class="text-sm text-slate-700 whitespace-pre-wrap">${escapeHtml(item.remark || '无')}</div>
+                    </div>
+                    <div>
+                        <div class="text-xs text-slate-500 mb-1">评分</div>
+                        <div class="text-amber-500 text-xl">${'★'.repeat(rating)}${'☆'.repeat(5 - rating)}</div>
+                    </div>
+                    <div>
+                        <div class="text-xs text-slate-500 mb-1">m3u8 地址 (${(item.m3u8Urls || []).length})</div>
+                        <div class="space-y-1">${m3u8List || '<div class="text-slate-400 text-sm">无</div>'}</div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 text-xs text-slate-500 pt-2 border-t">
+                        <div>创建: ${formatDate(item.createdAt)}</div>
+                        <div>更新: ${formatDate(item.updatedAt)}</div>
+                        <div>来源: ${formatDate(item.sourceTimestamp)}</div>
+                        <div>ID: ${escapeHtml(item._id)}</div>
+                    </div>
+                `;
+                document.getElementById('detailModal').classList.remove('hidden');
+                document.getElementById('detailModal').classList.add('flex');
+            } catch (error) {
+                toast('获取详情失败: ' + error.message, 'error');
+            }
+        };
+
+        const closeDetail = () => {
+            document.getElementById('detailModal').classList.add('hidden');
+            document.getElementById('detailModal').classList.remove('flex');
+        };
+
+        // 删除单条
+        const deleteItem = async (id) => {
+            if (!confirm('确定要删除这条存档吗？此操作不可撤销。')) return;
+            try {
+                const data = await apiRequest('/smart_archive/' + id, { method: 'DELETE' });
+                if (data.code === 200) {
+                    toast('删除成功', 'success');
+                    loadList();
+                    loadStats();
+                } else {
+                    toast(data.message || '删除失败', 'error');
+                }
+            } catch (error) {
+                toast('删除失败: ' + error.message, 'error');
+            }
+        };
+
+        // 复制文本
+        const copyText = (text) => {
+            navigator.clipboard.writeText(text).then(() => toast('已复制', 'success'));
+        };
+
+        // 图片预览
+        const openImagePreview = (url) => {
+            window.open(url, '_blank');
+        };
+
+        // 切换视图
+        const switchView = (view) => {
+            currentView = view;
+            if (view === 'list') {
+                document.getElementById('listView').classList.remove('hidden');
+                document.getElementById('gridView').classList.add('hidden');
+                document.getElementById('gridView').classList.remove('grid');
+                document.getElementById('viewListBtn').className = 'px-3 py-1 rounded bg-slate-800 text-white';
+                document.getElementById('viewGridBtn').className = 'px-3 py-1 rounded bg-slate-200 text-slate-700';
+            } else {
+                document.getElementById('listView').classList.add('hidden');
+                document.getElementById('gridView').classList.remove('hidden');
+                document.getElementById('gridView').classList.add('grid');
+                document.getElementById('viewListBtn').className = 'px-3 py-1 rounded bg-slate-200 text-slate-700';
+                document.getElementById('viewGridBtn').className = 'px-3 py-1 rounded bg-slate-800 text-white';
+            }
+            loadList();
+        };
+
+        // 选中操作
+        const toggleSelectAll = (checked) => {
+            const checkboxes = document.querySelectorAll('.row-checkbox');
+            checkboxes.forEach((cb) => {
+                cb.checked = checked;
+                if (checked) {
+                    selectedIds.add(cb.dataset.id);
+                } else {
+                    selectedIds.delete(cb.dataset.id);
+                }
+            });
+        };
+
+        // 批量删除
+        const batchDelete = async () => {
+            if (selectedIds.size === 0) {
+                toast('请先选择要删除的记录', 'info');
+                return;
+            }
+            if (!confirm(`确定要删除选中的 ${selectedIds.size} 条记录吗？此操作不可撤销。`)) return;
+            try {
+                const data = await apiRequest('/smart_archive/batch_delete', {
+                    method: 'POST',
+                    body: JSON.stringify({ ids: Array.from(selectedIds) }),
+                });
+                if (data.code === 200) {
+                    toast(`成功删除 ${data.deletedCount} 条`, 'success');
+                    selectedIds.clear();
+                    document.getElementById('selectAllCheckbox').checked = false;
+                    loadList();
+                    loadStats();
+                } else {
+                    toast(data.message || '批量删除失败', 'error');
+                }
+            } catch (error) {
+                toast('批量删除失败: ' + error.message, 'error');
+            }
+        };
+
+        // 初始化
+        const init = async () => {
+            const authed = await checkAuth();
+            if (!authed) return;
+
+            // 初始化脚本配置与复制按钮
+            initScriptConfig();
+            bindCopyButtons();
+
+            // 绑定事件
+            document.getElementById('logoutBtn').onclick = logout;
+            // 脚本编辑相关
+            document.getElementById('editScriptBtn').onclick = openScriptModal;
+            document.getElementById('closeScriptBtn').onclick = closeScriptModal;
+            document.getElementById('saveScriptBtn').onclick = saveScriptContent;
+            document.getElementById('resetScriptBtn').onclick = loadScriptContent;
+            document.getElementById('searchBtn').onclick = () => { currentPage = 1; loadList(); };
+            document.getElementById('resetBtn').onclick = () => {
+                document.getElementById('searchInput').value = '';
+                document.getElementById('minRatingSelect').value = '0';
+                document.getElementById('hasM3u8Select').value = '';
+                document.getElementById('sortBySelect').value = 'updatedAt';
+                document.getElementById('sortOrderSelect').value = 'desc';
+                currentPage = 1;
+                loadList();
+            };
+            document.getElementById('searchInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    currentPage = 1;
+                    loadList();
+                }
+            });
+            document.getElementById('viewListBtn').onclick = () => switchView('list');
+            document.getElementById('viewGridBtn').onclick = () => switchView('grid');
+            document.getElementById('selectAllCheckbox').onchange = (e) => toggleSelectAll(e.target.checked);
+
+            // 编辑模态框
+            document.getElementById('closeEditBtn').onclick = closeEdit;
+            document.getElementById('cancelEditBtn').onclick = closeEdit;
+            document.getElementById('saveEditBtn').onclick = saveEdit;
+            document.getElementById('editCover').addEventListener('input', (e) => {
+                const preview = document.getElementById('editCoverPreview');
+                const url = e.target.value.trim();
+                if (url) {
+                    preview.src = url;
+                    preview.classList.remove('hidden');
+                    preview.onerror = () => preview.classList.add('hidden');
+                } else {
+                    preview.classList.add('hidden');
+                }
+            });
+            document.querySelectorAll('#editRating .star-btn').forEach((btn) => {
+                btn.onclick = () => updateEditRatingUI(parseInt(btn.dataset.value));
+            });
+
+            // 详情模态框
+            document.getElementById('closeDetailBtn').onclick = closeDetail;
+
+            // 全局函数（供 onclick 调用）
+            window.openEdit = openEdit;
+            window.openDetail = openDetail;
+            window.deleteItem = deleteItem;
+            window.copyText = copyText;
+            window.openImagePreview = openImagePreview;
+
+            // 加载数据
+            loadStats();
+            loadList();
+        };
+
+        init();
+    </script>
+</body>
+</html>
