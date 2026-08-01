@@ -18,7 +18,7 @@
     'use strict';
 
     // 配置
-    const HOST = 'http://180.184.79.211:8888/api';
+    const HOST = 'http://180.184.79.211:8888/api/smart_archive';
     const TOKEN = 'YOUR_BEARER_TOKEN_HERE'; // 请替换为您的实际token
 
     // 控制台美化输出模块

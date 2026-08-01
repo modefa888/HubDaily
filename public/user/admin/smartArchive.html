@@ -86,15 +86,17 @@
             </div>
         </section>
 
-        <!-- 脚本接口配置（根据当前域名动态生成） -->
+        <!-- 脚本接口配置（根据当前域名动态生成，默认折叠） -->
         <section class="bg-white rounded-xl shadow p-4 space-y-3">
-            <div class="flex items-center justify-between">
+            <div id="scriptConfigToggle" class="flex items-center justify-between cursor-pointer select-none">
                 <div class="flex items-center gap-2">
+                    <i id="scriptConfigArrow" class="fa fa-chevron-right text-xs text-slate-400 transition-transform"></i>
                     <i class="fa fa-code text-indigo-500"></i>
                     <h3 class="text-sm font-semibold text-slate-700">脚本接口配置</h3>
                 </div>
                 <span class="text-xs text-slate-400">根据当前域名自动生成</span>
             </div>
+            <div id="scriptConfigBody" class="hidden space-y-3">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <!-- HOST 配置 -->
                 <div class="border rounded-lg p-3 bg-slate-50">
@@ -154,6 +156,7 @@
                     </button>
                 </div>
             </div>
+            </div>
         </section>
 
         <!-- 搜索筛选 -->
@@ -195,6 +198,9 @@
                 <span class="text-slate-500">视图：</span>
                 <button id="viewListBtn" class="px-3 py-1 rounded bg-slate-800 text-white">列表</button>
                 <button id="viewGridBtn" class="px-3 py-1 rounded bg-slate-200 text-slate-700">卡片</button>
+                <button id="refreshBtn" class="px-3 py-1 rounded bg-emerald-500 text-white text-sm hover:bg-emerald-600" title="刷新列表">
+                    <i class="fa fa-refresh"></i> 刷新
+                </button>
                 <span class="ml-auto text-slate-500">已加载 <span id="totalCount" class="font-semibold text-slate-800">0</span> 条</span>
             </div>
         </section>
@@ -417,7 +423,7 @@
         const initScriptConfig = () => {
             const origin = window.location.origin;
             const hostname = window.location.hostname;
-            const host = `${origin}/api`;
+            const host = `${origin}/api/smart_archive`;
             const connectLine = `// @connect      ${hostname}`;
             // 脚本下载地址（通过 API 端点下载，避免中文文件名编码问题）
             const downloadUrl = `${origin}/api/smart_archive/download_script`;
@@ -1000,7 +1006,16 @@
             document.getElementById('closeScriptBtn').onclick = closeScriptModal;
             document.getElementById('saveScriptBtn').onclick = saveScriptContent;
             document.getElementById('resetScriptBtn').onclick = loadScriptContent;
+            // 脚本配置折叠切换
+            document.getElementById('scriptConfigToggle').onclick = () => {
+                const body = document.getElementById('scriptConfigBody');
+                const arrow = document.getElementById('scriptConfigArrow');
+                body.classList.toggle('hidden');
+                arrow.classList.toggle('fa-chevron-right');
+                arrow.classList.toggle('fa-chevron-down');
+            };
             document.getElementById('searchBtn').onclick = () => { currentPage = 1; loadList(); };
+            document.getElementById('refreshBtn').onclick = () => { loadList(); loadStats(); };
             document.getElementById('resetBtn').onclick = () => {
                 document.getElementById('searchInput').value = '';
                 document.getElementById('minRatingSelect').value = '0';
