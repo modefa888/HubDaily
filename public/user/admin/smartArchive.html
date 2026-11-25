@@ -12,6 +12,15 @@
         body {
             overflow-y: scroll;
         }
+        /* 后端 Token 显示框 */
+        #scriptToken {
+            transition: filter .18s ease;
+            word-break: break-all;
+        }
+        #scriptToken.token-masked {
+            filter: blur(5px);
+            user-select: none;
+        }
         .archive-card:hover {
             transform: translateY(-2px);
             box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
@@ -120,6 +129,22 @@
                     </div>
                     <code id="scriptConnect" class="block text-sm text-slate-800 break-all"></code>
                 </div>
+            </div>
+            <!-- 后端 Token -->
+            <div class="border rounded-lg p-3 bg-slate-50">
+                <div class="flex items-center justify-between mb-1 gap-2">
+                    <label class="text-xs font-medium text-slate-600">TOKEN（脚本 Authorization 令牌）</label>
+                    <div class="flex items-center gap-2">
+                        <button id="toggleTokenBtn" class="text-xs px-2 py-1 rounded bg-slate-200 text-slate-700 hover:bg-slate-300">
+                            <i class="fa fa-eye-slash"></i> 隐藏
+                        </button>
+                        <button data-copy-target="scriptToken" class="copy-btn text-xs px-2 py-1 rounded bg-indigo-500 text-white hover:bg-indigo-600">
+                            <i class="fa fa-copy"></i> 复制
+                        </button>
+                    </div>
+                </div>
+                <code id="scriptToken" class="block text-sm text-slate-800 font-mono bg-white border border-slate-200 rounded px-2 py-1.5">-</code>
+                <p id="scriptTokenHint" class="text-xs text-slate-400 mt-1">已自动填入下方配置片段的 TOKEN 字段</p>
             </div>
             <!-- 完整配置片段 -->
             <div class="border rounded-lg p-3 bg-slate-50">
@@ -329,7 +354,12 @@
             </div>
             <div class="p-4 flex-1 overflow-hidden flex flex-col">
                 <div class="flex items-center justify-between mb-2">
-                    <span class="text-xs text-slate-500">直接编辑后点击保存，将立即写入服务器脚本文件</span>
+                    <span class="text-xs text-slate-500">
+                        直接编辑后点击保存，将立即写入服务器脚本文件
+                        <span id="scriptTokenInjectedHint" class="hidden text-emerald-600 ml-1">
+                            <i class="fa fa-magic"></i> 已自动填入当前地址与登录 token（保存后写入脚本文件）
+                        </span>
+                    </span>
                     <div class="flex items-center gap-2">
                         <button id="resetScriptBtn" class="text-xs px-3 py-1.5 rounded bg-slate-200 text-slate-700 hover:bg-slate-300">
                             <i class="fa fa-undo"></i> 重新加载
@@ -421,12 +451,13 @@
             }
         };
 
-        // 根据当前域名动态生成脚本接口配置并填充
+        // 根据当前域名动态生成脚本接口配置并填充（含当前登录 token）
         const initScriptConfig = () => {
             const origin = window.location.origin;
             const hostname = window.location.hostname;
             const host = `${origin}/api/smart_archive`;
             const connectLine = `// @connect      ${hostname}`;
+            const token = getToken() || '';
             // 脚本下载地址（通过 API 端点下载，避免中文文件名编码问题）
             const downloadUrl = `${origin}/api/smart_archive/download_script`;
             const snippet = `// ==UserScript==\n` +
@@ -447,10 +478,21 @@
                 `    'use strict';\n\n` +
                 `    // 配置\n` +
                 `    const HOST = '${host}';\n` +
-                `    const TOKEN = 'YOUR_BEARER_TOKEN_HERE'; // 请替换为您的实际token\n` +
+                `    const TOKEN = '${token || 'YOUR_BEARER_TOKEN_HERE'}'; // ${token ? '已自动填入当前登录 token' : '请替换为您的实际 token'}\n` +
                 `})();`;
             document.getElementById('scriptHost').textContent = host;
             document.getElementById('scriptConnect').textContent = connectLine;
+            const tokenEl = document.getElementById('scriptToken');
+            if (tokenEl) {
+                tokenEl.textContent = token || '未获取到 token，请重新登录后台';
+                tokenEl.classList.toggle('text-rose-500', !token);
+            }
+            const tokenHint = document.getElementById('scriptTokenHint');
+            if (tokenHint) {
+                tokenHint.textContent = token
+                    ? `长度 ${token.length} 位 · 已自动填入下方配置片段的 TOKEN 字段`
+                    : '未获取到 token，请重新登录后台后再复制';
+            }
             document.getElementById('scriptSnippet').textContent = snippet;
             // 下载地址
             document.getElementById('scriptDownloadUrl').textContent = downloadUrl;
@@ -460,13 +502,32 @@
 
         // 加载脚本内容
         let originalScriptContent = '';
+        // 把当前后台地址与登录 token 填入脚本源码的 HOST / TOKEN 常量
+        const fillScriptConfig = (content) => {
+            const token = getToken() || '';
+            const host = `${window.location.origin}/api/smart_archive`;
+            let next = String(content || '');
+            // HOST：始终对齐当前后台地址
+            next = next.replace(/(const\s+HOST\s*=\s*')[^']*(')/, `$1${host}$2`);
+            // TOKEN：填入当前登录 token（未登录时保留原值）
+            if (token) {
+                next = next.replace(/(const\s+TOKEN\s*=\s*')[^']*(')/, `$1${token}$2`);
+            }
+            return next;
+        };
+
         const loadScriptContent = async () => {
             showLoading();
             try {
                 const data = await apiRequest('/smart_archive/script');
                 if (data.code === 200) {
                     originalScriptContent = data.data.content || '';
-                    document.getElementById('scriptContent').value = originalScriptContent;
+                    const filled = fillScriptConfig(originalScriptContent);
+                    document.getElementById('scriptContent').value = filled;
+                    const injectedHint = document.getElementById('scriptTokenInjectedHint');
+                    if (injectedHint) {
+                        injectedHint.classList.toggle('hidden', filled === originalScriptContent);
+                    }
                     const updatedAt = data.data.updatedAt;
                     document.getElementById('scriptUpdatedAt').textContent = updatedAt
                         ? `（更新于 ${formatDate(updatedAt)}）`
@@ -497,6 +558,8 @@
                 });
                 if (data.code === 200) {
                     originalScriptContent = content;
+                    const injectedHint = document.getElementById('scriptTokenInjectedHint');
+                    if (injectedHint) injectedHint.classList.add('hidden');
                     const updatedAt = data.data?.updatedAt;
                     document.getElementById('scriptUpdatedAt').textContent = updatedAt
                         ? `（更新于 ${formatDate(updatedAt)}）`
@@ -1000,6 +1063,17 @@
             // 初始化脚本配置与复制按钮
             initScriptConfig();
             bindCopyButtons();
+            const toggleTokenBtn = document.getElementById('toggleTokenBtn');
+            if (toggleTokenBtn) {
+                toggleTokenBtn.onclick = () => {
+                    const el = document.getElementById('scriptToken');
+                    if (!el) return;
+                    const masked = el.classList.toggle('token-masked');
+                    toggleTokenBtn.innerHTML = masked
+                        ? '<i class="fa fa-eye"></i> 显示'
+                        : '<i class="fa fa-eye-slash"></i> 隐藏';
+                };
+            }
 
             // 绑定事件
             document.getElementById('logoutBtn').onclick = logout;

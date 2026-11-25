@@ -155,6 +155,90 @@
         body:not(.light-mode) #shareCountdown.is-permanent { color: #34d399; }
         body:not(.light-mode) #shareCountdown.is-live { color: #fbbf24; }
         body:not(.light-mode) #shareCountdown.is-expired { color: #f87171; }
+        /* 简介卡片 */
+        .sp-section-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 9999px;
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            box-shadow: 0 0 0 3px rgba(96, 165, 250, .16);
+            flex: none;
+        }
+        .sp-dot-2 {
+            background: linear-gradient(135deg, #34d399, #22d3ee);
+            box-shadow: 0 0 0 3px rgba(52, 211, 153, .16);
+        }
+        .sp-section-label {
+            font-size: 11px;
+            letter-spacing: .04em;
+            color: #94a3b8;
+        }
+        .sp-info-title {
+            background: linear-gradient(90deg, #2563eb, #7c3aed 55%, #db2777);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            color: transparent;
+        }
+        .sp-desc-box {
+            position: relative;
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: rgba(148, 163, 184, .10);
+            border: 1px solid rgba(148, 163, 184, .16);
+        }
+        body.light-mode .sp-desc-box {
+            background: rgba(15, 23, 42, .04);
+            border-color: rgba(15, 23, 42, .08);
+        }
+        .sp-desc-toggle {
+            margin-top: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #2563eb;
+        }
+        body.light-mode .sp-desc-toggle { color: #2563eb; }
+        body.light-mode .sp-section-label { color: #64748b; }
+        .sp-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            min-width: 0;
+            padding: 6px 8px;
+            border-radius: 8px;
+            background: rgba(148, 163, 184, .10);
+            border: 1px solid rgba(148, 163, 184, .14);
+        }
+        body.light-mode .sp-meta-item {
+            background: rgba(15, 23, 42, .04);
+            border-color: rgba(15, 23, 42, .08);
+        }
+        .sp-meta-label {
+            flex: none;
+            font-size: 11px;
+            color: #94a3b8;
+        }
+        body.light-mode .sp-meta-label { color: #64748b; }
+        .sp-meta-value {
+            font-weight: 600;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+        .sp-meta-value.c-indigo { color: #4f46e5; }
+        .sp-meta-value.c-amber { color: #d97706; }
+        .sp-meta-value.c-emerald { color: #059669; }
+        .sp-meta-value.c-rose { color: #e11d48; }
+        body.light-mode .sp-meta-value.c-indigo { color: #4f46e5; }
+        body.light-mode .sp-meta-value.c-amber { color: #d97706; }
+        body.light-mode .sp-meta-value.c-emerald { color: #059669; }
+        body.light-mode .sp-meta-value.c-rose { color: #e11d48; }
+        body:not(.light-mode) .sp-section-label { color: #94a3b8; }
+        body:not(.light-mode) .sp-meta-label { color: #94a3b8; }
+        body:not(.light-mode) .sp-meta-value.c-indigo { color: #a5b4fc; }
+        body:not(.light-mode) .sp-meta-value.c-amber { color: #fbbf24; }
+        body:not(.light-mode) .sp-meta-value.c-emerald { color: #34d399; }
+        body:not(.light-mode) .sp-meta-value.c-rose { color: #fb7185; }
         /* 选集列表自定义滚动条 */
         #spEpisodeList {
             scrollbar-width: thin;
@@ -405,34 +489,45 @@
         </div>
 
         <div class="bg-slate-900/70 rounded-xl p-4">
-            <div class="flex items-start space-x-4">
-                <img id="sharePoster" src="../loading.gif" alt="poster" class="w-36 h-48 rounded-md object-cover bg-slate-800">
+            <div class="flex items-center gap-4">
+                <img id="sharePoster" src="../loading.gif" alt="poster"
+                     class="w-28 h-40 sm:w-36 sm:h-48 rounded-xl object-cover bg-slate-800 ring-1 ring-white/10 shadow-lg shadow-black/20 flex-shrink-0">
                 <div class="flex-1 min-w-0">
-                    <div class="text-xs text-slate-400 mb-1">视频标题</div>
-                    <div id="shareTitle" class="text-sm font-medium text-white mb-2 break-all">-</div>
-                    <div class="text-xs text-slate-400 mb-1">视频介绍</div>
-                    <div id="shareDescription" class="text-xs text-slate-200 break-all mb-2">-</div>
-                    <div class="grid grid-cols-2 gap-2 text-xs">
-                        <div>
-                            <span class="text-slate-400">类型：</span>
-                            <span id="shareClass" class="text-slate-200">-</span>
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="sp-section-dot"></span>
+                        <span class="sp-section-label">视频标题</span>
+                    </div>
+                    <h2 id="shareTitle" class="sp-info-title text-lg font-semibold mb-3 break-all">-</h2>
+
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="sp-section-dot sp-dot-2"></span>
+                        <span class="sp-section-label">视频介绍</span>
+                    </div>
+                    <div class="sp-desc-box">
+                        <p id="shareDescription" class="text-xs leading-relaxed break-all line-clamp-3">-</p>
+                        <button type="button" id="spDescToggle" class="sp-desc-toggle hidden">展开</button>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2 mt-3 text-xs">
+                        <div class="sp-meta-item">
+                            <span class="sp-meta-label">类型</span>
+                            <span id="shareClass" class="sp-meta-value c-indigo">-</span>
                         </div>
-                        <div>
-                            <span class="text-slate-400">年份：</span>
-                            <span id="shareYear" class="text-slate-200">-</span>
+                        <div class="sp-meta-item">
+                            <span class="sp-meta-label">年份</span>
+                            <span id="shareYear" class="sp-meta-value c-amber">-</span>
                         </div>
-                        <div>
-                            <span class="text-slate-400">演员：</span>
-                            <span id="shareActor" class="text-slate-200">-</span>
+                        <div class="sp-meta-item">
+                            <span class="sp-meta-label">演员</span>
+                            <span id="shareActor" class="sp-meta-value c-emerald">-</span>
                         </div>
-                        <div>
-                            <span class="text-slate-400">状态：</span>
-                            <span id="shareRemarks" class="text-slate-200">-</span>
+                        <div class="sp-meta-item">
+                            <span class="sp-meta-label">状态</span>
+                            <span id="shareRemarks" class="sp-meta-value c-rose">-</span>
                         </div>
                     </div>
                 </div>
             </div>
-
         </div>
 
         <div id="errorBox" class="hidden mt-4 bg-red-500/20 border border-red-400/40 text-red-200 p-3 rounded-lg text-sm"></div>
@@ -784,6 +879,27 @@
             }
         }
 
+        // 简介过长时显示「展开 / 收起」
+        function setupDescriptionToggle() {
+            const desc = document.getElementById('shareDescription');
+            const toggle = document.getElementById('spDescToggle');
+            if (!desc || !toggle) return;
+            desc.classList.add('line-clamp-3');
+            toggle.classList.add('hidden');
+            toggle.textContent = '展开';
+            if (toggle.dataset.bound !== '1') {
+                toggle.dataset.bound = '1';
+                toggle.addEventListener('click', () => {
+                    const collapsed = desc.classList.toggle('line-clamp-3');
+                    toggle.textContent = collapsed ? '展开' : '收起';
+                });
+            }
+            setTimeout(() => {
+                const overflow = desc.scrollHeight - desc.clientHeight > 2;
+                toggle.classList.toggle('hidden', !overflow);
+            }, 80);
+        }
+
         function initPlayer(payload) {
             currentSharePayload = payload || {};
             const titleEl = document.getElementById('playerTitle');
@@ -841,6 +957,7 @@
             }
             if (shareTitleEl) shareTitleEl.textContent = payload.title || '未知标题';
             if (shareDescEl) shareDescEl.textContent = payload.desc || payload.description || '暂无介绍';
+            setupDescriptionToggle();
             if (shareClassEl) shareClassEl.textContent = payload.class || '未知';
             if (shareYearEl) shareYearEl.textContent = payload.year || '未知';
             if (shareActorEl) shareActorEl.textContent = payload.actor || '未知';
