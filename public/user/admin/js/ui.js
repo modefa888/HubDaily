@@ -45,7 +45,31 @@
       }
     };
 
+    // 读取上次打开的模块（优先 URL hash，其次本地存储）
+    const getSavedModule = () => {
+      let saved = "";
+      try {
+        saved = String(location.hash || "").replace(/^#/, "").trim() || localStorage.getItem("adminActiveModule") || "";
+      } catch (e) {
+        saved = "";
+      }
+      if (!saved) return "";
+      const exists = Array.from(document.querySelectorAll(".module-tab"))
+        .some((tab) => tab.dataset.moduleTarget === saved);
+      return exists ? saved : "";
+    };
+
     const setActiveModule = async (name) => {
+      if (!name) return;
+      // 记住当前模块：刷新或重新打开时自动恢复到该模块
+      try {
+        localStorage.setItem("adminActiveModule", name);
+        if (window.history && typeof history.replaceState === "function") {
+          history.replaceState(null, "", `#${name}`);
+        }
+      } catch (e) {
+        // 忽略隐私模式下的存储/状态写入失败
+      }
       const sections = document.querySelectorAll(".module-section");
       sections.forEach((sec) => {
         const active = sec.dataset.module === name;
@@ -300,6 +324,10 @@
       if (officialEnableAllBtn) officialEnableAllBtn.classList.remove("hidden");
       if (officialDisableAllBtn) officialDisableAllBtn.classList.remove("hidden");
       if (officialSaveSortBtn) officialSaveSortBtn.classList.remove("hidden");
+      const officialDisableAbnormalBtn = document.getElementById("officialDisableAbnormalBtn");
+      if (officialDisableAbnormalBtn) officialDisableAbnormalBtn.classList.remove("hidden");
+      const parseDisableAbnormalBtn = document.getElementById("parseDisableAbnormalBtn");
+      if (parseDisableAbnormalBtn) parseDisableAbnormalBtn.classList.remove("hidden");
       if (parseEnableAllBtn) parseEnableAllBtn.classList.remove("hidden");
       if (parseDisableAllBtn) parseDisableAllBtn.classList.remove("hidden");
       if (parseSaveSortBtn) parseSaveSortBtn.classList.remove("hidden");
@@ -321,7 +349,7 @@
       setLoading(false);
       if (data.data.role === "admin" && !hasAutoLoadedUsers) {
         hasAutoLoadedUsers = true;
-        await setActiveModule("profile");
+        await setActiveModule(getSavedModule() || "profile");
       }
     };
 

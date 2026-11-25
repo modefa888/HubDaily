@@ -43,41 +43,64 @@
             html.classList.toggle('modal-open', locked);
         }
         
-        // 保存到播放历史
-        function saveToHistory(title, url, pic, source, episodeName = '', episodeIndex = null) {
+        // 保存到播放历史（按「剧集」聚合，保存整部剧的所有集数）
+        // extra: { desc, class, actor, year, remarks, episodeCount, allEpisodesUrl }
+        function saveToHistory(title, url, pic, source, episodeName = '', episodeIndex = null, extra = {}) {
             try {
                 const history = JSON.parse(localStorage.getItem('videoPlayHistory') || '[]');
-                
-                // 检查是否已存在
-                const existingIndex = history.findIndex(item => item.url === url);
+                const allEpisodesUrl = String((extra && extra.allEpisodesUrl) || '').trim();
+                // 去掉标题末尾的「第N集/第N话」，历史按剧名归并
+                const stripEpisodeSuffix = (value) => String(value || '')
+                    .replace(/\s*(第\s*[0-9一二三四五六七八九十百千零两]+\s*[集话期]|EP?\s*\d+)\s*$/i, '')
+                    .trim();
+                const seriesTitle = stripEpisodeSuffix(title) || String(title || '');
+                const seriesSource = String(source || '');
+                const seriesKey = allEpisodesUrl || String(url || '');
+
+                const isSameSeries = (item) => {
+                    if (!item) return false;
+                    const itemAll = String(item.allEpisodesUrl || '');
+                    if (allEpisodesUrl && itemAll && itemAll === allEpisodesUrl) return true;
+                    // 旧数据没有 allEpisodesUrl，用「剧名 + 来源」归并
+                    const itemTitle = stripEpisodeSuffix(item.title) || String(item.title || '');
+                    return !!seriesTitle && itemTitle === seriesTitle && String(item.source || '') === seriesSource;
+                };
+
+                const prev = history.find(isSameSeries) || {};
+                const rest = history.filter((item) => !isSameSeries(item));
+                const pick = (key) => {
+                    const next = extra && extra[key] != null ? String(extra[key]).trim() : '';
+                    if (next) return next;
+                    return String(prev[key] || '').trim();
+                };
+                const totalCount = Number(extra && extra.episodeCount != null ? extra.episodeCount : prev.episodeCount);
                 
                 const historyItem = {
-                    title,
+                    title: seriesTitle,
                     url,
-                    pic: pic || '',
-                    source: source || '',
-                    episodeName: episodeName || '',
-                    episodeIndex: Number.isFinite(episodeIndex) ? Number(episodeIndex) : (existingIndex >= 0 ? (history[existingIndex].episodeIndex ?? null) : null),
+                    allEpisodesUrl: allEpisodesUrl || prev.allEpisodesUrl || '',
+                    pic: pic || prev.pic || '',
+                    source: seriesSource,
+                    episodeName: episodeName || prev.episodeName || '',
+                    episodeIndex: Number.isFinite(episodeIndex) ? Number(episodeIndex) : (prev.episodeIndex ?? null),
+                    episodeCount: Number.isFinite(totalCount) && totalCount > 0 ? totalCount : null,
+                    desc: pick('desc'),
+                    class: pick('class'),
+                    actor: pick('actor'),
+                    year: pick('year'),
+                    remarks: pick('remarks'),
                     timestamp: Date.now(),
-                    playCount: existingIndex >= 0 ? (history[existingIndex].playCount || 0) + 1 : 1,
-                    lastPosition: existingIndex >= 0 ? (history[existingIndex].lastPosition || 0) : 0,
-                    lastPositionUpdatedAt: existingIndex >= 0 ? (history[existingIndex].lastPositionUpdatedAt || 0) : 0
+                    playCount: (prev.playCount || 0) + 1,
+                    lastPosition: prev.lastPosition || 0,
+                    lastPositionUpdatedAt: prev.lastPositionUpdatedAt || 0
                 };
-                
-                // 如果已存在，先移除
-                if (existingIndex >= 0) {
-                    history.splice(existingIndex, 1);
+
+                // 同一部剧只保留一条，新的置顶
+                rest.unshift(historyItem);
+                if (rest.length > 50) {
+                    rest.splice(50);
                 }
-                
-                // 添加到开头
-                history.unshift(historyItem);
-                
-                // 限制历史记录数量
-                if (history.length > 50) {
-                    history.splice(50);
-                }
-                
-                localStorage.setItem('videoPlayHistory', JSON.stringify(history));
+                localStorage.setItem('videoPlayHistory', JSON.stringify(rest));
             } catch (error) {
                 console.error('保存播放历史失败:', error);
             }
@@ -146,7 +169,7 @@
                                         ${category === 'adult' ? '摩西' : '普通'}
                                     </span>
                                 </div>
-                                ${item.episodeName ? `<div class="text-[11px] text-gray-500 mb-1">选集：${item.episodeName}</div>` : ''}
+                                ${item.desc ? `<div class="text-[11px] text-gray-400 mb-1 line-clamp-1">${item.desc}</div>` : ''}
                                 <div class="flex flex-wrap items-center gap-2 text-xs text-gray-500">
                                     <span>播放次数: ${item.playCount}</span>
                                     ${resumeLabel ? `<span>${resumeLabel}</span>` : ''}
@@ -156,7 +179,7 @@
                         </div>
                         <div class="mt-3 flex space-x-2">
                             <button 
-                                onclick="openVideoPlayer('${item.url}', '${item.title}', '${item.pic || ''}', '${item.source || ''}', '', ${Number.isFinite(item.episodeIndex) ? item.episodeIndex : 'null'}, '${item.desc || ''}', '${item.class || ''}', '${item.actor || ''}', '${item.year || ''}', '${item.remarks || ''}')"
+                                onclick="openVideoPlayer('${escapeInlineText(item.allEpisodesUrl || item.url)}', '${item.title}', '${item.pic || ''}', '${item.source || ''}', '', ${Number.isFinite(item.episodeIndex) ? item.episodeIndex : 'null'}, '${escapeInlineText(item.desc)}', '${escapeInlineText(item.class)}', '${escapeInlineText(item.actor)}', '${escapeInlineText(item.year)}', '${escapeInlineText(item.remarks)}')"
                                 class="btn-primary text-xs py-1 px-2 flex-1"
                             >
                                 <i class="fa fa-play mr-1"></i> 播放
@@ -411,6 +434,14 @@
                             url: item.url,
                             pic: item.pic || '',
                             source: item.source || '',
+                            desc: item.desc || '',
+                            class: item.class || '',
+                            actor: item.actor || '',
+                            year: item.year || '',
+                            remarks: item.remarks || '',
+                            episodeName: item.episodeName || '',
+                            episodeIndex: item.episodeIndex == null ? null : item.episodeIndex,
+                            episodeCount: item.episodeCount == null ? null : item.episodeCount,
                             timestamp: item.timestamp || Date.now()
                         })
                     });
@@ -431,8 +462,19 @@
             return favorites.some(item => item.url === fullVideoUrl);
         }
 
-        async function toggleFavorite(title, videoUrl, pic, buttonEl, sourceLabel = '') {
+        async function toggleFavorite(title, videoUrl, pic, buttonEl, sourceLabel = '', extraInfo = null) {
             const token = getUserToken ? getUserToken() : '';
+            // 附加信息：简介 / 类型 / 演员 / 年份 / 备注 / 集数（可从按钮 data-fav-extra 读取）
+            const rawExtra = extraInfo || (buttonEl && buttonEl.dataset ? buttonEl.dataset.favExtra : '');
+            let extra = {};
+            try {
+                extra = rawExtra
+                    ? (typeof rawExtra === 'string' ? JSON.parse(decodeURIComponent(rawExtra)) : rawExtra)
+                    : {};
+            } catch (e) {
+                extra = {};
+            }
+            const pickExtra = (key) => String((extra && extra[key]) || '').trim();
             ensureFavoritesCacheImmediate();
             const favorites = getFavorites();
             // 保存完整的URL，不进行分割
@@ -454,11 +496,21 @@
                 }
             } else {
                 const source = sourceLabel || getHostLabel();
+                const totalEpisodes = Number(extra.episodeCount);
+                const episodeIndexValue = Number(extra.episodeIndex);
                 const item = {
                     title,
                     url: fullVideoUrl,
                     pic: pic || '',
                     source: source || '',
+                    desc: pickExtra('desc'),
+                    class: pickExtra('class'),
+                    actor: pickExtra('actor'),
+                    year: pickExtra('year'),
+                    remarks: pickExtra('remarks'),
+                    episodeName: pickExtra('episodeName'),
+                    episodeIndex: Number.isFinite(episodeIndexValue) ? episodeIndexValue : null,
+                    episodeCount: Number.isFinite(totalEpisodes) && totalEpisodes > 0 ? totalEpisodes : null,
                     timestamp: Date.now()
                 };
                 favorites.unshift(item);
@@ -555,14 +607,17 @@
                                     ${category === 'adult' ? '摩西' : '普通'}
                                 </span>
                             </div>
-                            <div class="text-xs text-gray-500">
+                            ${(item.episodeName || item.episodeCount) ? `<div class="text-[11px] text-gray-500 mt-1">选集：${item.episodeName || '-'}${item.episodeCount ? `（共 ${item.episodeCount} 集）` : ''}</div>` : ''}
+                            ${(item.actor || item.class || item.year || item.remarks) ? `<div class="text-[11px] text-gray-500 mt-1 line-clamp-1">${[item.class, item.year, item.remarks].filter(Boolean).join(' · ')}${item.actor ? `${(item.class || item.year || item.remarks) ? ' · ' : ''}演员：${item.actor}` : ''}</div>` : ''}
+                            ${item.desc ? `<div class="text-[11px] text-gray-400 mt-1 line-clamp-2">${item.desc}</div>` : ''}
+                            <div class="text-xs text-gray-500 mt-1">
                                 <span>收藏时间: ${formatDate(item.timestamp)}</span>
                             </div>
                         </div>
                     </div>
                     <div class="mt-3 flex space-x-2">
                         <button 
-                            onclick="openVideoPlayer('${item.url}', '${item.title}', '${item.pic || ''}', '${item.source || ''}', '', null, '${item.desc || ''}', '${item.class || ''}', '${item.actor || ''}', '${item.year || ''}', '${item.remarks || ''}')"
+                            onclick="openVideoPlayer('${item.url}', '${item.title}', '${item.pic || ''}', '${item.source || ''}', '', ${Number.isFinite(item.episodeIndex) ? item.episodeIndex : 'null'}, '${escapeInlineText(item.desc)}', '${escapeInlineText(item.class)}', '${escapeInlineText(item.actor)}', '${escapeInlineText(item.year)}', '${escapeInlineText(item.remarks)}')"
                             class="btn-primary text-xs py-1 px-2 flex-1"
                         >
                             <i class="fa fa-play mr-1"></i> 播放
@@ -705,7 +760,11 @@
         function removeFromHistory(url) {
             try {
                 const history = JSON.parse(localStorage.getItem('videoPlayHistory') || '[]');
-                const filteredHistory = history.filter(item => item.url !== url);
+                const target = String(url || '');
+                const filteredHistory = history.filter(item => {
+                    const key = String(item.allEpisodesUrl || item.url || '');
+                    return key !== target && String(item.url || '') !== target;
+                });
                 localStorage.setItem('videoPlayHistory', JSON.stringify(filteredHistory));
                 
                 // 重新渲染历史记录

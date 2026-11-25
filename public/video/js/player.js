@@ -67,6 +67,96 @@
             return cleaned.endsWith('.m3u8');
         }
 
+        // 简介是否被截断，决定「展开 / 收起」按钮是否显示
+        function refreshVideoDescToggle() {
+            const descWrap = document.getElementById('viDescWrap');
+            const descEl = document.getElementById('viDesc');
+            const toggleEl = document.getElementById('viDescToggle');
+            if (!descWrap || !descEl || !toggleEl) return;
+            if (descWrap.classList.contains('hidden')) {
+                toggleEl.classList.add('hidden');
+                return;
+            }
+            if (descWrap.classList.contains('is-expanded')) {
+                toggleEl.classList.remove('hidden');
+                return;
+            }
+            toggleEl.classList.toggle('hidden', !(descEl.scrollHeight > descEl.clientHeight + 2));
+        }
+
+        window.addEventListener('resize', refreshVideoDescToggle);
+
+        // 播放器下方：渲染当前影视的简介、演员、类型、年份、备注等信息
+        function renderVideoInfoPanel() {
+            const panel = document.getElementById('videoInfoPanel');
+            if (!panel) return;
+            const metaEl = document.getElementById('viMeta');
+            const actorsEl = document.getElementById('viActors');
+            const descWrap = document.getElementById('viDescWrap');
+            const descEl = document.getElementById('viDesc');
+            const toggleEl = document.getElementById('viDescToggle');
+
+            const clean = (value) => String(value || '')
+                .replace(/<[^>]+>/g, ' ')
+                .replace(/&nbsp;/gi, ' ')
+                .replace(/&amp;/gi, '&')
+                .replace(/&lt;/gi, '<')
+                .replace(/&gt;/gi, '>')
+                .replace(/&quot;/gi, '"')
+                .replace(/&#39;/gi, "'")
+                .replace(/\s+/g, ' ')
+                .trim();
+
+            const source = clean(currentVideoSource);
+            const classes = clean(currentVideoClass);
+            const year = clean(currentVideoYear);
+            const remarks = clean(currentVideoRemarks);
+            const actor = clean(currentVideoActor);
+            const desc = clean(currentVideoDesc);
+
+            if (metaEl) {
+                const chips = [];
+                if (source) chips.push(`<span class="vi-chip vi-chip--primary">${source}</span>`);
+                if (classes) chips.push(`<span class="vi-chip">${classes}</span>`);
+                if (year) chips.push(`<span class="vi-chip">${year}</span>`);
+                if (remarks) chips.push(`<span class="vi-chip">${remarks}</span>`);
+                metaEl.innerHTML = chips.join('');
+            }
+
+            if (actorsEl) {
+                if (actor) {
+                    actorsEl.innerHTML = `<b>演员：</b>${actor}`;
+                    actorsEl.classList.remove('hidden');
+                } else {
+                    actorsEl.textContent = '';
+                    actorsEl.classList.add('hidden');
+                }
+            }
+
+            if (descWrap && descEl) {
+                if (desc) {
+                    descEl.textContent = desc;
+                    descWrap.classList.remove('hidden', 'is-expanded');
+                    if (toggleEl) {
+                        toggleEl.textContent = '展开';
+                        toggleEl.classList.add('hidden');
+                        toggleEl.onclick = () => {
+                            const expanded = descWrap.classList.toggle('is-expanded');
+                            toggleEl.textContent = expanded ? '收起' : '展开';
+                        };
+                        // 等布局完成后判断是否真的被截断
+                        requestAnimationFrame(refreshVideoDescToggle);
+                    }
+                } else {
+                    descWrap.classList.add('hidden');
+                }
+            }
+
+            const hasContent = !!(source || classes || year || remarks || actor || desc);
+            panel.classList.toggle('hidden', !hasContent);
+            panel.scrollTop = 0;
+        }
+
         function openVideoPlayer(videoUrl, videoTitle, imageUrl = '', sourceLabel = '', category = '', preferredEpisodeIndex = null, videoDesc = '', videoClass = '', videoActor = '', videoYear = '', videoRemarks = '') {
             if (!host) {
                 if (!isAggregateSearchEnabled()) {
@@ -208,12 +298,21 @@
                 };
                 updatePlayerLikeButtons(isFavorited(initialUrl));
                 updatePlayerTitle(currentVideoTitle);
+                renderVideoInfoPanel();
                 
                 // 更新页面标题
                 document.title = `正在播放: ${currentVideoTitle}`;
                 
                 // 保存播放历史
-                saveToHistory(currentVideoTitle, initialUrl, imageUrl, currentVideoSource, episodeTitle || '', hasEpisodeList ? initialIndex : null);
+                saveToHistory(currentVideoTitle, initialUrl, imageUrl, currentVideoSource, episodeTitle || '', hasEpisodeList ? initialIndex : null, {
+                    desc: currentVideoDesc,
+                    class: currentVideoClass,
+                    actor: currentVideoActor,
+                    year: currentVideoYear,
+                    remarks: currentVideoRemarks,
+                    episodeCount: episodes.length,
+                    allEpisodesUrl: currentVideoRawUrl || videoUrl
+                });
                 
                 // 显示播放器
                 setModalScrollLock(true);
@@ -342,7 +441,15 @@
                         // 更新页面标题
                         document.title = `正在播放: ${title}`;
                         updatePlayerLikeButtons(isFavorited(ep.url));
-                        saveToHistory(title, ep.url, imageUrl, currentVideoSource, ep.name || '', idx);
+                        saveToHistory(title, ep.url, imageUrl, currentVideoSource, ep.name || '', idx, {
+                            desc: currentVideoDesc,
+                            class: currentVideoClass,
+                            actor: currentVideoActor,
+                            year: currentVideoYear,
+                            remarks: currentVideoRemarks,
+                            episodeCount: episodes.length,
+                            allEpisodesUrl: currentVideoRawUrl || videoUrl
+                        });
                         if (dplayer && typeof dplayer.switchVideo === 'function') {
                             dplayer.switchVideo({ url: ep.url, type: 'hls', pic: '', thumbnails: '', title });
                             dplayer.play();
@@ -391,6 +498,11 @@
             currentVideoActor = '';
             currentVideoYear = '';
             currentVideoRemarks = '';
+            const infoPanel = document.getElementById('videoInfoPanel');
+            if (infoPanel) {
+                infoPanel.classList.add('hidden');
+                infoPanel.scrollTop = 0;
+            }
             updatePlayerLikeButtons(false);
             const playerTitle = document.getElementById('playerTitle');
             if (playerTitle) {

@@ -1,0 +1,180 @@
+/* ============================================================
+   自定义美化下拉框（原生 select 保留语义，弹层由 JS 渲染）
+   ============================================================ */
+
+select.csx {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    padding-right: 26px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    background-color: #fff;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    background-size: 12px 12px;
+    color: #0f172a;
+    font: inherit;
+    line-height: 1.4;
+    text-overflow: ellipsis;
+    cursor: pointer;
+    transition: border-color .15s ease, box-shadow .15s ease, background-color .15s ease;
+}
+
+select.csx:hover {
+    border-color: #94a3b8;
+    background-color: #f8fafc;
+}
+
+select.csx:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, .15);
+}
+
+select.csx.csx-on {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, .15);
+    background-color: #fff;
+}
+
+select.csx:disabled {
+    background-color: #f1f5f9;
+    border-color: #e2e8f0;
+    color: #94a3b8;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+select.csx::-ms-expand {
+    display: none;
+}
+
+/* ---------------- 弹层 ---------------- */
+.csx-panel {
+    position: fixed;
+    z-index: 10000;
+    box-sizing: border-box;
+    display: none;
+    padding: 6px;
+    min-width: 120px;
+    border: 1px solid rgba(148, 163, 184, .38);
+    border-radius: 12px;
+    background: #fff;
+    color: #0f172a;
+    font-size: 13px;
+    line-height: 1.35;
+    box-shadow: 0 18px 38px -12px rgba(15, 23, 42, .28), 0 4px 10px rgba(15, 23, 42, .06);
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+.csx-panel.csx-open {
+    display: block;
+    animation: csx-panel-in .12s ease-out;
+}
+
+@keyframes csx-panel-in {
+    from { opacity: 0; transform: translateY(-4px) scale(.98); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.csx-panel::-webkit-scrollbar {
+    width: 8px;
+}
+
+.csx-panel::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, .55);
+    border-radius: 999px;
+}
+
+.csx-panel::-webkit-scrollbar-thumb:hover {
+    background: rgba(100, 116, 139, .7);
+}
+
+.csx-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.csx-group {
+    padding: 6px 10px 3px;
+    color: #94a3b8;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .02em;
+    user-select: none;
+}
+
+.csx-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 7px 10px;
+    border-radius: 8px;
+    color: #1e293b;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+    transition: background-color .12s ease, color .12s ease;
+}
+
+.csx-item-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.csx-item:hover,
+.csx-item.csx-hl {
+    background: #f1f5f9;
+}
+
+.csx-item.csx-selected {
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-weight: 600;
+}
+
+.csx-item.csx-selected.csx-hl {
+    background: #dbeafe;
+}
+
+.csx-item.csx-placeholder {
+    color: #94a3b8;
+}
+
+.csx-item.csx-disabled {
+    opacity: .45;
+    cursor: not-allowed;
+    background: transparent;
+}
+
+.csx-check {
+    display: inline-flex;
+    flex: none;
+    opacity: 0;
+    color: #2563eb;
+}
+
+.csx-item.csx-selected .csx-check {
+    opacity: 1;
+}
+
+.csx-check svg {
+    width: 13px;
+    height: 13px;
+    display: block;
+}
+
+/* 触屏设备不做自定义弹层，仅保留美化后的原生控件 */
+@media (hover: none) {
+    select.csx {
+        background-position: right 6px center;
+        padding-right: 22px;
+    }
+}

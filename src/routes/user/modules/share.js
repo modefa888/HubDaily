@@ -78,6 +78,9 @@ shareRouter.get("/user/shares", authMiddleware, async (ctx) => {
         actor: item.actor || "",
         year: item.year || "",
         remarks: item.remarks || "",
+        episodeName: item.episodeName || "",
+        episodeIndex: Number.isFinite(item.episodeIndex) ? item.episodeIndex : null,
+        episodeCount: Number.isFinite(item.episodeCount) ? item.episodeCount : null,
         expireSeconds: item.expireSeconds || 0,
         expiresAt: item.expiresAt ? item.expiresAt.getTime() : 0,
         createdAt: item.createdAt ? item.createdAt.getTime() : 0,
@@ -115,6 +118,9 @@ shareRouter.get("/user/shares/:id", authMiddleware, requireAdmin, async (ctx) =>
         actor: item.actor || "",
         year: item.year || "",
         remarks: item.remarks || "",
+        episodeName: item.episodeName || "",
+        episodeIndex: Number.isFinite(item.episodeIndex) ? item.episodeIndex : null,
+        episodeCount: Number.isFinite(item.episodeCount) ? item.episodeCount : null,
         expireSeconds: item.expireSeconds || 0,
         expiresAt: item.expiresAt ? item.expiresAt.getTime() : 0,
         createdAt: item.createdAt ? item.createdAt.getTime() : 0,
@@ -157,7 +163,7 @@ shareRouter.delete("/user/shares/:id", authMiddleware, requireAdmin, async (ctx)
 
 // 创建或更新分享（登录用户）
 shareRouter.post("/user/share", authMiddleware, async (ctx) => {
-    const { shareId, title, url, apiName, allEpisodesUrl, pic, source, expireSeconds, desc, class: videoClass, actor, year, remarks } = ctx.request.body || {};
+    const { shareId, title, url, apiName, allEpisodesUrl, pic, source, expireSeconds, desc, class: videoClass, actor, year, remarks, episodeName, episodeIndex, episodeCount } = ctx.request.body || {};
     const safeUrl = String(url || "").trim();
     if (!safeUrl) {
         ctx.body = { code: 400, message: "分享地址不能为空" };
@@ -173,6 +179,11 @@ shareRouter.post("/user/share", authMiddleware, async (ctx) => {
     const safeActor = String(actor || "").trim();
     const safeYear = String(year || "").trim();
     const safeRemarks = String(remarks || "").trim();
+    const safeEpisodeName = String(episodeName || "").trim();
+    const parsedEpisodeIndex = Number(episodeIndex);
+    const parsedEpisodeCount = Number(episodeCount);
+    const safeEpisodeIndex = Number.isFinite(parsedEpisodeIndex) ? parsedEpisodeIndex : null;
+    const safeEpisodeCount = Number.isFinite(parsedEpisodeCount) ? parsedEpisodeCount : null;
     const safeExpireSeconds = parseExpireSeconds(expireSeconds);
     const now = new Date();
     const db = await getDb();
@@ -195,6 +206,9 @@ shareRouter.post("/user/share", authMiddleware, async (ctx) => {
             actor: safeActor,
             year: safeYear,
             remarks: safeRemarks,
+            episodeName: safeEpisodeName,
+            episodeIndex: safeEpisodeIndex,
+            episodeCount: safeEpisodeCount,
             expireSeconds: safeExpireSeconds,
             expiresAt,
             viewCount: 0,
@@ -217,6 +231,9 @@ shareRouter.post("/user/share", authMiddleware, async (ctx) => {
                 actor: safeActor,
                 year: safeYear,
                 remarks: safeRemarks,
+                episodeName: safeEpisodeName,
+                episodeIndex: safeEpisodeIndex,
+                episodeCount: safeEpisodeCount,
                 expireSeconds: safeExpireSeconds,
                 expiresAt: expiresAt ? expiresAt.getTime() : 0,
                 updatedAt: now.getTime(),
@@ -239,6 +256,9 @@ shareRouter.post("/user/share", authMiddleware, async (ctx) => {
                     actor: safeActor,
                     year: safeYear,
                     remarks: safeRemarks,
+                    episodeName: safeEpisodeName,
+                    episodeIndex: safeEpisodeIndex,
+                    episodeCount: safeEpisodeCount,
                     expireSeconds: safeExpireSeconds,
                     expiresAt,
                     updatedAt: now,
@@ -261,6 +281,9 @@ shareRouter.post("/user/share", authMiddleware, async (ctx) => {
                 actor: safeActor,
                 year: safeYear,
                 remarks: safeRemarks,
+                episodeName: safeEpisodeName,
+                episodeIndex: safeEpisodeIndex,
+                episodeCount: safeEpisodeCount,
                 expireSeconds: safeExpireSeconds,
                 expiresAt,
                 viewCount: 0,
@@ -283,6 +306,9 @@ shareRouter.post("/user/share", authMiddleware, async (ctx) => {
                     actor: safeActor,
                     year: safeYear,
                     remarks: safeRemarks,
+                    episodeName: safeEpisodeName,
+                    episodeIndex: safeEpisodeIndex,
+                    episodeCount: safeEpisodeCount,
                     expireSeconds: safeExpireSeconds,
                     expiresAt: expiresAt ? expiresAt.getTime() : 0,
                     updatedAt: now.getTime(),
@@ -305,6 +331,9 @@ shareRouter.post("/user/share", authMiddleware, async (ctx) => {
                     actor: safeActor,
                     year: safeYear,
                     remarks: safeRemarks,
+                    episodeName: safeEpisodeName,
+                    episodeIndex: safeEpisodeIndex,
+                    episodeCount: safeEpisodeCount,
                     expireSeconds: safeExpireSeconds,
                     expiresAt: expiresAt ? expiresAt.getTime() : 0,
                     updatedAt: now.getTime(),

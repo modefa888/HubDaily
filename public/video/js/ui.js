@@ -276,6 +276,9 @@
                                     <span class="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded mr-1">${item.source || '未知来源'}</span>
                                     ${item.title}
                                 </h4>
+                                ${(item.episodeName || item.episodeCount) ? `<div class="text-[11px] text-gray-500 mb-1">选集：${item.episodeName || '-'}${item.episodeCount ? `（共 ${item.episodeCount} 集）` : ''}</div>` : ''}
+                                ${(item.actor || item.class || item.year || item.remarks) ? `<div class="text-[11px] text-gray-500 mb-1 line-clamp-1">${[item.class, item.year, item.remarks].filter(Boolean).join(' · ')}${item.actor ? `${(item.class || item.year || item.remarks) ? ' · ' : ''}演员：${item.actor}` : ''}</div>` : ''}
+                                ${item.desc ? `<div class="text-[11px] text-gray-400 mb-1 line-clamp-2">${item.desc}</div>` : ''}
                                 <div class="flex flex-wrap items-center gap-2 text-xs text-gray-500">
                                     <span>分享时间: ${formatDate(item.createdAt)}</span>
                                     <span>更新时间: ${item.updatedAt ? formatDate(item.updatedAt) : '-'}</span>
@@ -304,7 +307,7 @@
                             </div>
                             <div class="flex justify-between items-center">
                                 <button 
-                                    onclick="openVideoPlayer('${item.url}', '${item.title}', '${item.pic || ''}', '${item.source || ''}', '', null, '${item.desc || ''}', '${item.class || ''}', '${item.actor || ''}', '${item.year || ''}', '${item.remarks || ''}')"
+                                    onclick="openVideoPlayer('${item.url}', '${item.title}', '${item.pic || ''}', '${item.source || ''}', '', ${Number.isFinite(item.episodeIndex) ? item.episodeIndex : 'null'}, '${escapeInlineText(item.desc)}', '${escapeInlineText(item.class)}', '${escapeInlineText(item.actor)}', '${escapeInlineText(item.year)}', '${escapeInlineText(item.remarks)}')"
                                     class="btn-primary text-xs py-1 px-2 flex-1"
                                 >
                                     <i class="fa fa-play mr-1"></i> 播放

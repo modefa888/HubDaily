@@ -39,6 +39,14 @@
                         title: item.title,
                         pic: item.pic || '',
                         source: item.source || '',
+                        desc: item.desc || '',
+                        class: item.class || '',
+                        actor: item.actor || '',
+                        year: item.year || '',
+                        remarks: item.remarks || '',
+                        episodeName: item.episodeName || '',
+                        episodeIndex: Number.isFinite(Number(item.episodeIndex)) ? Number(item.episodeIndex) : null,
+                        episodeCount: Number.isFinite(Number(item.episodeCount)) ? Number(item.episodeCount) : null,
                         viewCount: Number(item.viewCount || 0),
                         lastViewAt: Number(item.lastViewAt || 0),
                         expireSeconds: Number(item.expireSeconds || 0),
@@ -110,6 +118,14 @@
                 updatedAt: Number(item.updatedAt || createdAt),
                 viewCount,
                 lastViewAt,
+                desc: String(item.desc || ''),
+                class: String(item.class || ''),
+                actor: String(item.actor || ''),
+                year: String(item.year || ''),
+                remarks: String(item.remarks || ''),
+                episodeName: String(item.episodeName || ''),
+                episodeIndex: Number.isFinite(Number(item.episodeIndex)) ? Number(item.episodeIndex) : null,
+                episodeCount: Number.isFinite(Number(item.episodeCount)) ? Number(item.episodeCount) : null,
                 expireSeconds,
                 expiresAt,
                 shareUrl
@@ -146,9 +162,18 @@
                     body: JSON.stringify({
                         shareId: item.id,
                         url: item.url,
+                        allEpisodesUrl: item.allEpisodesUrl || item.url,
                         title: item.title,
                         pic: item.pic || '',
                         source: item.source || '',
+                        desc: item.desc || '',
+                        class: item.class || '',
+                        actor: item.actor || '',
+                        year: item.year || '',
+                        remarks: item.remarks || '',
+                        episodeName: item.episodeName || '',
+                        episodeIndex: item.episodeIndex == null ? null : item.episodeIndex,
+                        episodeCount: item.episodeCount == null ? null : item.episodeCount,
                         expireSeconds: item.expireSeconds || 0,
                         expiresAt: item.expiresAt || 0
                     })
@@ -616,6 +641,9 @@
                 actor: currentSharePayload.actor || '',
                 year: currentSharePayload.year || '',
                 remarks: currentSharePayload.remarks || '',
+                episodeName: currentSharePayload.episodeName || '',
+                episodeIndex: Number.isFinite(Number(currentSharePayload.episodeIndex)) ? Number(currentSharePayload.episodeIndex) : null,
+                episodeCount: Number.isFinite(Number(currentSharePayload.episodeCount)) ? Number(currentSharePayload.episodeCount) : null,
                 expireSeconds,
                 expiresAt: expireSeconds > 0 ? Date.now() + expireSeconds * 1000 : 0
             });
@@ -644,6 +672,9 @@
                 actor: currentSharePayload.actor || '',
                 year: currentSharePayload.year || '',
                 remarks: currentSharePayload.remarks || '',
+                episodeName: currentSharePayload.episodeName || '',
+                episodeIndex: Number.isFinite(Number(currentSharePayload.episodeIndex)) ? Number(currentSharePayload.episodeIndex) : null,
+                episodeCount: Number.isFinite(Number(currentSharePayload.episodeCount)) ? Number(currentSharePayload.episodeCount) : null,
                 expireSeconds,
                 expiresAt,
                 shareUrl: currentShareUrl,
@@ -672,6 +703,9 @@
                 openAuthModal();
                 return;
             }
+            const episodes = parsePlayUrls(videoUrl);
+            const activeIndex = Number(currentIndex);
+            const activeEpisode = Number.isFinite(activeIndex) ? episodes[activeIndex] : null;
             currentSharePayload = {
                 url: fullVideoUrl,
                 allEpisodesUrl: fullVideoUrl, // 保存全部集数的原始URL
@@ -683,10 +717,12 @@
                 actor: videoActor || '',
                 year: videoYear || '',
                 remarks: videoRemarks || '',
+                episodeName: (activeEpisode && activeEpisode.name) || '',
+                episodeIndex: Number.isFinite(activeIndex) ? activeIndex : null,
+                episodeCount: episodes.length || null,
                 expireSeconds: getShareExpireSeconds(),
                 expiresAt: 0
             };
-            const episodes = parsePlayUrls(videoUrl);
             prepareShareSelection(episodes, currentIndex);
             currentShareUrl = '';
             currentShareId = '';
@@ -723,6 +759,14 @@
                 title: item.title,
                 pic: item.pic || '',
                 source: item.source || '',
+                desc: item.desc || '',
+                class: item.class || '',
+                actor: item.actor || '',
+                year: item.year || '',
+                remarks: item.remarks || '',
+                episodeName: item.episodeName || '',
+                episodeIndex: Number.isFinite(Number(item.episodeIndex)) ? Number(item.episodeIndex) : null,
+                episodeCount: Number.isFinite(Number(item.episodeCount)) ? Number(item.episodeCount) : null,
                 expireSeconds: item.expireSeconds || 0,
                 expiresAt: item.expiresAt || 0
             };
@@ -858,11 +902,24 @@
                 }
             } else {
                 const source = currentVideoSource || getHostLabel();
+                const episodeList = Array.isArray(currentEpisodeList) ? currentEpisodeList : [];
+                const episodeRawIndex = Number(currentEpisodeIndex);
+                const activeEpisode = Number.isFinite(episodeRawIndex) && episodeList[episodeRawIndex]
+                    ? episodeList[episodeRawIndex]
+                    : null;
                 const item = {
                     title: currentVideoTitle || '视频播放',
                     url: fullVideoUrl,
                     pic: currentVideoPic || '',
                     source: source || '',
+                    desc: currentVideoDesc || '',
+                    class: currentVideoClass || '',
+                    actor: currentVideoActor || '',
+                    year: currentVideoYear || '',
+                    remarks: currentVideoRemarks || '',
+                    episodeName: (activeEpisode && activeEpisode.name) || '',
+                    episodeIndex: Number.isFinite(episodeRawIndex) ? episodeRawIndex : null,
+                    episodeCount: episodeList.length || null,
                     timestamp: Date.now()
                 };
                 favorites.unshift(item);

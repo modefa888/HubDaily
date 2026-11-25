@@ -28,6 +28,14 @@
         const RESUME_MAX_ITEMS = 200;
         const RESUME_MIN_SECONDS = 5;
         const RESUME_SAVE_THROTTLE_MS = 3000;
+
+        // 转义用于内联 onclick 参数的文本，避免简介等含引号时截断
+        function escapeInlineText(value) {
+            return String(value == null ? '' : value)
+                .replace(/\\/g, '\\\\')
+                .replace(/'/g, "\\'")
+                .replace(/\r?\n/g, ' ');
+        }
         let resumeLastSaveAt = 0;
         let resumeLastUrl = '';
         const WATCH_TIME_KEY = 'videoWatchTimeDaily';

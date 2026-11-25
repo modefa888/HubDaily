@@ -20,6 +20,14 @@ favoriteRouter.get("/user/favorites", authMiddleware, async (ctx) => {
             url: item.url,
             pic: item.pic,
             source: item.source,
+            desc: item.desc || "",
+            class: item.class || "",
+            actor: item.actor || "",
+            year: item.year || "",
+            remarks: item.remarks || "",
+            episodeName: item.episodeName || "",
+            episodeIndex: Number.isFinite(item.episodeIndex) ? item.episodeIndex : null,
+            episodeCount: Number.isFinite(item.episodeCount) ? item.episodeCount : null,
             timestamp: item.createdAt ? item.createdAt.getTime() : Date.now(),
         })),
     };
@@ -46,6 +54,14 @@ favoriteRouter.get("/user/:id/favorites", authMiddleware, requireAdmin, async (c
             url: item.url,
             pic: item.pic,
             source: item.source,
+            desc: item.desc || "",
+            class: item.class || "",
+            actor: item.actor || "",
+            year: item.year || "",
+            remarks: item.remarks || "",
+            episodeName: item.episodeName || "",
+            episodeIndex: Number.isFinite(item.episodeIndex) ? item.episodeIndex : null,
+            episodeCount: Number.isFinite(item.episodeCount) ? item.episodeCount : null,
             timestamp: item.createdAt ? item.createdAt.getTime() : Date.now(),
         })),
     };
@@ -70,7 +86,7 @@ favoriteRouter.delete("/user/:id/favorites", authMiddleware, requireAdmin, async
 
 // 添加喜欢（登录用户）
 favoriteRouter.post("/user/favorites", authMiddleware, async (ctx) => {
-    const { title, url, pic, source } = ctx.request.body || {};
+    const { title, url, pic, source, desc, class: videoClass, actor, year, remarks, episodeName, episodeIndex, episodeCount } = ctx.request.body || {};
     const safeUrl = String(url || "").trim();
     if (!safeUrl) {
         ctx.body = { code: 400, message: "视频地址不能为空" };
@@ -78,15 +94,27 @@ favoriteRouter.post("/user/favorites", authMiddleware, async (ctx) => {
     }
     const db = await getDb();
     const now = new Date();
+    const safeEpisodeIndex = Number(episodeIndex);
+    const safeEpisodeCount = Number(episodeCount);
+    // 仅在请求携带对应字段时更新，避免未传时把已有简介/演员信息清空
+    const setFields = {
+        title: String(title || "").trim(),
+        pic: String(pic || "").trim(),
+        source: String(source || "").trim(),
+        updatedAt: now,
+    };
+    if (desc !== undefined) setFields.desc = String(desc || "").trim();
+    if (videoClass !== undefined) setFields.class = String(videoClass || "").trim();
+    if (actor !== undefined) setFields.actor = String(actor || "").trim();
+    if (year !== undefined) setFields.year = String(year || "").trim();
+    if (remarks !== undefined) setFields.remarks = String(remarks || "").trim();
+    if (episodeName !== undefined) setFields.episodeName = String(episodeName || "").trim();
+    if (episodeIndex !== undefined) setFields.episodeIndex = Number.isFinite(safeEpisodeIndex) ? safeEpisodeIndex : null;
+    if (episodeCount !== undefined) setFields.episodeCount = Number.isFinite(safeEpisodeCount) ? safeEpisodeCount : null;
     await db.collection("user_favorites").updateOne(
         { userId: ctx.state.user._id, url: safeUrl },
         {
-            $set: {
-                title: String(title || "").trim(),
-                pic: String(pic || "").trim(),
-                source: String(source || "").trim(),
-                updatedAt: now,
-            },
+            $set: setFields,
             $setOnInsert: {
                 createdAt: now,
             },

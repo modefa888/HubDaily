@@ -20,7 +20,9 @@
         const token = getToken();
         
         // 使用项目自带的代理接口进行监测，避免跨域问题
-        const proxyUrl = `http://127.0.0.1:8800/api/proxy?wd=&pg=1&url=${encodeURIComponent(url)}`;
+        // 用当前站点地址拼接，避免硬编码端口在部署环境失效
+        const proxyOrigin = window.location.origin || "";
+        const proxyUrl = `${proxyOrigin}/api/proxy?wd=&pg=1&url=${encodeURIComponent(url)}`;
         const headers = {
           'Accept': '*/*'
         };
@@ -74,6 +76,8 @@
               const addedAt = new Date(item.createdAt).toLocaleString();
               const expireLabel = item.expiresAt ? new Date(item.expiresAt).toLocaleString() : '永久';
               const shareUrl = `/video/share?sid=${encodeURIComponent(item.shareId)}`;
+              // 封面地址（单引号转义，避免内联 style/属性被截断）
+              const coverUrl = String(item.pic || '/video/loading.gif').replace(/'/g, '%27');
               
               // 计算过期状态
               let statusLabel = '正常';
@@ -88,41 +92,61 @@
               }
               
               return `
-                <div class="video-card" style="position: relative; overflow: hidden; border-radius: 12px; background: rgba(30, 41, 59, 0.8); transition: all 0.3s ease;">
-                  <div class="thumb-wrapper" style="position: relative; aspect-ratio: 3/4; overflow: hidden;">
-                    <div style="position: absolute; top: 8px; left: 8px; z-index: 10;">
-                      <input type="checkbox" class="share-checkbox h-4 w-4 text-blue-600" data-share-id="${item.shareId}">
-                    </div>
-                    <img src="${item.pic || '/video/loading.gif'}" 
-                         alt="${item.title}" 
+                <article class="video-card sw-card">
+                  <div class="thumb-wrapper sw-thumb" style="background-image:url('${coverUrl}')">
+                    <img src="${coverUrl}"
+                         alt="${item.title}"
                          loading="lazy"
-                         onerror="this.src='/video/loading.gif'" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s ease;">
-                    <div class="play-overlay" style="position: absolute; inset: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s ease; cursor: pointer;">
-                      <i class="fa fa-play-circle" style="font-size: 48px; color: white; text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);"></i>
+                         onerror="this.src='/video/loading.gif'"
+                         class="sw-cover">
+                    <label class="sw-check" title="选择该分享">
+                      <input type="checkbox" class="share-checkbox" data-share-id="${item.shareId}">
+                    </label>
+                    <div class="play-overlay sw-overlay">
+                      <span class="sw-play">
+                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+                      </span>
                     </div>
                   </div>
-                  <div class="info" style="padding: 12px;">
-                    <div class="title" style="font-size: 14px; font-weight: 500; color: white; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 8px;">${item.title}</div>
-                    <div class="meta" style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: #94a3b8;">
-                      <span class="source-badge" style="display: inline-block; padding: 2px 8px; background: rgba(59, 130, 246, 0.2); color: #60a5fa; border-radius: 4px; font-size: 11px;">${item.source || '未知'}</span>
+                  <div class="info sw-info">
+                    <div class="title sw-title">${item.title}</div>
+                    <div class="sw-chips">
+                      <span class="source-badge sw-badge">${item.source || '未知'}</span>
                     </div>
-                    <div class="meta" style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: #94a3b8; margin-top: 4px;">
-                      <span>添加人: ${item.addedBy || '未知'}</span>
+                    <div class="meta sw-meta">
+                      <span class="sw-meta-k">添加人</span>
+                      <span class="sw-meta-v">${item.addedBy || '未知'}</span>
                     </div>
-                    <div class="meta" style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: #94a3b8; margin-top: 4px;">
-                      <span>添加时间: ${addedAt}</span>
+                    <div class="meta sw-meta">
+                      <span class="sw-meta-k">添加时间</span>
+                      <span class="sw-meta-v">${addedAt}</span>
                     </div>
-                    <div class="meta flex justify-end" style="display: flex; justify-content: flex-end; align-items: center; gap: 8px; font-size: 12px; margin-top: 4px;">
-                      <span style="font-size: 12px; color: ${statusColor};">${statusLabel}</span>
-                      <span class="text-xs" style="font-size: 12px; color: ${expireColor};">${expireLabel}</span>
+                    <div class="meta flex justify-end sw-status-row">
+                      <span class="sw-pill" style="color:${statusColor};">${statusLabel}</span>
+                      <span class="text-xs text-yellow-400 sw-expire" style="color:${expireColor};">${item.expiresAt ? expireLabel : ''}</span>
                     </div>
-                    <div class="meta" style="display: flex; justify-content: flex-end; margin-top: 8px;">
-                      <button class="px-2 py-1 rounded bg-slate-600 text-white text-xs" onclick="openShareActionsModal('${item.shareId}', '${item.title}')">操作</button>
+                    <div class="sw-actions">
+                      <button class="sw-action" onclick="openShareActionsModal('${item.shareId}', '${item.title}')">操作</button>
                     </div>
                   </div>
-                </div>
+                </article>
               `;
             }).join('');
+
+            if (!data.data.length) {
+              shareWallGrid.innerHTML = `
+                <div class="sw-empty">
+                  <span class="sw-empty-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="3" y="4" width="18" height="16" rx="3"></rect>
+                      <path d="M3 9h18"></path>
+                      <path d="M9 14h6"></path>
+                    </svg>
+                  </span>
+                  <div class="sw-empty-text">暂无分享记录</div>
+                </div>
+              `;
+            }
           }
         } else {
           if (shareWallMeta) shareWallMeta.textContent = '加载失败';
@@ -308,7 +332,8 @@
       // 计算过期状态和标签
       let statusLabel = '正常';
       let statusColor = '#10b981'; // 绿色
-      let expireLabel = '永久';
+      // 永久分享不重复显示“永久”标签（状态列已表达）
+      let expireLabel = '';
       let expireColor = '#f59e0b'; // 黄色
       
       if (!expiresAt) {

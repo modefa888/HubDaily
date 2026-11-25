@@ -181,25 +181,19 @@
     const showShareWallSkeleton = () => {
       const grid = document.getElementById('shareWallGrid');
       if (!grid) return;
-      grid.innerHTML = `
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-          ${Array(8).fill('').map(() => `
-            <div class="video-card" style="position: relative; overflow: hidden; border-radius: 12px; background: rgba(30, 41, 59, 0.8); transition: all 0.3s ease;">
-              <div class="thumb-wrapper" style="position: relative; aspect-ratio: 3/4; overflow: hidden;">
-                <div class="h-full w-full bg-slate-200 animate-pulse"></div>
-              </div>
-              <div class="info" style="padding: 12px;">
-                <div class="h-4 bg-slate-200 rounded animate-pulse mb-4"></div>
-                <div class="space-y-2">
-                  <div class="h-3 bg-slate-200 rounded animate-pulse"></div>
-                  <div class="h-3 bg-slate-200 rounded animate-pulse w-3/4"></div>
-                  <div class="h-3 bg-slate-200 rounded animate-pulse w-1/2"></div>
-                </div>
-              </div>
-            </div>
-          `).join('')}
+      grid.innerHTML = Array(10).fill('').map(() => `
+        <div class="sw-card sw-skeleton">
+          <div class="sw-thumb sw-sk"></div>
+          <div class="sw-info">
+            <div class="sw-sk-line" style="width: 88%"></div>
+            <div class="sw-sk-line" style="width: 56%"></div>
+            <div class="sw-sk-chip sw-sk"></div>
+            <div class="sw-sk-line" style="width: 74%"></div>
+            <div class="sw-sk-line" style="width: 48%"></div>
+            <div class="sw-sk-line" style="width: 42%; margin-left: auto"></div>
+          </div>
         </div>
-      `;
+      `).join('');
     };
     
     // 显示密码重置设置骨架屏

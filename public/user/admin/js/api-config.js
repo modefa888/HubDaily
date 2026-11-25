@@ -192,7 +192,15 @@
     };
 
     const deleteOfficialApi = async (id) => {
-      if (!confirm("确认删除该接口？")) return;
+      const confirmed = typeof showConfirmDialog === "function"
+        ? await showConfirmDialog({
+          title: "删除接口",
+          description: "确认删除该接口？删除后不可恢复。",
+          confirmText: "删除",
+          type: "danger"
+        })
+        : confirm("确认删除该接口？");
+      if (!confirmed) return;
       const res = await fetch(`/api/user/official-apis/${id}`, {
         method: "DELETE",
         headers: authHeaders()
@@ -323,6 +331,138 @@
       setBtnLoading(btn, false, enabled ? "全部启用" : "全部停用");
     };
 
+    /* ===== 一键停用异常接口 ===== */
+    const API_MONITOR_BTN = 'button[onclick^="checkApiStatus"]';
+
+    const getApiRowUrl = (row) => {
+      const input = row.querySelector('input[data-field="url"]');
+      const value = input ? String(input.value || "").trim() : "";
+      if (value) return value;
+      const btn = row.querySelector(API_MONITOR_BTN);
+      const onclick = btn ? btn.getAttribute("onclick") || "" : "";
+      const match = onclick.match(/checkApiStatus\('([^']*)'/);
+      return match ? match[1] : "";
+    };
+
+    // ok / error / unknown；没有填写 URL 的一律视为异常
+    const getApiMonitorState = (row) => {
+      if (!getApiRowUrl(row)) return "error";
+      const btn = row.querySelector(API_MONITOR_BTN);
+      if (!btn) return "unknown";
+      const text = String(btn.textContent || "");
+      if (text.indexOf("异常") !== -1) return "error";
+      if (text.indexOf("正常") !== -1) return "ok";
+      return "unknown";
+    };
+
+    const runWithConcurrency = async (tasks, limit) => {
+      const total = tasks.length;
+      if (!total) return;
+      let cursor = 0;
+      const size = Math.max(1, Math.min(limit || 1, total));
+      const workers = [];
+      for (let i = 0; i < size; i += 1) {
+        workers.push((async () => {
+          while (cursor < total) {
+            const index = cursor;
+            cursor += 1;
+            try {
+              await tasks[index]();
+            } catch (err) {
+              // 单条监测失败不影响整体
+            }
+          }
+        })());
+      }
+      await Promise.all(workers);
+    };
+
+    const setActionButtonLabel = (btn, text) => {
+      if (!btn) return;
+      const label = btn.querySelector("span:last-child");
+      if (label && label.tagName === "SPAN") label.textContent = text;
+      else btn.textContent = text;
+    };
+
+    /**
+     * 一键停用异常接口
+     * 1. 先对「已启用但尚未监测」的接口并发监测
+     * 2. 汇总监测结果为异常的接口
+     * 3. 二次确认后调用批量停用接口
+     */
+    const disableAbnormalApis = async ({ tbodyId, buttonId, batchUrl, reload, label }) => {
+      const tbody = document.getElementById(tbodyId);
+      const btn = document.getElementById(buttonId);
+      const finalLabel = label || "停用异常";
+      if (!tbody) return;
+      const rows = Array.from(tbody.querySelectorAll("tr[data-id]"));
+      if (rows.length === 0) {
+        toast("暂无可处理的接口");
+        return;
+      }
+
+      const enabledRows = rows.filter((row) => {
+        const toggle = row.querySelector('[data-action="toggle"]');
+        return !!(toggle && toggle.getAttribute("data-enabled") === "1");
+      });
+      if (enabledRows.length === 0) {
+        toast("当前没有已启用的接口");
+        return;
+      }
+
+      const pending = enabledRows.filter((row) => getApiMonitorState(row) === "unknown");
+      setBtnLoading(btn, true, pending.length ? `监测 0/${pending.length}` : "检查中...");
+      try {
+        if (pending.length) {
+          let done = 0;
+          const tasks = pending.map((row) => async () => {
+            const monitorBtn = row.querySelector(API_MONITOR_BTN);
+            const url = getApiRowUrl(row);
+            if (monitorBtn && url && typeof checkApiStatus === "function") {
+              await checkApiStatus(url, monitorBtn);
+            }
+            done += 1;
+            setActionButtonLabel(btn, `监测 ${done}/${pending.length}`);
+          });
+          await runWithConcurrency(tasks, 4);
+        }
+
+        const abnormalRows = enabledRows.filter((row) => getApiMonitorState(row) === "error");
+        const ids = abnormalRows.map((row) => row.getAttribute("data-id")).filter(Boolean);
+
+        if (abnormalRows.length === 0) {
+          toast("未发现异常接口");
+          return;
+        }
+
+        const confirmed = typeof showConfirmDialog === "function"
+          ? await showConfirmDialog({
+            title: "停用异常接口",
+            description: `检测到 ${abnormalRows.length} 个异常接口，是否全部停用？\n停用后仍可在列表中手动重新启用。`,
+            confirmText: "全部停用",
+            type: "danger"
+          })
+          : confirm(`检测到 ${abnormalRows.length} 个异常接口，是否全部停用？`);
+        if (!confirmed) return;
+
+        setActionButtonLabel(btn, "停用中...");
+        const res = await fetch(batchUrl, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", ...authHeaders() },
+          body: JSON.stringify({ ids, enabled: false })
+        });
+        const data = await res.json();
+        if (data.code !== 200) {
+          toast(data.message || "批量停用失败");
+        } else {
+          toast(`已停用 ${ids.length} 个异常接口`);
+        }
+        await reload();
+      } finally {
+        setBtnLoading(btn, false, finalLabel);
+      }
+    };
+
     const loadParseApis = async () => {
       const btn = document.getElementById("loadParseApisBtn");
       const tbody = document.getElementById("parseTbody");
@@ -431,7 +571,15 @@
     };
 
     const deleteParseApi = async (id) => {
-      if (!confirm("确认删除该接口？")) return;
+      const confirmed = typeof showConfirmDialog === "function"
+        ? await showConfirmDialog({
+          title: "删除解析接口",
+          description: "确认删除该接口？删除后不可恢复。",
+          confirmText: "删除",
+          type: "danger"
+        })
+        : confirm("确认删除该接口？");
+      if (!confirmed) return;
       const res = await fetch(`/api/user/parse-apis/${id}`, {
         method: "DELETE",
         headers: authHeaders()

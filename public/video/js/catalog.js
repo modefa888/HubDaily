@@ -464,6 +464,21 @@
                                 <button 
                                     onclick="toggleFavorite('${video.vod_name}', '${video.vod_play_url}', '${video.vod_pic}', this, '${sourceLabel}')"
                                     data-action="favorite"
+                                    data-fav-extra="${encodeURIComponent(JSON.stringify({
+                                        desc: cleanText(video.vod_content),
+                                        'class': classText,
+                                        actor: actorText,
+                                        year: video.vod_year || '',
+                                        remarks: video.vod_remarks || '',
+                                        episodeCount: (function () {
+                                            try {
+                                                const list = typeof parsePlayUrls === 'function' ? parsePlayUrls(video.vod_play_url) : [];
+                                                return Array.isArray(list) && list.length > 1 ? list.length : null;
+                                            } catch (err) {
+                                                return null;
+                                            }
+                                        })()
+                                    }))}"
                                     class="${actionClass} ${favorited ? 'text-red-500' : 'text-gray-500'} hover:text-red-500"
                                     title="喜欢"
                                 >
@@ -928,16 +943,23 @@
         }
 
         // 应用视频图片方向样式
+        // 竖屏、横屏封面都完整显示（object-fit: contain），空白区域用同一张图模糊铺底
         function applyVideoImageOrientation(img, index) {
-            if (img.naturalWidth && img.naturalHeight) {
-                const aspectRatio = img.naturalWidth / img.naturalHeight;
-                // 如果是竖屏图片（宽高比小于0.75），添加portrait类
-                if (aspectRatio < 0.75) {
-                    const wrapper = document.getElementById(`cover-wrapper-${index}`);
-                    if (wrapper) {
-                        wrapper.classList.add('portrait');
-                    }
+            if (!img) return;
+            const wrapper = img.closest('.video-cover-wrapper')
+                || document.getElementById(`cover-wrapper-${index}`);
+            if (wrapper) {
+                // 用当前真正加载到的图片作为铺底（图片回退/失败时也能正确显示）
+                const src = img.currentSrc || img.src || '';
+                if (src) {
+                    wrapper.style.backgroundImage = `url("${src.replace(/"/g, '%22')}")`;
                 }
+            }
+            if (!img.naturalWidth || !img.naturalHeight) return;
+            const aspectRatio = img.naturalWidth / img.naturalHeight;
+            if (wrapper) {
+                wrapper.classList.toggle('portrait', aspectRatio < 0.75);
+                wrapper.classList.toggle('landscape', aspectRatio > 1.2);
             }
         }
 

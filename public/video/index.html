@@ -737,7 +737,7 @@
         id="videoPlayerModal" 
         class="fixed inset-0 z-50 hidden flex items-center justify-center p-4"
     >
-        <div class="relative w-full max-w-4xl h-[70vh] bg-black rounded-lg overflow-hidden flex flex-col">
+        <div class="relative w-full max-w-4xl md:max-w-6xl h-[70vh] bg-black rounded-lg overflow-hidden flex flex-col md:flex-row">
             <div 
                 id="playerTitle"
                 class="absolute top-4 left-4 z-10 px-3 py-1.5 bg-black/60 text-white text-sm rounded-full max-w-[70%] truncate"
@@ -773,36 +773,45 @@
             ></button>
             
             <!-- 桌面端操作按钮 -->
-            <button 
-                id="closeVideoButton" 
-                onclick="closeVideoPlayer()"
-                data-icon="close"
-                class="hidden md:inline-flex vp-top-btn absolute top-4 right-4 z-10"
-                title="关闭"
-            ></button>
-            <button 
-                id="shareVideoButton" 
-                onclick="shareCurrentVideo()"
-                data-icon="share"
-                class="hidden md:inline-flex vp-top-btn absolute top-4 right-16 z-10"
-                title="分享"
-            ></button>
-            <button 
-                id="likeVideoButton" 
-                onclick="toggleCurrentVideoFavorite()"
-                data-icon="heart"
-                class="hidden md:inline-flex vp-top-btn vp-top-like absolute top-4 right-28 z-10"
-                title="喜欢"
-            ></button>
-            <button 
-                id="copyVideoUrlButton" 
-                onclick="copyCurrentVideoInfo()"
-                data-icon="copy"
-                class="hidden md:inline-flex vp-top-btn absolute top-4 right-40 z-10"
-                title="复制标题和真实地址 JSON"
-            ></button>
-            
-            <div id="dplayer" class="w-full flex-1 min-h-0"></div>
+            <div id="playerMain" class="relative flex w-full min-w-0 flex-1 flex-col min-h-0">
+                <button 
+                    id="closeVideoButton" 
+                    onclick="closeVideoPlayer()"
+                    data-icon="close"
+                    class="hidden md:inline-flex vp-top-btn absolute top-4 right-4 z-10"
+                    title="关闭"
+                ></button>
+                <button 
+                    id="shareVideoButton" 
+                    onclick="shareCurrentVideo()"
+                    data-icon="share"
+                    class="hidden md:inline-flex vp-top-btn absolute top-4 right-16 z-10"
+                    title="分享"
+                ></button>
+                <button 
+                    id="likeVideoButton" 
+                    onclick="toggleCurrentVideoFavorite()"
+                    data-icon="heart"
+                    class="hidden md:inline-flex vp-top-btn vp-top-like absolute top-4 right-28 z-10"
+                    title="喜欢"
+                ></button>
+                <button 
+                    id="copyVideoUrlButton" 
+                    onclick="copyCurrentVideoInfo()"
+                    data-icon="copy"
+                    class="hidden md:inline-flex vp-top-btn absolute top-4 right-40 z-10"
+                    title="复制标题和真实地址 JSON"
+                ></button>
+                <div id="dplayer" class="w-full flex-1 min-h-0"></div>
+                <div id="videoInfoPanel" class="hidden">
+                    <div id="viMeta" class="vi-meta"></div>
+                    <div id="viActors" class="vi-line hidden"></div>
+                    <div id="viDescWrap" class="vi-desc-wrap hidden">
+                        <p id="viDesc" class="vi-desc"></p>
+                        <button type="button" id="viDescToggle" class="vi-toggle hidden">展开</button>
+                    </div>
+                </div>
+            </div>
             <div id="episodePanel" class="hidden bg-black/70 px-4 py-3 border-t border-white/10">
                 <div class="flex items-center justify-between text-xs text-white/70 mb-2">
                     <span>选集播放</span>

@@ -62,13 +62,47 @@
       });
     };
 
+    // 读取上次打开的模块（优先 URL hash，其次本地存储）
+    const getRememberedModule = () => {
+      let saved = '';
+      try {
+        saved = String(location.hash || '').replace(/^#/, '').trim() || localStorage.getItem('adminActiveModule') || '';
+      } catch (err) {
+        saved = '';
+      }
+      if (!saved) return '';
+      const exists = Array.from(document.querySelectorAll('.module-tab'))
+        .some(tab => tab.dataset.moduleTarget === saved);
+      return exists ? saved : '';
+    };
+
+    // 恢复上次打开的模块（只切显隐与高亮，数据由 ui.js 的 setActiveModule 在鉴权后加载）
+    const restoreRememberedModule = () => {
+      const saved = getRememberedModule();
+      if (!saved) return false;
+      document.querySelectorAll('.module-tab').forEach(tab => {
+        const active = tab.dataset.moduleTarget === saved;
+        tab.classList.toggle('bg-slate-800', active);
+        tab.classList.toggle('text-white', active);
+        tab.classList.toggle('bg-slate-200', !active);
+        tab.classList.toggle('text-slate-700', !active);
+      });
+      // 只切显隐，避免在鉴权完成前触发模块数据请求（数据由 setActiveModule 加载）
+      document.querySelectorAll('.module-section').forEach(section => {
+        section.classList.toggle('hidden', section.dataset.module !== saved);
+      });
+      return true;
+    };
+
     // 初始化
     document.addEventListener('DOMContentLoaded', function() {
       // 初始化模块切换
       initModuleTabs();
       
-      // 默认显示第一个模块
-      handleModuleChange('profile');
+      // 恢复上次打开的模块，否则默认显示第一个模块
+      if (!restoreRememberedModule()) {
+        handleModuleChange('profile');
+      }
     });
 
     const getToken = () => localStorage.getItem(TOKEN_KEY) || "";

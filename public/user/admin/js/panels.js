@@ -252,7 +252,7 @@
         });
         if (list.length === 0) {
           const tr = document.createElement("tr");
-          tr.innerHTML = '<td class="py-3 text-center text-slate-500" colspan="7">暂无数据</td>';
+          tr.innerHTML = '<td class="py-3 text-center text-slate-500" colspan="6">暂无数据</td>';
           tbody.appendChild(tr);
         }
       } finally {
@@ -325,7 +325,7 @@
           userRow.className = "bg-slate-50 cursor-pointer";
           userRow.setAttribute("data-action", "toggle-user-messages");
           userRow.innerHTML = `
-            <td colspan="7" class="py-3 px-4">
+            <td colspan="6" class="py-3 px-4">
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-4">
                   <div class="font-medium text-slate-700">${username}</div>
@@ -422,7 +422,7 @@
         
         if (list.length === 0) {
           const tr = document.createElement("tr");
-          tr.innerHTML = '<td class="py-3 text-center text-slate-500" colspan="5">暂无反馈</td>';
+          tr.innerHTML = '<td class="py-3 text-center text-slate-500" colspan="6">暂无反馈</td>';
           tbody.appendChild(tr);
         }
         
@@ -563,16 +563,56 @@
       await saveParseSort();
     });
     document.getElementById("officialEnableAllBtn").addEventListener("click", async () => {
-      if (!confirm("确认启用所有官方接口？")) return;
+      const confirmed = typeof showConfirmDialog === "function"
+        ? await showConfirmDialog({
+          title: "全部启用",
+          description: "确认启用所有官方接口？",
+          confirmText: "全部启用",
+          type: "info"
+        })
+        : confirm("确认启用所有官方接口？");
+      if (!confirmed) return;
       await batchToggleOfficial(true);
     });
     document.getElementById("officialDisableAllBtn").addEventListener("click", async () => {
-      if (!confirm("确认停用所有官方接口？")) return;
+      const confirmed = typeof showConfirmDialog === "function"
+        ? await showConfirmDialog({
+          title: "全部停用",
+          description: "确认停用所有官方接口？停用后将不再对外提供。",
+          confirmText: "全部停用",
+          type: "danger"
+        })
+        : confirm("确认停用所有官方接口？");
+      if (!confirmed) return;
       await batchToggleOfficial(false);
     });
     document.getElementById("officialSaveSortBtn").addEventListener("click", async () => {
       await saveOfficialSort();
     });
+    const officialDisableAbnormalBtn = document.getElementById("officialDisableAbnormalBtn");
+    if (officialDisableAbnormalBtn) {
+      officialDisableAbnormalBtn.addEventListener("click", async () => {
+        await disableAbnormalApis({
+          tbodyId: "officialTbody",
+          buttonId: "officialDisableAbnormalBtn",
+          batchUrl: "/api/user/official-apis/batch",
+          reload: loadOfficialApis,
+          label: "停用异常",
+        });
+      });
+    }
+    const parseDisableAbnormalBtn = document.getElementById("parseDisableAbnormalBtn");
+    if (parseDisableAbnormalBtn) {
+      parseDisableAbnormalBtn.addEventListener("click", async () => {
+        await disableAbnormalApis({
+          tbodyId: "parseTbody",
+          buttonId: "parseDisableAbnormalBtn",
+          batchUrl: "/api/user/parse-apis/batch",
+          reload: loadParseApis,
+          label: "停用异常",
+        });
+      });
+    }
     document.getElementById("loadRouteAccessBtn").addEventListener("click", async () => {
       await loadRouteAccess();
     });
@@ -737,6 +777,16 @@
           closeSideNav();
         }
       });
+    });
+    // 地址栏 hash 变化（手动修改或前进/后退）时切换到对应模块
+    window.addEventListener("hashchange", () => {
+      const name = String(location.hash || "").replace(/^#/, "").trim();
+      if (!name) return;
+      const exists = Array.from(document.querySelectorAll(".module-tab"))
+        .some((tab) => tab.dataset.moduleTarget === name);
+      if (exists) {
+        setActiveModule(name);
+      }
     });
     if (mobileMenuBtn) {
       mobileMenuBtn.addEventListener("click", () => {
