@@ -1,0 +1,582 @@
+/* HubDaily 视频页面样式 */
+        html {
+            scrollbar-gutter: stable;
+        }
+
+        html.modal-open,
+        body.modal-open {
+            overflow: hidden;
+        }
+
+        body.modal-open {
+            overscroll-behavior: none;
+        }
+
+        body.modal-open #appContent {
+            pointer-events: none;
+        }
+
+        body.modal-open #videoPlayerModal {
+            pointer-events: auto;
+        }
+
+        body.modal-open #shareModal,
+        body.modal-open #shareModal * {
+            pointer-events: auto;
+        }
+
+        body.modal-open #mathChallengeModal,
+        body.modal-open #mathChallengeModal * {
+            pointer-events: auto;
+        }
+
+        body.privacy-on .video-thumb img {
+            filter: blur(12px);
+            transform: scale(1.05);
+            transition: filter 200ms ease, transform 200ms ease;
+        }
+
+        body.privacy-on .video-thumb:hover img {
+            filter: blur(0);
+            transform: scale(1);
+        }
+
+        body.privacy-on .video-thumb .privacy-mask {
+            opacity: 1;
+        }
+
+        body.privacy-on .video-thumb:hover .privacy-mask {
+            opacity: 0;
+        }
+
+        /* 视频封面wrapper和竖屏图片样式 */
+        .video-cover-wrapper {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        
+        .video-cover-wrapper.portrait {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .video-cover-wrapper.portrait img.lazy-image {
+            width: auto !important;
+            height: 100% !important;
+            max-width: none !important;
+            object-fit: contain !important;
+        }
+
+        /* 自定义播放器样式 */
+        .cvp {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            color: #fff;
+            overflow: hidden;
+            font-family: inherit;
+            --cvp-theme: #3b82f6;
+            --cvp-played: 0%;
+            --cvp-buffered: 0%;
+        }
+        .cvp-stage {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            background: #000;
+            cursor: pointer;
+        }
+        .cvp-bg-canvas {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            filter: blur(42px) brightness(.42) saturate(1.35);
+            transform: scale(1.18);
+            transform-origin: center;
+            opacity: .92;
+            pointer-events: none;
+            z-index: 0;
+            transition: opacity .2s ease;
+        }
+        .cvp-video {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            height: 100%;
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            display: block;
+            transform-origin: center center;
+            transition: transform 180ms ease, width 180ms ease, height 180ms ease;
+        }
+        .cvp-video::-webkit-media-controls { display: none !important; }
+        .cvp-back, .cvp-forward { display: none !important; }
+        .cvp-center-play {
+            position: absolute;
+            inset: 0;
+            margin: auto;
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, .45);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 3;
+            box-shadow: 0 6px 22px rgba(0, 0, 0, .32), 0 0 0 5px rgba(255, 255, 255, .05);
+            backdrop-filter: blur(2px);
+            transition: opacity .2s ease, transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+        }
+        .cvp-center-play svg {
+            width: 26px;
+            height: 26px;
+            margin-left: 3px;
+            filter: drop-shadow(0 2px 6px rgba(0, 0, 0, .8));
+        }
+        .cvp-center-play:hover {
+            transform: scale(1.06);
+            border-color: rgba(255, 255, 255, .75);
+            box-shadow: 0 8px 28px rgba(0, 0, 0, .42), 0 0 0 7px rgba(255, 255, 255, .08);
+        }
+        .cvp-center-play.hidden { opacity: 0; pointer-events: none; transform: scale(.8); }
+        .cvp-loading {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 4;
+            pointer-events: none;
+        }
+        .cvp-loading.hidden { display: none; }
+        .cvp-loading::after {
+            content: '';
+            width: 38px;
+            height: 38px;
+            border: 3px solid rgba(255, 255, 255, .25);
+            border-top-color: var(--cvp-theme);
+            border-radius: 50%;
+            animation: cvp-spin .8s linear infinite;
+        }
+        @keyframes cvp-spin { to { transform: rotate(360deg); } }
+        .cvp-notice {
+            position: absolute;
+            top: 14px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, .72);
+            padding: 6px 12px;
+            border-radius: 999px;
+            font-size: 12px;
+            z-index: 8;
+            white-space: nowrap;
+            pointer-events: none;
+        }
+        .cvp-notice.hidden { display: none; }
+        .cvp-controls {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 6;
+            background: linear-gradient(to top, rgba(0, 0, 0, .88), rgba(0, 0, 0, 0));
+            padding: 18px 10px 8px;
+        }
+        .cvp-progress-wrap {
+            position: relative;
+            display: flex;
+            align-items: center;
+            padding: 12px 4px 6px;
+        }
+        .cvp-progress-wrap .cvp-time {
+            position: absolute;
+            bottom: 15px;
+            margin: 0;
+            padding: 1px 5px;
+            border-radius: 4px;
+            font-size: 10px;
+            line-height: 1.1;
+            color: rgba(255, 255, 255, .9);
+            background: rgba(0, 0, 0, .32);
+            text-shadow: 0 1px 3px rgba(0, 0, 0, .85);
+        }
+        .cvp-progress-wrap .cvp-time-current { left: 4px; }
+        .cvp-progress-wrap .cvp-time-duration { right: 4px; text-align: right; }
+        .cvp-range {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 6px;
+            border-radius: 999px;
+            outline: none;
+            cursor: pointer;
+            background: linear-gradient(to right,
+                var(--cvp-theme) 0%, var(--cvp-theme) var(--cvp-played),
+                rgba(255, 255, 255, .45) var(--cvp-played), rgba(255, 255, 255, .45) var(--cvp-buffered),
+                rgba(255, 255, 255, .28) var(--cvp-buffered), rgba(255, 255, 255, .28) 100%);
+        }
+        .cvp-range::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--cvp-theme);
+            border: 2px solid #fff;
+        }
+        .cvp-range::-moz-range-thumb {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--cvp-theme);
+            border: 2px solid #fff;
+        }
+        .cvp-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+        .cvp-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+            min-width: 34px;
+            height: 34px;
+            padding: 0 8px;
+            border-radius: 10px;
+            color: #fff;
+            background: rgba(255, 255, 255, .09);
+            border: 1px solid rgba(255, 255, 255, .1);
+            cursor: pointer;
+            font-size: 13px;
+            line-height: 1;
+            backdrop-filter: blur(6px);
+            transition: background .18s ease, transform .18s ease, border-color .18s ease;
+        }
+        .cvp-btn svg { width: 17px; height: 17px; display: block; }
+        .cvp-btn:hover {
+            background: rgba(255, 255, 255, .2);
+            border-color: rgba(255, 255, 255, .22);
+            transform: translateY(-1px);
+        }
+        .cvp-btn:active { transform: scale(.94); }
+        .cvp-btn:focus { outline: none; }
+        .cvp-btn .cvp-label {
+            font-size: 10px;
+            font-weight: 600;
+            line-height: 1;
+            padding: 2px 4px;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, .14);
+        }
+        /* 固定倍速/旋转按钮宽度，避免切换档位时控制栏抖动 */
+        .cvp-speed,
+        .cvp-rotate { width: 72px; flex: 0 0 auto; justify-content: center; }
+        .cvp-speed .cvp-label,
+        .cvp-rotate .cvp-rotate-label {
+            min-width: 28px;
+            text-align: center;
+            white-space: nowrap;
+        }
+        .cvp-rotate .cvp-rotate-label {
+            font-size: 10px;
+            font-weight: 600;
+            line-height: 1;
+            padding: 2px 4px;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, .14);
+        }
+        .cvp-time {
+            font-size: 11px;
+            color: rgba(255, 255, 255, .85);
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+            margin-left: 2px;
+        }
+        .cvp-spacer { flex: 1; }
+        .cvp-volume { display: flex; align-items: center; gap: 4px; }
+        .cvp-volume .cvp-range {
+            width: 62px;
+            height: 4px;
+            background: linear-gradient(to right,
+                var(--cvp-theme) 0%, var(--cvp-theme) var(--cvp-volume, 100%),
+                rgba(255, 255, 255, .28) var(--cvp-volume, 100%), rgba(255, 255, 255, .28) 100%);
+        }
+        .cvp-context-menu {
+            position: absolute;
+            z-index: 9;
+            background: rgba(20, 20, 20, .96);
+            border: 1px solid rgba(255, 255, 255, .15);
+            border-radius: 8px;
+            padding: 4px;
+            min-width: 130px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, .4);
+        }
+        .cvp-context-menu.hidden { display: none; }
+        .cvp-context-menu a {
+            display: block;
+            padding: 6px 10px;
+            color: #fff;
+            font-size: 12px;
+            text-decoration: none;
+            border-radius: 4px;
+        }
+        .cvp-context-menu a:hover { background: rgba(255, 255, 255, .12); }
+        .cvp.compact .cvp-volume,
+        .cvp.compact .cvp-time,
+        .cvp.compact .cvp-screenshot,
+        .cvp.compact .cvp-pip,
+        .cvp.compact .cvp-controls { padding: 12px 6px 4px; }
+        .cvp.compact .cvp-btn { min-width: 28px; height: 28px; padding: 0 5px; font-size: 12px; }
+        .cvp.compact .cvp-speed,
+        .cvp.compact .cvp-rotate { width: 60px; }
+        .cvp.compact .cvp-btn svg { width: 15px; height: 15px; }
+        .cvp.compact .cvp-center-play { width: 46px; height: 46px; }
+        .cvp.compact .cvp-center-play svg { width: 20px; height: 20px; }
+
+        /* 播放器顶部操作按钮 */
+        #videoPlayerModal .vp-top-btn {
+            width: 2.5rem;
+            height: 2.5rem;
+            align-items: center;
+            justify-content: center;
+            border-radius: 9999px;
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, .22);
+            background: rgba(15, 23, 42, .58);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, .38);
+            backdrop-filter: blur(10px);
+            transition: transform .18s ease, background .18s ease, box-shadow .18s ease, border-color .18s ease;
+        }
+        #videoPlayerModal .vp-top-btn svg { width: 18px; height: 18px; }
+        #videoPlayerModal .vp-top-btn:hover {
+            transform: translateY(-1px) scale(1.06);
+            background: rgba(30, 41, 59, .84);
+            border-color: rgba(255, 255, 255, .36);
+            box-shadow: 0 12px 28px rgba(0, 0, 0, .46);
+        }
+        #videoPlayerModal .vp-top-btn:active { transform: scale(.94); }
+        #videoPlayerModal .vp-top-btn[data-icon="close"] {
+            background: linear-gradient(135deg, #f87171, #dc2626);
+            border-color: rgba(255, 255, 255, .3);
+        }
+        #videoPlayerModal .vp-top-btn[data-icon="share"] {
+            background: linear-gradient(135deg, #60a5fa, #2563eb);
+        }
+        #videoPlayerModal .vp-top-btn[data-icon="copy"] {
+            background: linear-gradient(135deg, #a78bfa, #6d28d9);
+        }
+        #videoPlayerModal .vp-top-btn.vp-top-like[data-icon="heartFilled"] {
+            background: linear-gradient(135deg, #fb7185, #be123c);
+            border-color: rgba(255, 255, 255, .34);
+        }
+
+        /* 音量 / 倍速垂直设置面板 */
+        .cvp-popover {
+            position: absolute;
+            z-index: 7;
+            width: 148px;
+            padding: 10px;
+            border-radius: 14px;
+            color: #fff;
+            background: rgba(15, 23, 42, .95);
+            border: 1px solid rgba(255, 255, 255, .14);
+            box-shadow: 0 16px 44px rgba(0, 0, 0, .55);
+            backdrop-filter: blur(14px);
+        }
+        .cvp-popover.hidden { display: none; }
+        .cvp-popover-panel.hidden { display: none; }
+        .cvp-popover-title {
+            font-size: 12px;
+            color: rgba(255, 255, 255, .72);
+            text-align: center;
+            margin-bottom: 8px;
+        }
+        .cvp-volume-panel { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+        .cvp-popover-mute {
+            width: 30px;
+            height: 30px;
+            border-radius: 9px;
+            border: 1px solid rgba(255, 255, 255, .12);
+            background: rgba(255, 255, 255, .08);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        .cvp-popover-mute svg { width: 16px; height: 16px; }
+        .cvp-popover-mute:hover { background: rgba(255, 255, 255, .18); }
+        .cvp-popover-range {
+            writing-mode: vertical-lr;
+            direction: rtl;
+            width: 8px !important;
+            height: 120px !important;
+            background: linear-gradient(to top,
+                var(--cvp-theme) 0%, var(--cvp-theme) var(--cvp-volume, 100%),
+                rgba(255, 255, 255, .28) var(--cvp-volume, 100%), rgba(255, 255, 255, .28) 100%);
+        }
+        .cvp-volume-value {
+            font-size: 11px;
+            font-variant-numeric: tabular-nums;
+            color: rgba(255, 255, 255, .85);
+        }
+        .cvp-speed-panel { display: flex; flex-direction: column; gap: 3px; }
+        .cvp-speed-option {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 9px;
+            border-radius: 8px;
+            border: none;
+            background: transparent;
+            color: #fff;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background .15s ease;
+        }
+        .cvp-speed-option:hover { background: rgba(255, 255, 255, .12); }
+        .cvp-speed-option.active { background: linear-gradient(135deg, rgba(96, 165, 250, .38), rgba(37, 99, 235, .38)); }
+        .cvp-speed-check { font-size: 11px; color: #bfdbfe; }
+
+        /* 音量面板只保留竖向滑块 */
+        .cvp-popover-volume {
+            width: auto;
+            padding: 8px 10px;
+            background: transparent;
+            border-color: transparent;
+            box-shadow: none;
+            backdrop-filter: none;
+        }
+        .cvp-popover-volume .cvp-popover-title,
+        .cvp-popover-volume .cvp-popover-mute,
+        .cvp-popover-volume .cvp-volume-value { display: none; }
+        .cvp-popover-volume .cvp-volume-panel { gap: 0; }
+
+        /* 倍速面板为透明列表 */
+        .cvp-popover-speed {
+            background: rgba(15, 23, 42, .22);
+            border-color: rgba(255, 255, 255, .1);
+            box-shadow: none;
+            backdrop-filter: blur(8px);
+        }
+        .cvp-popover-speed .cvp-popover-title { display: none; }
+        .cvp-popover-speed .cvp-speed-option {
+            text-shadow: 0 1px 3px rgba(0, 0, 0, .9);
+        }
+        .cvp-popover-speed .cvp-speed-option.active {
+            background: rgba(59, 130, 246, .28);
+        }
+
+        .cvp.compact .cvp-popover {
+            width: 120px;
+            padding: 8px;
+            max-height: calc(100% - 42px);
+            overflow-y: auto;
+        }
+        .cvp.compact .cvp-popover-range { height: 70px; }
+        .cvp.compact .cvp-speed-option { padding: 4px 7px; font-size: 11px; }
+
+        /* 进度条悬停帧预览 */
+        .cvp-hover-preview {
+            position: absolute;
+            z-index: 8;
+            width: 168px;
+            padding: 4px;
+            border-radius: 10px;
+            background: rgba(8, 12, 20, .9);
+            border: 1px solid rgba(255, 255, 255, .16);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, .55);
+            backdrop-filter: blur(8px);
+            pointer-events: none;
+            transform: translateX(-50%);
+        }
+        .cvp-hover-preview.hidden { display: none; }
+        .cvp-hover-preview img {
+            display: block;
+            width: 100%;
+            height: 94px;
+            object-fit: cover;
+            border-radius: 6px;
+            background: #111;
+        }
+        .cvp-hover-time {
+            text-align: center;
+            font-size: 11px;
+            color: #fff;
+            padding-top: 3px;
+            font-variant-numeric: tabular-nums;
+        }
+        .cvp-preview-video {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            opacity: 0;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        /* 上一集 / 下一集按钮 */
+        .cvp-episode-nav { color: #dbeafe; }
+        .cvp-episode-nav.hidden { display: none; }
+
+        /* 选集面板 */
+        #episodePanel {
+            background: linear-gradient(180deg, rgba(10, 14, 22, .94), rgba(6, 9, 15, .97));
+            border-top: 1px solid rgba(255, 255, 255, .08);
+            padding: 10px 14px 12px;
+        }
+        #episodePanel > div:first-child { margin-bottom: 8px; }
+        #episodeTabs { gap: 6px; padding-bottom: 4px; }
+        .cvp-episode-tab {
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            white-space: nowrap;
+            color: rgba(255, 255, 255, .74);
+            background: rgba(255, 255, 255, .08);
+            border: 1px solid rgba(255, 255, 255, .08);
+            transition: background .16s ease, transform .16s ease;
+        }
+        .cvp-episode-tab:hover { background: rgba(255, 255, 255, .16); }
+        .cvp-episode-tab.active {
+            color: #fff;
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            border-color: transparent;
+            box-shadow: 0 3px 10px rgba(37, 99, 235, .35);
+        }
+        #episodeList { gap: 6px; max-height: 96px; }
+        .cvp-episode-chip {
+            min-width: 42px;
+            padding: 5px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            color: rgba(255, 255, 255, .82);
+            background: rgba(255, 255, 255, .07);
+            border: 1px solid rgba(255, 255, 255, .09);
+            transition: background .16s ease, transform .16s ease, box-shadow .16s ease;
+        }
+        .cvp-episode-chip:hover {
+            background: rgba(255, 255, 255, .16);
+            transform: translateY(-1px);
+        }
+        .cvp-episode-chip.active {
+            color: #fff;
+            background: linear-gradient(135deg, #60a5fa, #2563eb);
+            border-color: transparent;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, .4);
+        }
+        #reverseButton {
+            padding: 3px 9px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, .08);
+        }
+
