@@ -205,6 +205,16 @@
         const privacySwitch = document.getElementById('privacySwitch');
         const searchInput = document.getElementById('searchInput');
         const searchInputMobile = document.getElementById('searchInputMobile');
+        // 防止浏览器把已保存的账号/邮箱自动填充进搜索框（非业务逻辑，仅为兜底）
+        [searchInput, searchInputMobile].forEach((el) => {
+            if (!el) return;
+            el.addEventListener('input', () => { el.dataset.touched = '1'; });
+            setTimeout(() => {
+                if (!el.dataset.touched && /@/.test(el.value || '')) {
+                    el.value = '';
+                }
+            }, 500);
+        });
         const searchHistoryBox = document.getElementById('searchHistoryBox');
         const searchHistoryBoxMobile = document.getElementById('searchHistoryBoxMobile');
         const searchButtonMobile = document.getElementById('searchButtonMobile');

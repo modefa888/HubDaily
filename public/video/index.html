@@ -86,8 +86,15 @@
                     <input 
                         type="text" 
                         id="searchInput" 
+                        name="video-keyword"
                         placeholder="搜索视频..." 
                         class="flex-1 border-none outline-none bg-transparent px-4 py-2"
+                        autocomplete="off"
+                        autocorrect="off"
+                        autocapitalize="off"
+                        spellcheck="false"
+                        data-lpignore="true"
+                        data-form-type="other"
                         onkeypress="handleKeyPress(event)"
                     >
                     <button 
@@ -185,8 +192,15 @@
                 <input 
                     type="text" 
                     id="searchInputMobile" 
+                    name="video-keyword-mobile"
                     placeholder="搜索视频..." 
                     class="flex-1 border-none outline-none bg-transparent px-4 py-2"
+                    autocomplete="off"
+                    autocorrect="off"
+                    autocapitalize="off"
+                    spellcheck="false"
+                    data-lpignore="true"
+                    data-form-type="other"
                     onkeypress="handleKeyPress(event)"
                 >
                 <button 
