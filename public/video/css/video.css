@@ -294,6 +294,15 @@
             border-radius: 5px;
             background: rgba(255, 255, 255, .14);
         }
+        .cvp-download-speed {
+            margin-left: 2px;
+            min-width: 70px;
+            text-align: center;
+            font-size: 10px;
+            color: rgba(255, 255, 255, .72);
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+        }
         .cvp-time {
             font-size: 11px;
             color: rgba(255, 255, 255, .85);
@@ -331,6 +340,7 @@
         }
         .cvp-context-menu a:hover { background: rgba(255, 255, 255, .12); }
         .cvp.compact .cvp-volume,
+        .cvp.compact .cvp-download-speed,
         .cvp.compact .cvp-time,
         .cvp.compact .cvp-screenshot,
         .cvp.compact .cvp-pip,
@@ -503,8 +513,7 @@
         .cvp-hover-preview img {
             display: block;
             width: 100%;
-            height: 94px;
-            object-fit: cover;
+            height: auto;
             border-radius: 6px;
             background: #111;
         }
@@ -578,5 +587,140 @@
             padding: 3px 9px;
             border-radius: 999px;
             background: rgba(255, 255, 255, .08);
+        }
+
+        /* 避免点击/拖动卡片或播放器时出现浏览器文本选中状态 */
+        .video-card,
+        .video-card *,
+        .cvp,
+        .cvp * {
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+        }
+        .video-card img,
+        .cvp img {
+            -webkit-user-drag: none;
+        }
+        #header,
+        #header * {
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+        }
+        #videoPlayerModal,
+        #videoPlayerModal * {
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+        }
+        #videoPlayerModal img { -webkit-user-drag: none; }
+
+        /* 鼠标离开后顶部栏与控制栏自动隐藏 */
+        #playerTitle,
+        #videoPlayerModal .vp-top-btn,
+        .cvp-controls,
+        .cvp-hover-preview {
+            transition: opacity .25s ease;
+        }
+        #videoPlayerModal.cvp-ui-hidden #playerTitle,
+        #videoPlayerModal.cvp-ui-hidden .vp-top-btn,
+        #videoPlayerModal.cvp-ui-hidden .cvp-controls,
+        #videoPlayerModal.cvp-ui-hidden .cvp-hover-preview {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .btn-primary:disabled { opacity: .72; cursor: wait; }
+
+        /* 搜索中状态 */
+        .search-loading-card {
+            width: 100%;
+            max-width: 720px;
+            margin: 0 auto;
+            padding: 30px 26px 26px;
+            border-radius: 22px;
+            background: linear-gradient(145deg, rgba(255, 255, 255, .95), rgba(241, 245, 249, .88));
+            border: 1px solid rgba(148, 163, 184, .28);
+            box-shadow: 0 18px 50px rgba(15, 23, 42, .08);
+        }
+        .search-loading-orbit {
+            position: relative;
+            width: 66px;
+            height: 66px;
+            margin: 0 auto 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .search-loading-core {
+            position: relative;
+            z-index: 2;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 19px;
+            background: linear-gradient(135deg, #60a5fa, #2563eb);
+            box-shadow: 0 8px 22px rgba(37, 99, 235, .32);
+        }
+        .search-loading-ring {
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            border: 2px solid rgba(59, 130, 246, .38);
+            animation: search-pulse 1.8s ease-out infinite;
+        }
+        .search-loading-ring-two { animation-delay: .9s; }
+        @keyframes search-pulse {
+            0% { transform: scale(.6); opacity: .9; }
+            100% { transform: scale(1.35); opacity: 0; }
+        }
+        .search-loading-title {
+            margin: 0 0 6px;
+            font-size: 18px;
+            font-weight: 700;
+            background: linear-gradient(90deg, #2563eb, #7c3aed);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .search-loading-desc {
+            margin: 0;
+            font-size: 13px;
+            color: #64748b;
+        }
+        .search-skeleton-grid {
+            margin-top: 24px;
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 14px;
+        }
+        .search-skeleton-card {
+            padding: 10px;
+            border-radius: 14px;
+            background: rgba(255, 255, 255, .72);
+            border: 1px solid rgba(148, 163, 184, .18);
+        }
+        .search-skeleton-poster,
+        .search-skeleton-line {
+            background: linear-gradient(100deg, #e2e8f0 25%, #f8fafc 50%, #e2e8f0 75%);
+            background-size: 200% 100%;
+            animation: search-shimmer 1.4s linear infinite;
+            border-radius: 8px;
+        }
+        .search-skeleton-poster { height: 92px; }
+        .search-skeleton-line { height: 10px; margin-top: 10px; }
+        .search-skeleton-line.short { width: 58%; height: 8px; margin-top: 7px; }
+        @keyframes search-shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        @media (max-width: 640px) {
+            .search-loading-card { padding: 24px 18px 20px; }
+            .search-skeleton-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         }
 

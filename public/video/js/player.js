@@ -1,4 +1,48 @@
 /* 视频播放与悬浮播放器 */
+        let playerUiHideTimer = null;
+        let playerUiEventsBound = false;
+        let playerUiInside = false;
+
+        function showPlayerOverlayUi() {
+            const modal = document.getElementById('videoPlayerModal');
+            if (!modal) return;
+            modal.classList.remove('cvp-ui-hidden');
+            clearTimeout(playerUiHideTimer);
+        }
+
+        function schedulePlayerOverlayUiHide() {
+            clearTimeout(playerUiHideTimer);
+            playerUiHideTimer = setTimeout(() => {
+                const modal = document.getElementById('videoPlayerModal');
+                if (modal && !modal.classList.contains('hidden')) modal.classList.add('cvp-ui-hidden');
+            }, 5000);
+        }
+
+        function handlePlayerUiMouseMove(e) {
+            const modal = document.getElementById('videoPlayerModal');
+            if (!modal || modal.classList.contains('hidden')) return;
+            const target = e.target;
+            const inside = target instanceof Element && !!target.closest('.cvp, #playerTitle, .vp-top-btn');
+            if (inside !== playerUiInside) {
+                playerUiInside = inside;
+                if (inside) showPlayerOverlayUi();
+                else schedulePlayerOverlayUiHide();
+            } else if (inside) {
+                showPlayerOverlayUi();
+            }
+        }
+
+        function bindPlayerUiAutoHide() {
+            const modal = document.getElementById('videoPlayerModal');
+            if (!modal || playerUiEventsBound) return;
+            playerUiEventsBound = true;
+            modal.addEventListener('mousemove', handlePlayerUiMouseMove);
+            modal.addEventListener('mouseleave', () => {
+                playerUiInside = false;
+                schedulePlayerOverlayUiHide();
+            });
+        }
+
         // 打开视频播放器
         function parsePlayUrls(rawUrl) {
             const text = String(rawUrl || '');
@@ -174,6 +218,10 @@
                 // 显示播放器
                 setModalScrollLock(true);
                 videoPlayerModal.classList.remove('hidden');
+                bindPlayerUiAutoHide();
+                playerUiInside = false;
+                showPlayerOverlayUi();
+                schedulePlayerOverlayUiHide();
                 
                 // 初始化自定义播放器
                 if (dplayer) {
@@ -329,6 +377,9 @@
                 dplayer = null;
             }
             
+            clearTimeout(playerUiHideTimer);
+            playerUiInside = false;
+            videoPlayerModal.classList.remove('cvp-ui-hidden');
             videoPlayerModal.classList.add('hidden');
             setModalScrollLock(false);
             currentVideoUrl = '';

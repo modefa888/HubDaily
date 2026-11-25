@@ -17,6 +17,10 @@
                 this.speeds = [0.5, 0.75, 1, 1.25, 1.5, 2];
                 this.speedIndex = 2;
                 this.currentUrl = '';
+                this.downloadSamples = [];
+                this.downloadSpeedTimer = null;
+                this.speedMonitorStart = 0;
+                this.speedLoaderActive = false;
                 this.videoIsPortrait = false;
                 this.frameCache = [];
                 this.lastCacheTime = -Infinity;
@@ -113,6 +117,10 @@
                 const nextEpisodeBtn = makeButton('cvp-episode-nav cvp-next-episode hidden', ICONS.nextEpisode || '', '下一集', () => {
                     if (this.options.onNextEpisode) this.options.onNextEpisode();
                 });
+                const downloadSpeed = document.createElement('span');
+                downloadSpeed.className = 'cvp-download-speed';
+                downloadSpeed.title = '实时下载速度';
+                downloadSpeed.textContent = '0 KB/s';
                 const spacer = document.createElement('span');
                 spacer.className = 'cvp-spacer';
 
@@ -174,6 +182,7 @@
                 row.appendChild(playBtn);
                 row.appendChild(prevEpisodeBtn);
                 row.appendChild(nextEpisodeBtn);
+                row.appendChild(downloadSpeed);
                 row.appendChild(spacer);
                 row.appendChild(volume);
                 row.appendChild(speedBtn);
@@ -215,6 +224,7 @@
                 this.playBtn = playBtn;
                 this.prevEpisodeBtn = prevEpisodeBtn;
                 this.nextEpisodeBtn = nextEpisodeBtn;
+                this.downloadSpeedEl = downloadSpeed;
                 this.volumeRange = volumeRange;
                 this.volumeValue = volumeValue;
                 this.volumeMuteBtn = muteBtn;
@@ -361,18 +371,21 @@
                     this.playBtn.innerHTML = ICONS.pause || '';
                     this.startBackground();
                     this.drawBackground();
+                    this.startDownloadSpeedMonitor();
                     this.emit('play');
                 });
                 v.addEventListener('pause', () => {
                     this.centerPlay.classList.remove('hidden');
                     this.playBtn.innerHTML = ICONS.play || '';
                     this.stopBackground();
+                    this.stopDownloadSpeedMonitor();
                     this.emit('pause');
                 });
                 v.addEventListener('ended', () => {
                     this.centerPlay.classList.remove('hidden');
                     this.playBtn.innerHTML = ICONS.play || '';
                     this.stopBackground();
+                    this.stopDownloadSpeedMonitor();
                     this.emit('ended');
                 });
                 v.addEventListener('seeked', () => {
@@ -458,6 +471,10 @@
                 this.root.style.setProperty('--cvp-buffered', '0%');
                 this.currentTimeEl.textContent = '00:00';
                 this.durationTimeEl.textContent = '00:00';
+                this.stopDownloadSpeedMonitor();
+                this.downloadSamples = [];
+                this.speedMonitorStart = 0;
+                this.speedLoaderActive = false;
                 this.closePopover();
                 this.hideHoverPreview();
                 this.frameCache = [];
@@ -478,12 +495,28 @@
                     this.options.contextmenu[0].link = url;
                 }
                 if (window.Hls && Hls.isSupported() && /\.m3u8(?:[?#]|$)/i.test(url)) {
-                    this.hls = new Hls({ enableWorker: true, capLevelToPlayerSize: true });
+                    const hlsConfig = { enableWorker: true, capLevelToPlayerSize: true };
+                    const SpeedLoader = this.createSpeedLoader(Hls);
+                    if (SpeedLoader) {
+                        hlsConfig.loader = SpeedLoader;
+                        hlsConfig.pLoader = SpeedLoader;
+                        hlsConfig.fLoader = SpeedLoader;
+                        this.speedLoaderActive = true;
+                    }
+                    this.hls = new Hls(hlsConfig);
                     this.hls.on(Hls.Events.ERROR, (_, data) => {
                         if (data && data.fatal) this.emit('error', data.error || data);
                     });
+                    if (!SpeedLoader) {
+                        this.hls.on(Hls.Events.FRAG_LOADED, (_, data) => {
+                            const payload = data && (data.payload || data.frag && data.frag.payload);
+                            const bytes = payload ? (payload.byteLength || payload.length || 0) : 0;
+                            this.recordDownloadBytes(bytes);
+                        });
+                    }
                     this.hls.loadSource(url);
                     this.hls.attachMedia(this.video);
+                    this.startDownloadSpeedMonitor();
                 } else if (url) {
                     this.video.src = url;
                     this.video.load();
@@ -526,6 +559,110 @@
                 this.notice(seconds > 0 ? `快进 ${seconds} 秒` : `后退 ${Math.abs(seconds)} 秒`);
             }
 
+            createSpeedLoader(Hls) {
+                const Base = Hls && Hls.DefaultConfig && Hls.DefaultConfig.loader;
+                if (typeof Base !== 'function') return null;
+                const player = this;
+                return class SpeedTrackingLoader extends Base {
+                    constructor(config) {
+                        super(config);
+                        this.speedLastLoaded = 0;
+                    }
+
+                    countLoaded(loaded) {
+                        const value = Number(loaded);
+                        if (!Number.isFinite(value) || value <= 0) return;
+                        // 重试或新请求会把 stats.loaded 归零，此时重新开始累计
+                        if (value < this.speedLastLoaded) this.speedLastLoaded = 0;
+                        if (value > this.speedLastLoaded) {
+                            player.recordDownloadBytes(value - this.speedLastLoaded);
+                            this.speedLastLoaded = value;
+                        }
+                    }
+
+                    // hls.js 的 XHR 下载中会持续更新 stats.loaded，这里拿到实时字节
+                    loadprogress(event) {
+                        const baseProto = Object.getPrototypeOf(Object.getPrototypeOf(this));
+                        const baseProgress = baseProto && baseProto.loadprogress;
+                        if (typeof baseProgress === 'function') baseProgress.call(this, event);
+                        this.countLoaded(this.stats && this.stats.loaded);
+                    }
+
+                    load(context, config, callbacks) {
+                        const source = callbacks || {};
+                        const hooks = Object.assign({}, source);
+                        this.speedLastLoaded = 0;
+                        hooks.onProgress = (stats, ctx, data, net) => {
+                            this.countLoaded(stats && stats.loaded);
+                            if (typeof source.onProgress === 'function') source.onProgress(stats, ctx, data, net);
+                        };
+                        hooks.onEnd = (stats, ctx, data, net) => {
+                            this.countLoaded(stats && stats.loaded);
+                            if (typeof source.onEnd === 'function') source.onEnd(stats, ctx, data, net);
+                        };
+                        hooks.onError = (error, ctx, net, stats) => {
+                            this.countLoaded((stats && stats.loaded) || (error && error.stats && error.stats.loaded));
+                            if (typeof source.onError === 'function') source.onError(error, ctx, net, stats);
+                        };
+                        return super.load(context, config, hooks);
+                    }
+                };
+            }
+
+            recordDownloadBytes(bytes) {
+                if (!(bytes > 0)) return;
+                const now = performance.now();
+                this.downloadSamples.push({ time: now, bytes });
+                const limit = 600;
+                if (this.downloadSamples.length > limit) {
+                    this.downloadSamples.splice(0, this.downloadSamples.length - limit);
+                }
+            }
+
+            updateDownloadSpeedLabel() {
+                if (!this.downloadSpeedEl) return;
+                if (!this.hls) {
+                    this.downloadSpeedEl.textContent = '—';
+                    this.downloadSpeedEl.title = '当前视频不走 hls.js 下载';
+                    return;
+                }
+                const windowMs = 2000;
+                const now = performance.now();
+                this.downloadSamples = this.downloadSamples.filter((sample) => now - sample.time <= windowMs);
+                const bytes = this.downloadSamples.reduce((sum, sample) => sum + sample.bytes, 0);
+                const elapsed = this.speedMonitorStart ? now - this.speedMonitorStart : windowMs;
+                const span = Math.max(500, Math.min(windowMs, elapsed));
+                const kb = bytes / 1024 / (span / 1000);
+
+                if (kb >= 1024) {
+                    this.downloadSpeedEl.textContent = `${(kb / 1024).toFixed(1)} MB/s`;
+                } else if (kb >= 1) {
+                    this.downloadSpeedEl.textContent = `${Math.round(kb)} KB/s`;
+                } else {
+                    this.downloadSpeedEl.textContent = '0 KB/s';
+                }
+                this.downloadSpeedEl.title = this.speedLoaderActive
+                    ? '实时下载速度（hls.js 加载层实时字节）'
+                    : '实时下载速度（分片加载完成时统计）';
+            }
+
+            startDownloadSpeedMonitor() {
+                clearInterval(this.downloadSpeedTimer);
+                const now = performance.now();
+                this.downloadSamples = this.downloadSamples.filter((sample) => now - sample.time <= 2000);
+                this.speedMonitorStart = now;
+                this.updateDownloadSpeedLabel();
+                this.downloadSpeedTimer = setInterval(() => this.updateDownloadSpeedLabel(), 500);
+            }
+
+            stopDownloadSpeedMonitor() {
+                clearInterval(this.downloadSpeedTimer);
+                this.downloadSpeedTimer = null;
+                this.speedMonitorStart = 0;
+                this.downloadSamples = [];
+                this.updateDownloadSpeedLabel();
+            }
+
             setEpisodeNavigation(hasPrev, hasNext) {
                 if (this.prevEpisodeBtn) {
                     this.prevEpisodeBtn.classList.toggle('hidden', !hasPrev);
@@ -554,7 +691,11 @@
             rotate() {
                 this.rotationIndex = (this.rotationIndex + 1) % this.rotations.length;
                 const angle = this.rotations[this.rotationIndex];
+                // 旋转后帧朝向变化，清空旧缓存并重新采样
+                this.frameCache = [];
+                this.lastCacheTime = -Infinity;
                 this.applyRotation();
+                this.cacheFrame();
                 this.notice(`画面已旋转 ${angle}°`);
             }
 
@@ -713,6 +854,38 @@
                 return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
             }
 
+            getFrameAspect(source) {
+                const vw = (source && source.videoWidth) || this.video.videoWidth || 0;
+                const vh = (source && source.videoHeight) || this.video.videoHeight || 0;
+                const swap = this.rotationIndex % 2 === 1;
+                const w = swap ? vh : vw;
+                const h = swap ? vw : vh;
+                return w > 0 && h > 0 ? w / h : 16 / 9;
+            }
+
+            // 按视频真实比例（含旋转）把画面画到 canvas，longEdge 为长边像素
+            drawFrameToCanvas(canvas, source, longEdge) {
+                const vw = (source && source.videoWidth) || 0;
+                const vh = (source && source.videoHeight) || 0;
+                if (!canvas || !vw || !vh) return false;
+                const angle = this.rotations[this.rotationIndex] || 0;
+                const swap = angle === 90 || angle === 270;
+                const outW = swap ? vh : vw;
+                const outH = swap ? vw : vh;
+                const scale = longEdge / Math.max(outW, outH);
+                canvas.width = Math.max(1, Math.round(outW * scale));
+                canvas.height = Math.max(1, Math.round(outH * scale));
+                const ctx = canvas.getContext('2d');
+                if (!ctx) return false;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.save();
+                ctx.translate(canvas.width / 2, canvas.height / 2);
+                if (angle) ctx.rotate((angle * Math.PI) / 180);
+                ctx.drawImage(source, (-vw * scale) / 2, (-vh * scale) / 2, vw * scale, vh * scale);
+                ctx.restore();
+                return true;
+            }
+
             cacheFrame() {
                 const v = this.video;
                 if (!v || v.readyState < 2 || !v.videoWidth || !v.videoHeight) return;
@@ -721,9 +894,7 @@
                 this.lastCacheTime = time;
                 try {
                     const canvas = document.createElement('canvas');
-                    canvas.width = 320;
-                    canvas.height = 180;
-                    canvas.getContext('2d').drawImage(v, 0, 0, canvas.width, canvas.height);
+                    if (!this.drawFrameToCanvas(canvas, v, 320)) return;
                     this.frameCache.push({ time, src: canvas.toDataURL('image/jpeg', 0.85) });
                     if (this.frameCache.length > 300) {
                         this.frameCache.splice(0, this.frameCache.length - 300);
@@ -744,9 +915,7 @@
                     if (!this.hoverImg) return;
                     try {
                         const canvas = document.createElement('canvas');
-                        canvas.width = 320;
-                        canvas.height = 180;
-                        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+                        if (!this.drawFrameToCanvas(canvas, video, 320)) return;
                         this.hoverImg.src = canvas.toDataURL('image/jpeg', 0.9);
                         this.hoverImg.style.visibility = 'visible';
                     } catch (err) {
@@ -785,16 +954,38 @@
                 }, 120);
             }
 
+            /**
+             * 计算预览框尺寸：横屏以宽为长边、竖屏以高为长边（长边默认 168px），
+             * 保证竖屏视频的预览图不被拉伸或裁切。
+             */
+            getHoverPreviewBox() {
+                const rootRect = this.root.getBoundingClientRect();
+                const rangeRect = this.range.getBoundingClientRect();
+                // 预留内边距、时间文字以及进度条上方 8px 间距，避免被播放器裁切
+                const maxHeight = Math.max(72, rangeRect.top - rootRect.top - 36);
+                const longEdge = Math.min(168, maxHeight);
+                const aspect = this.getFrameAspect(this.video);
+                const width = aspect >= 1 ? longEdge : longEdge * aspect;
+                const height = aspect >= 1 ? longEdge / aspect : longEdge;
+                return { rootRect, rangeRect, width: Math.max(48, Math.round(width)), height: Math.round(height) };
+            }
+
             showHoverPreview(clientX, time) {
                 if (!this.hoverPreview) return;
                 const duration = this.video.duration || 0;
                 if (!duration) return;
-                const rootRect = this.root.getBoundingClientRect();
-                const rangeRect = this.range.getBoundingClientRect();
-                const left = Math.max(84, Math.min(clientX - rootRect.left, rootRect.width - 84));
-                const bottom = Math.max(8, rootRect.bottom - rangeRect.top + 8);
+                const box = this.getHoverPreviewBox();
+                const rootRect = box.rootRect;
+                const halfWidth = box.width / 2 + 6;
+                const left = Math.max(halfWidth, Math.min(clientX - rootRect.left, rootRect.width - halfWidth));
+                const bottom = Math.max(8, rootRect.bottom - box.rangeRect.top + 8);
+                this.hoverPreview.style.width = `${box.width}px`;
                 this.hoverPreview.style.left = `${left}px`;
                 this.hoverPreview.style.bottom = `${bottom}px`;
+                if (this.hoverImg) {
+                    this.hoverImg.style.width = `${box.width - 8}px`;
+                    this.hoverImg.style.height = `${box.height}px`;
+                }
                 this.hoverTime.textContent = this.formatTime(time);
                 this.hoverPreview.classList.remove('hidden');
 
@@ -863,6 +1054,7 @@
                 if (this.destroyed) return;
                 this.destroyed = true;
                 this.stopBackground();
+                this.stopDownloadSpeedMonitor();
                 this.hideHoverPreview();
                 clearTimeout(this.previewTimer);
                 if (this.previewHls) { this.previewHls.destroy(); this.previewHls = null; }

@@ -1,0 +1,48 @@
+/* HubDaily 管理后台样式 */
+    html {
+      scrollbar-gutter: stable;
+    }
+    body {
+      overflow-y: scroll;
+    }
+    body.drawer-open {
+      overflow: hidden;
+    }
+    @media (max-width: 768px) {
+      .module-section table {
+        font-size: 12px;
+      }
+      .module-section th,
+      .module-section td {
+        padding-top: 6px !important;
+        padding-bottom: 6px !important;
+      }
+      .module-section input[type="text"],
+      .module-section input[type="number"],
+      .module-section select {
+        padding-top: 4px !important;
+        padding-bottom: 4px !important;
+      }
+      .module-section .text-sm {
+        font-size: 12px !important;
+      }
+      .module-section .text-xs {
+        font-size: 11px !important;
+      }
+      .module-section button {
+        padding-top: 4px !important;
+        padding-bottom: 4px !important;
+      }
+    }
+    
+    /* 视频卡片样式 */
+    .video-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    }
+    .video-card:hover .thumb-wrapper img {
+      transform: scale(1.05);
+    }
+    .video-card:hover .play-overlay {
+      opacity: 1;
+    }

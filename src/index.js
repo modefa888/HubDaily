@@ -11,6 +11,8 @@ const routeAccess = require("./middlewares/routeAccess");
 
 const app = new Koa();
 const net = require("net");
+const fs = require("fs");
+const path = require("path");
 const router = require("./routes");
 const http = require("http");
 
@@ -70,7 +72,40 @@ app.use(async (ctx, next) => {
 });
 
 // 静态文件目录
-app.use(serve(__dirname + "/../public"));
+const PUBLIC_DIR = __dirname + "/../public";
+
+// 目录请求自动补全结尾斜杠（如 /user/admin -> /user/admin/）
+// 否则页面内的相对路径（js/core.js）会解析到上一级目录，返回 404.html 导致脚本报 "Unexpected token '<'"
+app.use(async (ctx, next) => {
+    if (ctx.method !== "GET" && ctx.method !== "HEAD") return next();
+    const pathname = ctx.path;
+    if (pathname.endsWith("/")) return next();
+    const lastSegment = pathname.split("/").pop() || "";
+    // 带扩展名的视为文件请求，直接放行
+    if (/\.[^./]+$/.test(lastSegment)) return next();
+
+    let target;
+    try {
+        target = path.join(PUBLIC_DIR, decodeURIComponent(pathname));
+    } catch (err) {
+        return next();
+    }
+    if (target !== PUBLIC_DIR && !target.startsWith(PUBLIC_DIR + path.sep)) return next();
+
+    let isDirectory = false;
+    try {
+        isDirectory = fs.statSync(target).isDirectory();
+    } catch (err) {
+        isDirectory = false;
+    }
+    if (!isDirectory) return next();
+
+    const query = ctx.querystring ? `?${ctx.querystring}` : "";
+    ctx.status = 301;
+    ctx.redirect(`${pathname}/${query}`);
+});
+
+app.use(serve(PUBLIC_DIR));
 
 // 路由访问控制
 app.use(routeAccess);

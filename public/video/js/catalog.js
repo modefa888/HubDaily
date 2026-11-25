@@ -634,62 +634,83 @@
         }
         
         // 搜索功能
-        function searchData() {
+        async function searchData() {
             suppressHistoryInteractions(200);
             const isMobile = window.matchMedia('(max-width: 767px)').matches;
             const desktopValue = document.getElementById('searchInput').value.trim();
             const mobileValue = document.getElementById('searchInputMobile').value.trim();
             const input = isMobile ? mobileValue : (desktopValue || mobileValue);
-            
+
             if (!input) {
                 showToast('请输入搜索关键词');
                 return;
             }
-            
+
             if (!host && !isAggregateSearchEnabled()) {
                 showToast('请先设置API Host');
                 showHostModal();
                 return;
             }
-            
+
+            // 防止重复请求
+            if (isLoading) return;
+            isLoading = true;
+
             searchTerm = input;
             currentPage = 1;
             hasMore = true;
             hideEmptyState();
             saveSearchHistory(input);
             hideSearchHistory();
-            
-            // 更新两个搜索框的值
+
             document.getElementById('searchInput').value = input;
             document.getElementById('searchInputMobile').value = input;
-            
-            // 防止重复请求
-            if (isLoading) return;
-            isLoading = true;
-            // 隐藏加载更多按钮
+
+            const buttons = [
+                document.getElementById('searchButton'),
+                document.getElementById('searchButtonMobile')
+            ];
+            const originalHtml = buttons.map(btn => btn ? btn.innerHTML : '');
+            buttons.forEach(btn => {
+                if (!btn) return;
+                btn.disabled = true;
+                btn.innerHTML = '<span class="inline-flex items-center space-x-1"><span class="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></span><span>搜索中...</span></span>';
+            });
+
             hideLoadMoreButton();
-            // 显示搜索中提示
             document.getElementById('searchingState').classList.remove('hidden');
-            
             showLoading('正在搜索...');
-            fetchData(input, 1).then((list) => {
-                if (list && list.length > 0) {
-                    if (window.matchMedia('(max-width: 767px)').matches) {
-                        setTimeout(() => {
-                            const mobileBox = document.getElementById('mobileSearchBox');
-                            if (mobileBox && !mobileBox.classList.contains('hidden')) {
-                                mobileBox.classList.add('hidden');
-                            }
-                        }, 200);
-                    }
-                    // 移除滚动到第一条数据的代码
+
+            let timeoutId = null;
+            try {
+                const list = await Promise.race([
+                    fetchData(input, 1),
+                    new Promise((_, reject) => {
+                        timeoutId = setTimeout(() => reject(new Error('搜索超时')), 12000);
+                    })
+                ]);
+                if (list && list.length > 0 && window.matchMedia('(max-width: 767px)').matches) {
+                    setTimeout(() => {
+                        const mobileBox = document.getElementById('mobileSearchBox');
+                        if (mobileBox && !mobileBox.classList.contains('hidden')) {
+                            mobileBox.classList.add('hidden');
+                        }
+                    }, 200);
                 }
-            }).finally(() => {
+            } catch (error) {
+                console.error('搜索失败:', error);
+                showToast(error && error.message === '搜索超时' ? '搜索超时，请重试' : '搜索失败，请重试');
+            } finally {
+                clearTimeout(timeoutId);
+                buttons.forEach((btn, index) => {
+                    if (!btn) return;
+                    btn.disabled = false;
+                    btn.innerHTML = originalHtml[index];
+                });
                 hideLoading();
                 isLoading = false;
-                // 隐藏搜索中提示
                 document.getElementById('searchingState').classList.add('hidden');
-            });
+            }
         }
 
         // 搜索历史记录
