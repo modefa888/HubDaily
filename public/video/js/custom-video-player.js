@@ -10,6 +10,7 @@
                 this.compact = this.options.compact === true || (this.container.clientWidth > 0 && this.container.clientWidth < 420);
                 this.listeners = Object.create(null);
                 this.hls = null;
+                this.accelerationEnabled = true;
                 this.destroyed = false;
                 this.noticeTimer = null;
                 this.rotations = [0, 90, 180, 270];
@@ -118,9 +119,18 @@
                     if (this.options.onNextEpisode) this.options.onNextEpisode();
                 });
                 const downloadSpeed = document.createElement('span');
-                downloadSpeed.className = 'cvp-download-speed';
-                downloadSpeed.title = '实时下载速度';
+                downloadSpeed.className = 'cvp-download-speed cvp-accelerated';
+                downloadSpeed.setAttribute('role', 'button');
+                downloadSpeed.setAttribute('tabindex', '0');
+                downloadSpeed.title = '点击关闭加速';
                 downloadSpeed.textContent = '0 KB/s';
+                downloadSpeed.onclick = () => this.toggleAcceleration();
+                downloadSpeed.onkeydown = (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        this.toggleAcceleration();
+                    }
+                };
                 const spacer = document.createElement('span');
                 spacer.className = 'cvp-spacer';
 
@@ -456,6 +466,48 @@
                 });
             }
 
+            getHlsConfig() {
+                if (!this.accelerationEnabled) {
+                    return { enableWorker: true, capLevelToPlayerSize: true };
+                }
+                return {
+                    enableWorker: true,
+                    capLevelToPlayerSize: true,
+                    startFragPrefetch: true,
+                    startLevel: 0,
+                    maxBufferLength: 12,
+                    maxMaxBufferLength: 30,
+                    maxBufferSize: 20 * 1000 * 1000,
+                    backBufferLength: 30,
+                    manifestLoadingMaxRetry: 3,
+                    levelLoadingMaxRetry: 4,
+                    fragLoadingMaxRetry: 6,
+                    fragLoadingMaxRetryTimeout: 4000,
+                    levelLoadingMaxRetryTimeout: 4000,
+                    manifestLoadingMaxRetryTimeout: 4000,
+                    lowLatencyMode: false,
+                    testBandwidth: false
+                };
+            }
+
+            toggleAcceleration() {
+                this.accelerationEnabled = !this.accelerationEnabled;
+                if (this.downloadSpeedEl) {
+                    this.downloadSpeedEl.classList.toggle('cvp-accelerated', this.accelerationEnabled);
+                }
+                this.updateDownloadSpeedLabel();
+                if (!this.currentUrl) return;
+
+                const resumeAt = this.video.currentTime || 0;
+                const wasPlaying = !this.video.paused;
+                const restore = () => {
+                    if (resumeAt > 0) this.seek(resumeAt);
+                    if (wasPlaying) this.play();
+                };
+                this.video.addEventListener('loadedmetadata', restore, { once: true });
+                this.setSource({ url: this.currentUrl, pic: this.video.poster });
+            }
+
             setSource(videoInfo = {}) {
                 const url = videoInfo.url || '';
                 this.currentUrl = url;
@@ -495,7 +547,7 @@
                     this.options.contextmenu[0].link = url;
                 }
                 if (window.Hls && Hls.isSupported() && /\.m3u8(?:[?#]|$)/i.test(url)) {
-                    const hlsConfig = { enableWorker: true, capLevelToPlayerSize: true };
+                    const hlsConfig = this.getHlsConfig();
                     const SpeedLoader = this.createSpeedLoader(Hls);
                     if (SpeedLoader) {
                         hlsConfig.loader = SpeedLoader;
@@ -621,9 +673,11 @@
 
             updateDownloadSpeedLabel() {
                 if (!this.downloadSpeedEl) return;
+                const prefix = this.accelerationEnabled ? '加速 ' : '';
+                const action = this.accelerationEnabled ? '点击关闭加速' : '点击开启加速';
                 if (!this.hls) {
-                    this.downloadSpeedEl.textContent = '—';
-                    this.downloadSpeedEl.title = '当前视频不走 hls.js 下载';
+                    this.downloadSpeedEl.textContent = `${prefix}—`;
+                    this.downloadSpeedEl.title = `${action}（当前视频不走 hls.js 下载）`;
                     return;
                 }
                 const windowMs = 2000;
@@ -634,16 +688,17 @@
                 const span = Math.max(500, Math.min(windowMs, elapsed));
                 const kb = bytes / 1024 / (span / 1000);
 
+                let speed = '0 KB/s';
                 if (kb >= 1024) {
-                    this.downloadSpeedEl.textContent = `${(kb / 1024).toFixed(1)} MB/s`;
+                    speed = `${(kb / 1024).toFixed(1)} MB/s`;
                 } else if (kb >= 1) {
-                    this.downloadSpeedEl.textContent = `${Math.round(kb)} KB/s`;
-                } else {
-                    this.downloadSpeedEl.textContent = '0 KB/s';
+                    speed = `${Math.round(kb)} KB/s`;
                 }
-                this.downloadSpeedEl.title = this.speedLoaderActive
-                    ? '实时下载速度（hls.js 加载层实时字节）'
-                    : '实时下载速度（分片加载完成时统计）';
+                this.downloadSpeedEl.textContent = `${prefix}${speed}`;
+                const detail = this.speedLoaderActive
+                    ? 'hls.js 加载层实时字节'
+                    : '分片加载完成时统计';
+                this.downloadSpeedEl.title = `${action} · 实时下载速度（${detail}）`;
             }
 
             startDownloadSpeedMonitor() {
@@ -926,7 +981,7 @@
                 this.previewVideo = video;
                 const url = this.currentUrl;
                 if (window.Hls && Hls.isSupported() && /\.m3u8(?:[?#]|$)/i.test(url)) {
-                    this.previewHls = new Hls({ enableWorker: true, capLevelToPlayerSize: true });
+                    this.previewHls = new Hls(this.getHlsConfig());
                     this.previewHls.loadSource(url);
                     this.previewHls.attachMedia(video);
                 } else if (url) {

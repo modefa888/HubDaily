@@ -296,7 +296,7 @@
                         playerTitle.innerHTML = `<span class="bg-white/20 text-white/90 text-[10px] px-2 py-0.5 rounded mr-2">${label}</span>${title || ''}`;
                     }
                 };
-                updatePlayerLikeButtons(isFavorited(initialUrl));
+                updatePlayerLikeButtons(isFavorited(currentVideoRawUrl || initialUrl));
                 updatePlayerTitle(currentVideoTitle);
                 renderVideoInfoPanel();
                 
@@ -440,7 +440,7 @@
                         updatePlayerTitle(title);
                         // 更新页面标题
                         document.title = `正在播放: ${title}`;
-                        updatePlayerLikeButtons(isFavorited(ep.url));
+                        updatePlayerLikeButtons(isFavorited(currentVideoRawUrl || ep.url));
                         saveToHistory(title, ep.url, imageUrl, currentVideoSource, ep.name || '', idx, {
                             desc: currentVideoDesc,
                             class: currentVideoClass,
@@ -490,6 +490,7 @@
             videoPlayerModal.classList.add('hidden');
             setModalScrollLock(false);
             currentVideoUrl = '';
+            currentVideoRawUrl = '';
             currentVideoTitle = '';
             currentVideoPic = '';
             currentVideoSource = '';

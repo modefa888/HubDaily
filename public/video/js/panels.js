@@ -395,8 +395,10 @@
             const token = getUserToken ? getUserToken() : '';
             const alreadyLoaded = localStorage.getItem(FAVORITES_REMOTE_LOADED_KEY) === '1';
             if (!force && (alreadyLoaded || !token)) {
+                ensureFavoritesCacheImmediate();
                 setFavoritesCache(getFavorites());
                 refreshLocalStatsDisplay();
+                syncFavoriteStateUi();
                 return;
             }
             favoritesLoadingPromise = (async () => {
@@ -409,6 +411,7 @@
                         setFavoritesCache(data.data);
                         localStorage.setItem(FAVORITES_REMOTE_LOADED_KEY, '1');
                         refreshLocalStatsDisplay();
+                        syncFavoriteStateUi();
                     }
                 } catch (e) {
                     // ignore
@@ -455,11 +458,50 @@
             showToast('已关闭一键同步：喜欢只会从线上读取一次并保存到本地');
         }
 
+        // 收藏身份统一：完整剧集串、单个地址、不同线路都视为同一部视频
+        function getFavoriteCompareUrls(value) {
+            const text = String(value || '').trim();
+            if (!text) return [];
+            const urls = new Set([text]);
+            text.split('$$$').forEach(segment => {
+                segment.split('#').forEach(part => {
+                    const trimmed = part.trim();
+                    if (!trimmed) return;
+                    const splitIndex = trimmed.indexOf('$');
+                    const url = (splitIndex === -1 ? trimmed : trimmed.slice(splitIndex + 1)).trim();
+                    if (url) urls.add(url);
+                });
+            });
+            return Array.from(urls);
+        }
+
+        function isSameFavoriteVideo(a, b) {
+            const left = getFavoriteCompareUrls(a);
+            const right = getFavoriteCompareUrls(b);
+            if (!left.length || !right.length) return false;
+            return left.some(url => right.includes(url));
+        }
+
         function isFavorited(videoUrl) {
-            // 检查完整的URL，不进行分割
-            const fullVideoUrl = videoUrl;
+            ensureFavoritesCacheImmediate();
             const favorites = getFavorites();
-            return favorites.some(item => item.url === fullVideoUrl);
+            return favorites.some(item => isSameFavoriteVideo(item && item.url, videoUrl));
+        }
+
+        function syncFavoriteStateUi() {
+            document.querySelectorAll('.video-card[data-video-url]').forEach(card => {
+                const btn = card.querySelector('[data-action="favorite"]');
+                if (btn) updateFavoriteButton(btn, isFavorited(card.getAttribute('data-video-url')));
+            });
+            syncPlayerFavoriteState();
+        }
+
+        function syncPlayerFavoriteState(url) {
+            if (typeof updatePlayerLikeButtons !== 'function') return;
+            const currentUrl = (typeof currentVideoRawUrl !== 'undefined' && currentVideoRawUrl) || '';
+            if (!currentUrl) return;
+            if (url && !isSameFavoriteVideo(currentUrl, url)) return;
+            updatePlayerLikeButtons(isFavorited(currentUrl));
         }
 
         async function toggleFavorite(title, videoUrl, pic, buttonEl, sourceLabel = '', extraInfo = null) {
@@ -479,19 +521,21 @@
             const favorites = getFavorites();
             // 保存完整的URL，不进行分割
             const fullVideoUrl = videoUrl;
-            const existingIndex = favorites.findIndex(item => item.url === fullVideoUrl);
+            const existingIndex = favorites.findIndex(item => isSameFavoriteVideo(item && item.url, fullVideoUrl));
             
             if (existingIndex >= 0) {
+                const existingUrl = favorites[existingIndex].url || fullVideoUrl;
                 favorites.splice(existingIndex, 1);
                 setFavoritesCache(favorites);
                 showToast('已取消喜欢');
                 updateFavoriteButton(buttonEl, false);
+                syncPlayerFavoriteState(fullVideoUrl);
                 scheduleUserStatsUpdate();
                 if (token) {
                     fetch('/api/user/favorites', {
                         method: 'DELETE',
                         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                        body: JSON.stringify({ url: fullVideoUrl })
+                        body: JSON.stringify({ url: existingUrl })
                     }).catch(() => {});
                 }
             } else {
@@ -520,6 +564,7 @@
                 setFavoritesCache(favorites);
                 showToast('已加入喜欢');
                 updateFavoriteButton(buttonEl, true);
+                syncPlayerFavoriteState(fullVideoUrl);
                 scheduleUserStatsUpdate();
                 if (token) {
                     fetch('/api/user/favorites', {
@@ -530,7 +575,7 @@
                         try {
                             if (!Array.isArray(favoritesCache)) {
                                 await loadFavorites();
-                            } else if (!favoritesCache.some(f => f && f.url === fullVideoUrl)) {
+                            } else if (!favoritesCache.some(f => isSameFavoriteVideo(f && f.url, fullVideoUrl))) {
                                 favoritesCache.unshift(item);
                                 if (favoritesCache.length > 100) favoritesCache.splice(100);
                             }
@@ -777,15 +822,14 @@
         }
         
         // 清空历史记录
-        function clearHistory() {
-            if (confirm('确定要清空所有播放历史吗？')) {
-                localStorage.removeItem('videoPlayHistory');
-                toggleHistory();
-                toggleHistory();
-                showToast('历史记录已清空');
-                scheduleUserStatsUpdate();
-                updatePanelTabCounts();
-            }
+        async function clearHistory() {
+            if (!(await window.uiConfirm('确定要清空所有播放历史吗？', '清空历史'))) return;
+            localStorage.removeItem('videoPlayHistory');
+            toggleHistory();
+            toggleHistory();
+            showToast('历史记录已清空');
+            scheduleUserStatsUpdate();
+            updatePanelTabCounts();
         }
         
         // 切换Host设置模态框

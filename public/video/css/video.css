@@ -440,6 +440,18 @@
             color: rgba(255, 255, 255, .72);
             font-variant-numeric: tabular-nums;
             white-space: nowrap;
+            cursor: pointer;
+            border-radius: 6px;
+            padding: 3px 4px;
+            transition: background .18s ease, color .18s ease;
+        }
+        .cvp-download-speed:hover {
+            background: rgba(255, 255, 255, .12);
+        }
+        .cvp-download-speed.cvp-accelerated {
+            color: #fbbf24;
+            background: rgba(251, 191, 36, .12);
+            text-shadow: 0 0 10px rgba(251, 191, 36, .45);
         }
         .cvp-time {
             font-size: 11px;

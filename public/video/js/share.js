@@ -885,19 +885,20 @@
             const token = getUserToken ? getUserToken() : '';
             ensureFavoritesCacheImmediate();
             const favorites = getFavorites();
-            const existingIndex = favorites.findIndex(item => item.url === fullVideoUrl);
+            const existingIndex = favorites.findIndex(item => isSameFavoriteVideo(item && item.url, fullVideoUrl));
 
             if (existingIndex >= 0) {
+                const existingUrl = favorites[existingIndex].url || fullVideoUrl;
                 favorites.splice(existingIndex, 1);
                 setFavoritesCache(favorites);
                 showToast('已取消喜欢');
                 updatePlayerLikeButtons(false);
-                updateCardFavoriteByUrl(fullVideoUrl, false);
+                updateCardFavoriteByUrl(existingUrl, false);
                 if (token) {
                     fetch('/api/user/favorites', {
                         method: 'DELETE',
                         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                        body: JSON.stringify({ url: fullVideoUrl })
+                        body: JSON.stringify({ url: existingUrl })
                     }).catch(() => {});
                 }
             } else {
@@ -944,13 +945,11 @@
 
         function updateCardFavoriteByUrl(rawUrl, isLiked) {
             if (!rawUrl) return;
-            // 比较完整的URL，不进行分割
             const cards = document.querySelectorAll('.video-card');
             cards.forEach(card => {
                 if (!card) return;
                 const cardUrl = card.getAttribute('data-video-url');
-                if (!cardUrl) return;
-                if (cardUrl !== rawUrl) return;
+                if (!cardUrl || !isSameFavoriteVideo(cardUrl, rawUrl)) return;
                 const btn = card.querySelector('[data-action="favorite"]');
                 if (btn) updateFavoriteButton(btn, isLiked);
             });
